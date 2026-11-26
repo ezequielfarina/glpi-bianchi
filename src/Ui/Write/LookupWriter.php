@@ -34,19 +34,22 @@ final readonly class LookupWriter
         $p->check();
 
         try {
-            if (null === $id) {
-                $cols = array_keys($row);
+            // savepoint: a violação de constraint não pode abortar a transação externa (25P02)
+            return $this->db->transactional(function () use ($id, $row, $table): int {
+                if (null === $id) {
+                    $cols = array_keys($row);
 
-                return (int) $this->db->fetchOne(
-                    \sprintf('INSERT INTO %s (%s) VALUES (%s) RETURNING id', $table, implode(', ', $cols), implode(', ', array_fill(0, \count($cols), '?'))),
-                    array_values($row),
-                );
-            }
-            if (0 === $this->db->update($table, $row, ['id' => $id])) {
-                throw new NotFoundException('Registro não encontrado.');
-            }
+                    return (int) $this->db->fetchOne(
+                        \sprintf('INSERT INTO %s (%s) VALUES (%s) RETURNING id', $table, implode(', ', $cols), implode(', ', array_fill(0, \count($cols), '?'))),
+                        array_values($row),
+                    );
+                }
+                if (0 === $this->db->update($table, $row, ['id' => $id])) {
+                    throw new NotFoundException('Registro não encontrado.');
+                }
 
-            return $id;
+                return $id;
+            });
         } catch (UniqueConstraintViolationException) {
             throw new ValidationException(['name' => 'Já existe um registro com este nome.']);
         }
@@ -56,11 +59,12 @@ final readonly class LookupWriter
     {
         $table = self::KINDS[$kind] ?? throw new NotFoundException('Cadastro desconhecido.');
         try {
-            if (0 === $this->db->executeStatement(\sprintf('DELETE FROM %s WHERE id = ?', $table), [$id])) {
-                throw new NotFoundException('Registro não encontrado.');
-            }
+            $deleted = $this->db->transactional(fn (): int|string => $this->db->executeStatement(\sprintf('DELETE FROM %s WHERE id = ?', $table), [$id]));
         } catch (ForeignKeyConstraintViolationException) {
             throw new ValidationException(['name' => 'Em uso por licenças — altere-as antes de excluir.']);
+        }
+        if (0 === (int) $deleted) {
+            throw new NotFoundException('Registro não encontrado.');
         }
     }
 }

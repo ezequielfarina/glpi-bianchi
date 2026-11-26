@@ -118,11 +118,13 @@ final readonly class LicenseWriter
         }
         $p->check();
 
+        $userId = $isUser ? $this->refs->userId($user) : null;
         try {
-            return (int) $this->db->fetchOne(
+            // savepoint: a violação de unique não pode abortar a transação externa (25P02)
+            return $this->db->transactional(fn (): int => (int) $this->db->fetchOne(
                 'INSERT INTO license_assignment (license_id, asset_id, user_id, notes, assigned_at) VALUES (?, ?, ?, ?, ?) RETURNING id',
-                [$licenseId, $assetId, $isUser ? $this->refs->userId($user) : null, $notes, Refs::now()],
-            );
+                [$licenseId, $assetId, $userId, $notes, Refs::now()],
+            ));
         } catch (UniqueConstraintViolationException) {
             throw new ValidationException([$isUser ? 'user' : 'asset_uuid' => 'Já atribuída a este '.($isUser ? 'usuário' : 'ativo').'.']);
         }

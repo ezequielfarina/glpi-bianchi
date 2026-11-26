@@ -38,18 +38,21 @@ final readonly class SupplierWriter
         $p->check();
 
         try {
-            if (null === $id) {
-                return (int) $this->db->fetchOne(
-                    'INSERT INTO supplier (name, trade_name, tax_id, email, phone, website, address, notes, active, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
-                    [...array_values($row), Refs::now(), Refs::now()],
-                    [8 => \Doctrine\DBAL\ParameterType::BOOLEAN],
-                );
-            }
-            $this->requireSupplier($id);
-            $this->db->update('supplier', $row + ['updated_at' => Refs::now()], ['id' => $id], ['active' => \Doctrine\DBAL\ParameterType::BOOLEAN]);
+            // savepoint: a violação de unique não pode abortar a transação externa (25P02)
+            return $this->db->transactional(function () use ($id, $row): int {
+                if (null === $id) {
+                    return (int) $this->db->fetchOne(
+                        'INSERT INTO supplier (name, trade_name, tax_id, email, phone, website, address, notes, active, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+                        [...array_values($row), Refs::now(), Refs::now()],
+                        [8 => \Doctrine\DBAL\ParameterType::BOOLEAN],
+                    );
+                }
+                $this->requireSupplier($id);
+                $this->db->update('supplier', $row + ['updated_at' => Refs::now()], ['id' => $id], ['active' => \Doctrine\DBAL\ParameterType::BOOLEAN]);
 
-            return $id;
+                return $id;
+            });
         } catch (UniqueConstraintViolationException) {
             throw new ValidationException(['tax_id' => 'Já existe fornecedor com este CNPJ/CPF.']);
         }
