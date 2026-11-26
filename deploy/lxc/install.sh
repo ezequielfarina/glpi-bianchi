@@ -56,7 +56,7 @@ log "1/9 Pacotes"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
 apt-get install -y -q --no-install-recommends \
-    ca-certificates curl git unzip openssl locales tzdata acl \
+    ca-certificates curl git unzip openssl locales tzdata acl make jq \
     nginx \
     "postgresql-${PG_VER}" postgresql-contrib \
     valkey-server \
