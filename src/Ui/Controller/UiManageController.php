@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Ui\Controller;
 
+use App\Identity\Security\CurrentActor;
 use App\Ui\ReadModel\ManageQuery;
 use App\Ui\Write\BranchWriter;
 use App\Ui\Write\ContractWriter;
@@ -30,6 +31,7 @@ final readonly class UiManageController
     use UiJson;
 
     public function __construct(
+        private CurrentActor $actor,
         private ManageQuery $query,
         private SupplierWriter $suppliers,
         private ContractWriter $contracts,
@@ -114,7 +116,7 @@ final readonly class UiManageController
     {
         $uuids = $this->body($request)['assets'] ?? [];
 
-        return $this->json(['updated' => $this->branches->assignAssets(0 === $id ? null : $id, \is_array($uuids) ? array_values($uuids) : [], self::ACTOR)]);
+        return $this->json(['updated' => $this->branches->assignAssets(0 === $id ? null : $id, \is_array($uuids) ? array_values($uuids) : [], $this->actor->name())]);
     }
 
     // ------------------------------------------------------------------ fornecedores

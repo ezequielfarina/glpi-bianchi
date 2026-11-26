@@ -344,3 +344,59 @@ export interface BranchDetail extends BranchRow {
   unassigned_assets: number
   attachments: Attachment[]
 }
+
+export type Role = 'admin' | 'editor' | 'viewer'
+
+export interface Me {
+  id: number
+  username: string
+  display_name: string
+  email: string | null
+  role: Role
+  must_change_password: boolean
+  mfa: boolean
+  password_changed_at: string | null
+  previous_login: { created_at: string; ip: string | null } | null
+  session_id: string
+}
+
+export interface SessionRow {
+  id: number
+  ip: string | null
+  user_agent: string | null
+  created_at: string
+  last_seen_at: string
+  expires_at: string
+  current: boolean
+}
+
+export interface AccountRow {
+  id: number
+  username: string
+  display_name: string
+  email: string | null
+  role: Role
+  active: boolean
+  must_change_password: boolean
+  mfa: boolean
+  last_login_at: string | null
+  last_login_ip: string | null
+  password_changed_at: string | null
+  created_at: string
+  sessions: number
+  locked: boolean
+}
+
+export interface AuditEvent {
+  id: number
+  event: string
+  username: string | null
+  display_name: string | null
+  ip: string | null
+  user_agent: string | null
+  actor: string | null
+  details: Record<string, unknown>
+  created_at: string
+}
+
+export interface AuditPage { items: AuditEvent[]; total: number; page: number; perPage: number }

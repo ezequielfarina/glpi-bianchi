@@ -71,7 +71,7 @@ async function force(deviceId: string, label: string): Promise<void> {
                 </td>
                 <td>
                   <button
-                    class="btn"
+                    class="edit-only btn"
                     type="button"
                     :disabled="waking.has(a.device_id)"
                     :aria-label="`Forçar inventário de ${a.name}`"

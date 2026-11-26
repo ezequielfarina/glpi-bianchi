@@ -192,11 +192,36 @@ if [[ "$APP_ENV" == "dev" ]]; then
 fi
 as_app php bin/console cache:clear
 as_app php bin/console messenger:setup-transports
+# Primeiro administrador do painel (só se ainda não houver nenhuma conta)
+ADMIN_FILE=/root/glpi-bianchi-admin.txt
+ADMIN_OUT="$(as_app php bin/console app:user:create admin --role=admin --name=Administrador --generate --if-none --no-ansi)"
+ADMIN_PASS="$(sed -n 's/^Senha temporária: //p' <<<"$ADMIN_OUT" | head -1)"
+if [[ -n "$ADMIN_PASS" ]]; then
+    umask 077
+    printf 'Painel GLPI Bianchi\nusuário: admin\nsenha temporária: %s\n(troca obrigatória no primeiro login; apague este arquivo depois)\n' "$ADMIN_PASS" > "$ADMIN_FILE"
+    umask 022
+fi
 systemctl reload "php${PHP_VER}-fpm"
 
 # ----------------------------------------------------------------------------
-log "8/9 nginx"
-sed "s#@APP_DIR@#${APP_DIR}#g" "$SCRIPT_DIR/nginx/glpi-bianchi.conf" > /etc/nginx/sites-available/glpi-bianchi.conf
+log "8/9 nginx + HTTPS"
+# Certificado TLS: gera um auto-assinado (ECDSA P-256, SAN = nome + IP) só se não existir.
+# Para usar o da CA interna, substitua cert.pem/key.pem e rode `systemctl reload nginx`.
+TLS_DIR=/etc/glpi-bianchi/tls
+install -d -m 0750 "$TLS_DIR"
+if [[ ! -s "$TLS_DIR/cert.pem" || ! -s "$TLS_DIR/key.pem" ]]; then
+    HOST_FQDN="$(hostname -f 2>/dev/null || hostname)"
+    HOST_IP="$(hostname -I | awk '{print $1}')"
+    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 825 \
+        -keyout "$TLS_DIR/key.pem" -out "$TLS_DIR/cert.pem" \
+        -subj "/CN=${HOST_FQDN}/O=GLPI Bianchi" \
+        -addext "subjectAltName=DNS:${HOST_FQDN},DNS:$(hostname -s),IP:${HOST_IP}" \
+        -addext "keyUsage=critical,digitalSignature" -addext "extendedKeyUsage=serverAuth" 2>/dev/null
+    chmod 0600 "$TLS_DIR/key.pem"
+    echo "Certificado auto-assinado criado em $TLS_DIR (SAN: ${HOST_FQDN}, ${HOST_IP})"
+fi
+sed "s#@APP_DIR@#${APP_DIR}#g" "$SCRIPT_DIR/nginx/glpi-bianchi-php.conf" > /etc/nginx/snippets/glpi-bianchi-php.conf
+sed "s#@APP_DIR@#${APP_DIR}#g; s#@TLS_DIR@#${TLS_DIR}#g" "$SCRIPT_DIR/nginx/glpi-bianchi.conf" > /etc/nginx/sites-available/glpi-bianchi.conf
 ln -sf /etc/nginx/sites-available/glpi-bianchi.conf /etc/nginx/sites-enabled/glpi-bianchi.conf
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
@@ -227,14 +252,17 @@ cat <<EOF
 
 $(printf '\033[1;32m')Instalação concluída.$(printf '\033[0m')
 
-  Endpoint do GLPI Agent : http://${IP}/
-  API REST / OpenAPI     : http://${IP}/api/docs
-  Token da API           : ${API_TOKEN}
-                           (guardado em ${ENV_LOCAL})
+  Painel                 : https://${IP}/app/
+$( [[ -n "${ADMIN_PASS:-}" ]] && printf '  Primeiro acesso        : usuário \033[1madmin\033[0m, senha temporária \033[1m%s\033[0m\n                           (também em %s — apague depois do 1º login)\n' "$ADMIN_PASS" "$ADMIN_FILE" )
+  Certificado            : ${TLS_DIR}/cert.pem (auto-assinado: o navegador avisa na 1ª vez;
+                           para tirar o aviso use um certificado da sua CA — ver docs/deploy)
+  Endpoint do GLPI Agent : http://${IP}/  (ou https://${IP}/)
+  API de integração      : https://${IP}/api/docs  (Bearer ${API_TOKEN:0:6}… — ver ${ENV_LOCAL})
+
+  Recuperar acesso       : cd ${APP_DIR} && sudo -u ${APP_USER} php bin/console app:user:recover admin --password
 
   Teste rápido:
     cd ${APP_DIR} && make agent-sample HTTP_URL=http://127.0.0.1/
-    curl -s -H "Authorization: Bearer ${API_TOKEN}" http://127.0.0.1/api/assets | head
 
   Agente (em uma máquina de teste):
     glpi-agent --server http://${IP}/ --force --debug

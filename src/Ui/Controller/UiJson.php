@@ -12,9 +12,6 @@ use Symfony\Component\HttpFoundation\Response;
 /** Helpers comuns dos controllers /api/ui. */
 trait UiJson
 {
-    /** Quem fez a alteração. Fase 2 (login individual): usuário autenticado. */
-    private const string ACTOR = 'painel';
-
     /** @param array<array-key, mixed> $data */
     private function json(array $data, int $status = Response::HTTP_OK): JsonResponse
     {

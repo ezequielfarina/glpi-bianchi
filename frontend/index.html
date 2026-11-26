@@ -6,10 +6,7 @@
     <meta name="color-scheme" content="dark light" />
     <title>GLPI Bianchi — Inventário</title>
     <link rel="icon" href="/app/favicon.svg" type="image/svg+xml" />
-    <script>
-      // Aplica o tema salvo antes do primeiro paint (evita "flash" claro/escuro)
-      try { document.documentElement.dataset.theme = localStorage.getItem('bianchi.theme') || 'dark' } catch (e) {}
-    </script>
+    <script src="/app/theme-init.js"></script>
   </head>
   <body>
     <div id="app"></div>

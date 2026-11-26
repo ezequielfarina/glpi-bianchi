@@ -48,7 +48,7 @@ void load()
         <p class="muted">{{ num(items.length) }} licença(s) · {{ num(totals.used) }} de {{ num(totals.seats) }} assentos em uso · investimento {{ money(totals.value) }}
           <template v-if="totals.alerts"> · <span class="warn">{{ totals.alerts }} com alerta</span></template></p>
       </div>
-      <div class="actions"><button class="btn btn-primary" type="button" @click="creating = true"><AppIcon name="plus" :size="16" /> Nova licença</button></div>
+      <div class="actions"><button class="edit-only btn btn-primary" type="button" @click="creating = true"><AppIcon name="plus" :size="16" /> Nova licença</button></div>
     </header>
 
     <section class="panel">

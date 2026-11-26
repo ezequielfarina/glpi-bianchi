@@ -33,7 +33,7 @@ const totals = computed(() => items.value.reduce((t, b) => ({ assets: t.assets +
         <h1>Matriz e filiais</h1>
         <p class="muted">{{ items.length }} unidade(s) · {{ totals.assets }} ativo(s) vinculados</p>
       </div>
-      <div class="actions"><button class="btn btn-primary" type="button" @click="creating = true"><AppIcon name="plus" :size="16" /> Nova unidade</button></div>
+      <div class="actions"><button class="edit-only btn btn-primary" type="button" @click="creating = true"><AppIcon name="plus" :size="16" /> Nova unidade</button></div>
     </header>
 
     <LoadState :loading="loading" :error="error" :rows="6" @retry="reload">
@@ -42,7 +42,7 @@ const totals = computed(() => items.value.reduce((t, b) => ({ assets: t.assets +
           <AppIcon name="building" :size="32" />
           <h2>Cadastre a matriz e as filiais</h2>
           <p class="muted">Com as unidades cadastradas você vincula cada ativo ao local onde está, vê tudo no mapa e os computadores com o GLPI Agent podem ser vinculados automaticamente pela rede (IP).</p>
-          <button class="btn btn-primary" type="button" @click="creating = true"><AppIcon name="plus" :size="16" /> Cadastrar a matriz</button>
+          <button class="edit-only btn btn-primary" type="button" @click="creating = true"><AppIcon name="plus" :size="16" /> Cadastrar a matriz</button>
         </div>
 
         <template v-else>

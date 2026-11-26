@@ -8,6 +8,7 @@ import LoadState from '../components/LoadState.vue'
 import OutcomePill from '../components/OutcomePill.vue'
 import StatusPill from '../components/StatusPill.vue'
 import { typeIcon, typeStyle } from '../lib/assetTypes'
+import { canEdit } from '../lib/session'
 import { forceInventory, useInventoryRefresh, waking } from '../lib/wakeup'
 import { api } from '../lib/api'
 import { ASSET_STATUS, attrLabel, bytes, dateOnly, dateTime, fieldLabel, kindLabel, mib, num, relative } from '../lib/format'
@@ -190,7 +191,7 @@ async function force(deviceId: string, label: string): Promise<void> {
       <template v-if="a">
         <header class="hero panel">
           <div class="hero-top">
-          <button class="hero-photo" type="button" :aria-label="a.photo_uuid ? 'Trocar foto' : 'Adicionar foto'" @click="photoInput?.click()">
+          <button class="hero-photo" type="button" :disabled="!canEdit" :aria-label="a.photo_uuid ? 'Trocar foto' : 'Adicionar foto'" @click="photoInput?.click()">
             <AuthImage :uuid="a.photo_uuid" :alt="`Foto de ${a.name}`">
               <template #fallback><span class="ph"><AppIcon name="camera" :size="26" /><span>Adicionar foto</span></span></template>
             </AuthImage>
@@ -210,11 +211,11 @@ async function force(deviceId: string, label: string): Promise<void> {
             </p>
           </div>
           <div class="hero-actions">
-          <RouterLink :to="`/assets/${a.uuid}/edit`" class="btn"><AppIcon name="edit" :size="16" /> Editar</RouterLink>
-          <button class="btn btn-danger" type="button" @click="removeAsset"><AppIcon name="trash" :size="16" /> Excluir</button>
+          <RouterLink :to="`/assets/${a.uuid}/edit`" class="edit-only btn"><AppIcon name="edit" :size="16" /> Editar</RouterLink>
+          <button class="edit-only btn btn-danger" type="button" @click="removeAsset"><AppIcon name="trash" :size="16" /> Excluir</button>
           <button
             v-if="a.agents[0]"
-            class="btn btn-primary"
+            class="edit-only btn btn-primary"
             type="button"
             :disabled="waking.has(a.agents[0].device_id)"
             @click="force(a.agents[0].device_id, a.name)"
@@ -373,13 +374,13 @@ async function force(deviceId: string, label: string): Promise<void> {
                     <td><RouterLink :to="`/licenses/${l.id}`">{{ l.name }}</RouterLink></td>
                     <td class="muted">{{ l.license_type }}</td>
                     <td class="muted">{{ dateOnly(l.expires_at) }}</td>
-                    <td><button class="btn btn-icon" type="button" :aria-label="`Remover ${l.name}`" @click="unassignLicense(l.assignment_id)"><AppIcon name="close" :size="14" /></button></td>
+                    <td><button class="edit-only btn btn-icon" type="button" :aria-label="`Remover ${l.name}`" @click="unassignLicense(l.assignment_id)"><AppIcon name="close" :size="14" /></button></td>
                   </tr>
                 </tbody>
               </table>
               <p v-if="!a.licenses.length" class="empty">Nenhuma licença atribuída a este ativo.</p>
             </div>
-            <div class="add-row">
+            <div class="edit-only add-row">
               <label for="pick-license" class="sr-only">Licença</label>
               <select id="pick-license" v-model="pickLicense" class="input" @focus="loadLinkOptions">
                 <option value="">Atribuir licença (por máquina / volume)…</option>
@@ -398,13 +399,13 @@ async function force(deviceId: string, label: string): Promise<void> {
                     <td><RouterLink :to="`/contracts/${c.id}`">{{ c.title }}</RouterLink> <span class="muted mono small">{{ c.number }}</span></td>
                     <td class="muted">{{ c.supplier ?? '—' }}</td>
                     <td class="muted">{{ dateOnly(c.end_date) }}</td>
-                    <td><button class="btn btn-icon" type="button" :aria-label="`Desvincular ${c.title}`" @click="unlinkContract(c.id)"><AppIcon name="close" :size="14" /></button></td>
+                    <td><button class="edit-only btn btn-icon" type="button" :aria-label="`Desvincular ${c.title}`" @click="unlinkContract(c.id)"><AppIcon name="close" :size="14" /></button></td>
                   </tr>
                 </tbody>
               </table>
               <p v-if="!a.contracts.length" class="empty">Nenhum contrato vinculado (garantia, locação, manutenção…).</p>
             </div>
-            <div class="add-row">
+            <div class="edit-only add-row">
               <label for="pick-contract" class="sr-only">Contrato</label>
               <select id="pick-contract" v-model="pickContract" class="input" @focus="loadLinkOptions">
                 <option value="">Vincular contrato…</option>
@@ -480,6 +481,7 @@ async function force(deviceId: string, label: string): Promise<void> {
 .hero-top { display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap; }
 .hero-main { flex: 1; min-width: 260px; }
 .hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.hero-photo:disabled { cursor: default; }
 .hero-photo { width: 120px; height: 120px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-elev); overflow: hidden; padding: 0; cursor: pointer; display: grid; place-items: center; color: var(--text-3); flex: none; }
 .hero-photo:hover { border-color: var(--accent); }
 .hero-photo :deep(img) { width: 100%; height: 100%; object-fit: cover; }

@@ -17,6 +17,14 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- **Login individual (ADR-0011):** usuário e senha com **Argon2id**, sessão em cookie HttpOnly/SameSite=Strict
+  (só o SHA-256 do token no banco), **2FA TOTP** com QR code e anti-replay, perfis Administrador/Técnico/Leitura
+  aplicados no servidor, bloqueio progressivo (5 falhas por login / 30 por IP), proteção CSRF, troca obrigatória
+  de senha temporária, "Minha conta" (senha, 2FA, sessões), painel de **usuários** e **auditoria de acesso**.
+  Histórico dos ativos passa a registrar o login de quem alterou.
+- **HTTPS no CT:** TLS 1.2/1.3 com certificado auto-assinado gerado na instalação (substituível), CSP sem inline;
+  porta 80 só para o GLPI Agent. `install.sh` cria o `admin` inicial com senha temporária.
+- Comandos `app:user:create` e `app:user:recover` (senha temporária, 2FA, desbloqueio, reativação).
 - **Matriz e filiais (ADR-0010):** cadastro com CNPJ, endereço (busca por CEP), localização no mapa
   (OpenStreetMap: clicar/arrastar, localizar pelo endereço ou colar link do Google Maps) e redes CIDR;
   filial no ativo (formulário, detalhe, filtro e coluna na lista, mover em lote); computadores do

@@ -3,14 +3,15 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon, { type IconName } from './AppIcon.vue'
 import ToastHost from './ToastHost.vue'
-import { auth } from '../lib/api'
+import { api } from '../lib/api'
+import { clearMe, isAdmin, me, ROLE_LABEL } from '../lib/session'
 import { theme, toggleTheme } from '../lib/theme'
 
 const route = useRoute()
 const router = useRouter()
 const search = ref('')
 
-const nav: { to: string; label: string; icon: IconName; group?: string }[] = [
+const allNav: { to: string; label: string; icon: IconName; group?: string; admin?: boolean }[] = [
   { to: '/', label: 'Visão geral', icon: 'home' },
   { to: '/assets', label: 'Ativos', icon: 'assets' },
   { to: '/branches', label: 'Matriz e filiais', icon: 'building' },
@@ -20,7 +21,11 @@ const nav: { to: string; label: string; icon: IconName; group?: string }[] = [
   { to: '/agents', label: 'Agentes', icon: 'agents', group: 'Inventário automático' },
   { to: '/inventories', label: 'Inventários recebidos', icon: 'inbox' },
   { to: '/settings', label: 'Configurações', icon: 'settings', group: 'Sistema' },
+  { to: '/users', label: 'Usuários', icon: 'user', admin: true },
+  { to: '/audit', label: 'Auditoria de acesso', icon: 'history', admin: true },
 ]
+const nav = computed(() => allNav.filter((i) => !i.admin || isAdmin.value))
+const initials = computed(() => (me.value?.display_name ?? '?').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join(''))
 
 const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.startsWith(to))
 const themeLabel = computed(() => (theme.value === 'dark' ? 'Usar tema claro' : 'Usar tema escuro'))
@@ -29,14 +34,15 @@ function submitSearch(): void {
   void router.push({ path: '/assets', query: search.value.trim() ? { q: search.value.trim() } : {} })
 }
 
-function logout(): void {
-  auth.clear()
-  void router.push('/login')
+async function logout(): Promise<void> {
+  try { await api.logout() } catch { /* sessão já encerrada */ }
+  clearMe()
+  await router.push('/login')
 }
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" :class="me ? `role-${me.role}` : ''">
     <a class="skip" href="#main">Pular para o conteúdo</a>
 
     <aside class="sidebar">
@@ -88,6 +94,10 @@ function logout(): void {
             autocomplete="off"
           />
         </form>
+        <RouterLink v-if="me" to="/account" class="me" :title="`${me.display_name} — ${ROLE_LABEL[me.role]}`">
+          <span class="avatar" aria-hidden="true">{{ initials }}</span>
+          <span class="me-text"><strong>{{ me.display_name }}</strong><small>{{ ROLE_LABEL[me.role] }}<template v-if="!me.mfa"> · sem 2FA</template></small></span>
+        </RouterLink>
       </header>
       <main id="main" tabindex="-1">
         <slot />
@@ -136,6 +146,13 @@ nav { display: flex; flex-direction: column; gap: 2px; }
   padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
   background: var(--panel); color: var(--text-3);
 }
+.me { margin-left: auto; display: flex; align-items: center; gap: 10px; padding: 4px 10px 4px 4px; border-radius: 999px; color: var(--text); text-decoration: none; border: 1px solid transparent; }
+.me:hover { border-color: var(--border); background: var(--panel); text-decoration: none; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); font-size: 12.5px; font-weight: 600; }
+.me-text { display: flex; flex-direction: column; line-height: 1.2; }
+.me-text strong { font-size: 13px; font-weight: 600; }
+.me-text small { font-size: 11.5px; color: var(--text-3); }
+@media (max-width: 760px) { .me-text { display: none; } }
 .search:focus-within { border-color: var(--accent); }
 .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); }
 main { padding: 24px 32px 48px; outline: none; }

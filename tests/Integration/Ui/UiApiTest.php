@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Ui;
 
+use App\Tests\Integration\Support\LogsIn;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * Endpoints da interface (/api/ui/*): autenticação Bearer e forma das respostas
+ * Endpoints da interface (/api/ui/*): exigem login (cookie de sessão) e forma das respostas
  * após um inventário real passar pelo protocolo do agente (transporte sync em test).
  */
 final class UiApiTest extends WebTestCase
 {
+    use LogsIn;
+
     private KernelBrowser $client;
 
     protected function setUp(): void
@@ -20,17 +23,23 @@ final class UiApiTest extends WebTestCase
         $this->client = self::createClient();
     }
 
-    public function testRequiresToken(): void
+    public function testRequiresLogin(): void
     {
         $this->client->request('GET', '/api/ui/overview');
         self::assertResponseStatusCodeSame(401);
 
-        $this->client->request('GET', '/api/ui/overview', server: ['HTTP_AUTHORIZATION' => 'Bearer wrong']);
+        // o token de integração (API_TOKEN) não abre o painel
+        $this->client->request('GET', '/api/ui/overview', server: ['HTTP_AUTHORIZATION' => 'Bearer test-token']);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->client->getCookieJar()->set(new \Symfony\Component\BrowserKit\Cookie('bianchi_sid', str_repeat('A', 43), path: '/api/ui'));
+        $this->client->request('GET', '/api/ui/overview');
         self::assertResponseStatusCodeSame(401);
     }
 
     public function testInventoryShowsUpInOverviewSearchAndDetail(): void
     {
+        $this->loginAs($this->client, 'viewer');
         $payload = (string) file_get_contents(__DIR__.'/../../Fixtures/inventory/computer-linux.json');
         $this->client->request('POST', '/', server: ['CONTENT_TYPE' => 'application/x-compress-zlib'], content: (string) gzcompress($payload));
         self::assertResponseIsSuccessful();
@@ -77,6 +86,6 @@ final class UiApiTest extends WebTestCase
     /** @return array<string, string> */
     private function auth(): array
     {
-        return ['HTTP_AUTHORIZATION' => 'Bearer test-token', 'HTTP_ACCEPT' => 'application/json'];
+        return self::UI;
     }
 }

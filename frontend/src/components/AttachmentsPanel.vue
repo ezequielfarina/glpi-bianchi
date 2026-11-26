@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import AppIcon from './AppIcon.vue'
+import { canEdit } from '../lib/session'
 import AuthImage from './AuthImage.vue'
 import { api, fetchBlobUrl } from '../lib/api'
 import { bytes, dateTime } from '../lib/format'
@@ -53,14 +54,14 @@ async function remove(a: Attachment): Promise<void> {
   <section class="panel">
     <div class="panel-head">
       <h2>{{ title ?? 'Anexos' }} <span class="muted">({{ items.length }})</span></h2>
-      <button class="btn" type="button" :disabled="busy" @click="input?.click()"><AppIcon name="upload" :size="16" /> {{ busy ? 'Enviando…' : 'Anexar arquivo' }}</button>
+      <button class="edit-only btn" type="button" :disabled="busy" @click="input?.click()"><AppIcon name="upload" :size="16" /> {{ busy ? 'Enviando…' : 'Anexar arquivo' }}</button>
       <input ref="input" type="file" multiple class="sr-only" aria-label="Selecionar arquivos" @change="send(($event.target as HTMLInputElement).files)" />
     </div>
     <div
       class="drop" :class="{ on: dragging }"
-      @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="dragging = false; send($event.dataTransfer?.files ?? null)"
+      @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="dragging = false; canEdit && send($event.dataTransfer?.files ?? null)"
     >
-      <p v-if="!items.length" class="muted">Arraste arquivos aqui (PDF, imagens, Word, Excel — até 20 MB).</p>
+      <p v-if="!items.length" class="muted">{{ canEdit ? 'Arraste arquivos aqui (PDF, imagens, Word, Excel — até 20 MB).' : 'Nenhum arquivo.' }}</p>
       <ul v-else class="files">
         <li v-for="a in items" :key="a.uuid">
           <span class="thumb">
@@ -72,7 +73,7 @@ async function remove(a: Attachment): Promise<void> {
             <span class="muted small">{{ a.kind === 'photo' ? 'foto · ' : '' }}{{ bytes(a.size_bytes) }} · {{ dateTime(a.created_at) }}</span>
           </span>
           <button class="btn btn-icon" type="button" :aria-label="`Baixar ${a.filename}`" @click="open(a, true)"><AppIcon name="download" :size="16" /></button>
-          <button class="btn btn-icon" type="button" :aria-label="`Excluir ${a.filename}`" @click="remove(a)"><AppIcon name="trash" :size="16" /></button>
+          <button class="edit-only btn btn-icon" type="button" :aria-label="`Excluir ${a.filename}`" @click="remove(a)"><AppIcon name="trash" :size="16" /></button>
         </li>
       </ul>
     </div>

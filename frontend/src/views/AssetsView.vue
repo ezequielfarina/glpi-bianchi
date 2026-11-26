@@ -128,7 +128,7 @@ void load()
         <p class="muted">{{ data ? `${num(data.total)} encontrado(s)` : 'Carregando…' }}</p>
       </div>
       <div class="actions">
-        <RouterLink to="/assets/new" class="btn btn-primary"><AppIcon name="plus" :size="16" /> Novo ativo</RouterLink>
+        <RouterLink to="/assets/new" class="edit-only btn btn-primary"><AppIcon name="plus" :size="16" /> Novo ativo</RouterLink>
       </div>
     </header>
 
@@ -159,7 +159,7 @@ void load()
         </label>
       </div>
 
-      <div v-if="selected.size" class="bulk" role="region" aria-label="Ações em lote">
+      <div v-if="selected.size" class="edit-only bulk" role="region" aria-label="Ações em lote">
         <strong>{{ selected.size }} selecionado(s)</strong>
         <label class="sr-only" for="bulk-branch">Mover para</label>
         <select id="bulk-branch" v-model="target" class="input">
@@ -177,7 +177,7 @@ void load()
           <table class="table">
             <thead>
               <tr>
-                <th class="sel"><input type="checkbox" :checked="allChecked" aria-label="Selecionar todos desta página" @change="toggleAll" /></th>
+                <th class="edit-only sel"><input type="checkbox" :checked="allChecked" aria-label="Selecionar todos desta página" @change="toggleAll" /></th>
                 <th :aria-sort="ariaSort('name')"><button type="button" @click="sortBy('name')">Ativo <AppIcon name="sort" :size="12" /></button></th>
                 <th :aria-sort="ariaSort('os')"><button type="button" @click="sortBy('os')">Sistema operacional <AppIcon name="sort" :size="12" /></button></th>
                 <th>Patrimônio / serial</th>
@@ -189,7 +189,7 @@ void load()
             </thead>
             <tbody>
               <tr v-for="a in data.items" :key="a.uuid" :class="{ picked: selected.has(a.uuid) }">
-                <td class="sel"><input type="checkbox" :checked="selected.has(a.uuid)" :aria-label="`Selecionar ${a.name}`" @change="toggle(a.uuid)" /></td>
+                <td class="edit-only sel"><input type="checkbox" :checked="selected.has(a.uuid)" :aria-label="`Selecionar ${a.name}`" @change="toggle(a.uuid)" /></td>
                 <td>
                   <div class="asset-cell">
                     <span class="thumb-wrap">

@@ -86,7 +86,7 @@ function restore(key: string, item: SettingItem): void {
           <p :id="`${key}-help`" class="help muted">{{ item.help }}</p>
         </div>
         <div class="actions">
-          <button class="btn btn-primary" type="submit" :disabled="saving || !dirty">
+          <button class="admin-only btn btn-primary" type="submit" :disabled="saving || !dirty">
             {{ saving ? 'Salvando…' : 'Salvar' }}
           </button>
         </div>
@@ -94,7 +94,7 @@ function restore(key: string, item: SettingItem): void {
     </LoadState>
 
     <h2 class="section-title">Cadastros auxiliares</h2>
-    <div v-if="lookups" class="lookups">
+    <div v-if="lookups" class="lookups edit-only">
       <LookupEditor kind="license_types" title="Tipos de licença" :items="lookups.license_types" @changed="loadLookups" />
       <LookupEditor kind="license_categories" title="Categorias de licença" :items="lookups.license_categories" @changed="loadLookups" />
       <LookupEditor kind="contract_types" title="Tipos de contrato" :items="lookups.contract_types" @changed="loadLookups" />

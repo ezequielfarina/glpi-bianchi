@@ -10,6 +10,7 @@ use App\Asset\Enum\ComponentKind;
 use App\Inventory\Entity\Agent;
 use App\Inventory\Entity\RawInventory;
 use App\Inventory\Enum\RawInventoryStatus;
+use App\Tests\Integration\Support\LogsIn;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -22,6 +23,8 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  */
 final class AgentEndpointTest extends WebTestCase
 {
+    use LogsIn;
+
     private const string FIXTURE = __DIR__.'/../../Fixtures/inventory/computer-linux.json';
 
     private KernelBrowser $client;
@@ -142,7 +145,8 @@ final class AgentEndpointTest extends WebTestCase
         $uuid = (string) $asset->getUuid();
         $number = $asset->getInventoryNumber();
 
-        $this->client->request('DELETE', '/api/ui/assets/'.$uuid, server: ['HTTP_AUTHORIZATION' => 'Bearer test-token', 'HTTP_ACCEPT' => 'application/json']);
+        $this->loginAs($this->client, 'editor');
+        $this->client->request('DELETE', '/api/ui/assets/'.$uuid, server: self::UI);
         self::assertResponseIsSuccessful();
 
         $this->post($this->fixture());
@@ -158,7 +162,8 @@ final class AgentEndpointTest extends WebTestCase
 
     public function testAgentAssetGetsBranchByNetwork(): void
     {
-        $this->client->request('POST', '/api/ui/branches', server: ['HTTP_AUTHORIZATION' => 'Bearer test-token', 'HTTP_ACCEPT' => 'application/json', 'CONTENT_TYPE' => 'application/json'],
+        $this->loginAs($this->client, 'editor');
+        $this->client->request('POST', '/api/ui/branches', server: self::UI + ['CONTENT_TYPE' => 'application/json'],
             content: json_encode(['name' => 'Filial Teste', 'networks' => '192.168.10.0/24'], \JSON_THROW_ON_ERROR));
         self::assertResponseStatusCodeSame(201);
 

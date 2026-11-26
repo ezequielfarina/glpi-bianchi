@@ -74,9 +74,9 @@ async function copyKey(): Promise<void> {
               <p class="muted">{{ l.license_type }} · {{ ASSIGNMENT_LABEL[l.assignment] }}<template v-if="l.category"> · {{ l.category }}</template></p>
             </div>
             <div class="actions">
-              <button v-if="l.has_key" class="btn" type="button" @click="showKey"><AppIcon name="key" :size="16" /> {{ key ? 'Ocultar chave' : 'Mostrar chave' }}</button>
-              <button class="btn" type="button" @click="edit"><AppIcon name="edit" :size="16" /> Editar</button>
-              <button class="btn btn-danger" type="button" @click="remove"><AppIcon name="trash" :size="16" /> Excluir</button>
+              <button v-if="l.has_key" class="edit-only btn" type="button" @click="showKey"><AppIcon name="key" :size="16" /> {{ key ? 'Ocultar chave' : 'Mostrar chave' }}</button>
+              <button class="edit-only btn" type="button" @click="edit"><AppIcon name="edit" :size="16" /> Editar</button>
+              <button class="edit-only btn btn-danger" type="button" @click="remove"><AppIcon name="trash" :size="16" /> Excluir</button>
             </div>
           </div>
           <div v-if="key" class="key mono">{{ key }} <button class="btn btn-icon" type="button" aria-label="Copiar chave" @click="copyKey"><AppIcon name="copy" :size="14" /></button></div>
@@ -94,7 +94,7 @@ async function copyKey(): Promise<void> {
         <div class="cols">
           <section class="panel">
             <div class="panel-head"><h2>Atribuições <span class="muted">({{ l.assignments.length }})</span></h2></div>
-            <div class="add-row">
+            <div class="edit-only add-row">
               <AssetPicker v-if="l.assignment !== 'user'" id="lic-asset" label="Atribuir a um ativo (nome, patrimônio, serial, IP)…" @pick="pickAsset" />
               <form v-else class="user-add" @submit.prevent="assign({ user: userInput }, userInput)">
                 <label for="lic-user" class="sr-only">Usuário</label>
@@ -113,7 +113,7 @@ async function copyKey(): Promise<void> {
                       <span v-if="x.inventory_number" class="muted mono small"> {{ x.inventory_number }}</span>
                     </td>
                     <td class="muted">{{ dateTime(x.assigned_at) }}</td>
-                    <td><button class="btn btn-icon" type="button" aria-label="Remover atribuição" @click="unassign(x.id)"><AppIcon name="close" :size="14" /></button></td>
+                    <td><button class="edit-only btn btn-icon" type="button" aria-label="Remover atribuição" @click="unassign(x.id)"><AppIcon name="close" :size="14" /></button></td>
                   </tr>
                 </tbody>
               </table>
@@ -131,7 +131,7 @@ async function copyKey(): Promise<void> {
               <li v-for="d in l.unassigned_detected" :key="d.uuid">
                 <div><RouterLink :to="`/assets/${d.uuid}`">{{ d.name }}</RouterLink> <span class="muted mono small">{{ d.inventory_number }}</span>
                   <div class="muted small">{{ d.software }} {{ d.version }}</div></div>
-                <button v-if="l.assignment !== 'user'" class="btn" type="button" @click="assign({ asset_uuid: d.uuid }, d.name)">Atribuir</button>
+                <button v-if="l.assignment !== 'user'" class="edit-only btn" type="button" @click="assign({ asset_uuid: d.uuid }, d.name)">Atribuir</button>
               </li>
             </ul>
           </section>

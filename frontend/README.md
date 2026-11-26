@@ -7,7 +7,10 @@ Interface web do GLPI Bianchi — Vue 3 + Vite + TypeScript (strict). Servida pe
 
 | Rota | Tela | Endpoint |
 |---|---|---|
-| `/app/login` | token de acesso | `GET /api/ui/me` |
+| `/app/login` | usuário e senha; código 2FA quando ativo | `POST /api/ui/auth/login`, `POST /api/ui/auth/mfa` |
+| `/app/account` | minha conta: troca de senha (obrigatória com senha temporária), 2FA com QR code, sessões ativas | `/api/ui/me…` |
+| `/app/users` | (admin) contas, perfis, senha temporária, reset de 2FA, desbloqueio, encerrar sessões | `/api/ui/users…` |
+| `/app/audit` | (admin) auditoria de acesso: logins, falhas, bloqueios, ações administrativas | `GET /api/ui/audit` |
 | `/app/` | visão geral: KPIs, inventários/hora (24 h), SOs, últimos ativos — atualiza a cada 30 s | `GET /api/ui/overview` |
 | `/app/assets` | busca (nome, serial, patrimônio, UUID, **MAC**, **IP**), filtros (tipo, **filial**/sem filial), ordenação, paginação (estado na URL), **mover em lote para filial** | `GET /api/ui/assets`, `POST /api/ui/branches/{id}/assets` |
 | `/app/assets/:uuid` | detalhe: hardware, software, rede (oculta adaptadores virtuais), histórico, inventários + payload JSON | `GET /api/ui/assets/{uuid}` |
@@ -57,3 +60,5 @@ src/
 - **Build em `/app/_static/`** (`build.assetsDir`): não usar `assets`, que colide com a rota `/app/assets/:uuid` (F5 no detalhe dava 404 do nginx).
 - **Mapa:** `components/BranchMap.vue` carrega Leaflet só nas telas de filiais (chunk separado). Tiles, CEP e geocodificação são consultados **pelo navegador**. Libere `tile.openstreetmap.org`, `nominatim.openstreetmap.org` e `viacep.com.br` no proxy ou filtro web.
 - **Diálogos empilháveis:** `AppModal` usa Teleport para o `<body>` e uma pilha. Só o diálogo do topo reage a ESC e Tab. Exemplo de uso: "Gerenciar" tipos e categorias dentro do formulário de licença.
+- **Autenticação:** cookie de sessão HttpOnly (o JS não acessa); `lib/api.ts` manda `X-Requested-With` em toda requisição (CSRF). `lib/session.ts` guarda o usuário (`/me`) e expõe `canEdit`/`isAdmin`; botões com classe `edit-only`/`admin-only` somem por perfil (o servidor é quem autoriza).
+- **CSP:** sem scripts inline — o tema inicial é aplicado por `public/theme-init.js`.

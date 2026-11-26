@@ -1,47 +1,30 @@
-// Cliente HTTP da API (/api). Token Bearer guardado no navegador (MVP).
-// Fase 2: OIDC — o token deixa de ser estático e passa a vir do IdP.
+// Cliente HTTP da API do painel (/api/ui).
+// Autenticação por cookie de sessão HttpOnly (o JavaScript não vê o token — ADR-0011).
+// Toda requisição leva X-Requested-With: o backend recusa escrita sem ele (proteção CSRF).
 import type {
-  AgentsResponse, Alerts, AssetDetail, AssetsResponse, Attachment, BranchDetail, BranchRow, ContractDetail, ContractRow, InventoriesResponse, LicenseDetail,
+  AgentsResponse, Alerts, AssetDetail, AssetsResponse, Attachment, BranchDetail, BranchRow, ContractDetail, ContractRow, AccountRow, AuditPage, Me, SessionRow, InventoriesResponse, LicenseDetail,
   LicenseRow, Lookups, Overview, SettingsResponse, SupplierDetail, SupplierRow, TypeSummary, WakeupResult,
 } from './types'
 
-const TOKEN_KEY = 'bianchi.token'
-
 export class ApiError extends Error {
-  constructor(public readonly status: number, message: string, public readonly fields: Record<string, string> = {}) {
+  constructor(public readonly status: number, message: string, public readonly fields: Record<string, string> = {}, public readonly code?: string) {
     super(message)
   }
 }
 
-export const auth = {
-  get token(): string | null {
-    try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
-  },
-  set(token: string): void {
-    try { localStorage.setItem(TOKEN_KEY, token) } catch { /* storage indisponível */ }
-  },
-  clear(): void {
-    try { localStorage.removeItem(TOKEN_KEY) } catch { /* noop */ }
-  },
-}
+/** 401 → login; 403 password_change_required → tela de troca de senha. */
+export const authEvents = new EventTarget()
 
-/** Disparado quando a API responde 401 — o router manda para o login. */
-export const onUnauthorized = new EventTarget()
+const BASE_HEADERS = { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
 
-async function request<T>(path: string, init: RequestInit = {}, token = auth.token): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api/ui${path}`, {
     ...init,
-    headers: {
-      Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init.headers,
-    },
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: { ...BASE_HEADERS, ...init.headers },
   })
 
-  if (res.status === 401) {
-    onUnauthorized.dispatchEvent(new Event('unauthorized'))
-    throw new ApiError(401, 'Sessão inválida ou token expirado.')
-  }
   // wake-up devolve 502 com corpo útil (agente inalcançável/recusou): não é erro da API
   if (res.status === 502 && path.endsWith('/wakeup')) {
     return (await res.json()) as T
@@ -49,12 +32,17 @@ async function request<T>(path: string, init: RequestInit = {}, token = auth.tok
   if (!res.ok) {
     let message = `Erro ${res.status} ao consultar a API.`
     let fields: Record<string, string> = {}
+    let code: string | undefined
     try {
-      const body = (await res.json()) as { error?: string; detail?: string; errors?: Record<string, string> }
+      const body = (await res.json()) as { error?: string; detail?: string; code?: string; errors?: Record<string, string> }
       fields = body.errors ?? {}
+      code = body.code
       message = body.errors ? Object.values(body.errors).join(' ') : (body.error ?? body.detail ?? message)
     } catch { /* corpo não-JSON */ }
-    throw new ApiError(res.status, message, fields)
+    const authPath = path.startsWith('/auth/')
+    if (res.status === 401 && !authPath) authEvents.dispatchEvent(new Event('unauthorized'))
+    if (res.status === 403 && code === 'password_change_required') authEvents.dispatchEvent(new Event('password-change'))
+    throw new ApiError(res.status, message, fields, code)
   }
   return (await res.json()) as T
 }
@@ -70,8 +58,8 @@ async function send<T>(method: string, path: string, body?: unknown): Promise<T>
 
 /** Busca binário autenticado (fotos, anexos) e devolve um object URL. */
 export async function fetchBlobUrl(path: string): Promise<string> {
-  const res = await fetch(`/api/ui${path}`, { headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {} })
-  if (res.status === 401) onUnauthorized.dispatchEvent(new Event('unauthorized'))
+  const res = await fetch(`/api/ui${path}`, { credentials: 'same-origin', headers: BASE_HEADERS })
+  if (res.status === 401) authEvents.dispatchEvent(new Event('unauthorized'))
   if (!res.ok) throw new ApiError(res.status, 'Arquivo indisponível.')
   return URL.createObjectURL(await res.blob())
 }
@@ -86,8 +74,29 @@ function qs(params: Record<string, string | number | boolean | null | undefined>
 }
 
 export const api = {
-  /** Valida um token antes de salvá-lo (tela de login). */
-  check: (token: string) => request<{ authenticated: boolean }>('/me', {}, token),
+  // ---------------------------------------------------------------- autenticação / minha conta
+  login: (username: string, password: string) => send<{ ok?: boolean; mfa_required?: boolean; must_change_password?: boolean }>('POST', '/auth/login', { username, password }),
+  mfa: (code: string) => send<{ ok: boolean; must_change_password: boolean }>('POST', '/auth/mfa', { code }),
+  logout: () => send<{ ok: boolean }>('POST', '/auth/logout'),
+  me: () => request<Me>('/me'),
+  changePassword: (current_password: string, new_password: string) => send<{ ok: boolean }>('POST', '/me/password', { current_password, new_password }),
+  mySessions: () => request<{ items: SessionRow[] }>('/me/sessions'),
+  revokeMySession: (id: number) => send<{ ok: boolean }>('DELETE', `/me/sessions/${id}`),
+  mfaSetup: () => send<{ secret: string; uri: string }>('POST', '/me/mfa/setup'),
+  mfaEnable: (code: string) => send<{ ok: boolean }>('POST', '/me/mfa/enable', { code }),
+  mfaDisable: (password: string, code: string) => send<{ ok: boolean }>('POST', '/me/mfa/disable', { password, code }),
+  // ---------------------------------------------------------------- administração
+  users: () => request<{ items: AccountRow[] }>('/users'),
+  createUser: (body: Record<string, unknown>) => send<{ id: number; temporary_password: string | null }>('POST', '/users', body),
+  updateUser: (id: number, body: Record<string, unknown>) => send<{ ok: boolean }>('PATCH', `/users/${id}`, body),
+  deleteUser: (id: number) => send<{ deleted: boolean }>('DELETE', `/users/${id}`),
+  resetUserPassword: (id: number) => send<{ temporary_password: string }>('POST', `/users/${id}/reset-password`),
+  resetUserMfa: (id: number) => send<{ ok: boolean }>('POST', `/users/${id}/reset-mfa`),
+  unlockUser: (id: number) => send<{ ok: boolean }>('POST', `/users/${id}/unlock`),
+  userSessions: (id: number) => request<{ items: SessionRow[] }>(`/users/${id}/sessions`),
+  revokeUserSessions: (id: number) => send<{ revoked: number }>('DELETE', `/users/${id}/sessions`),
+  audit: (p: { q?: string; event?: string; page?: number }) => request<AuditPage>(`/audit${qs(p)}`),
+  // ---------------------------------------------------------------- inventário
   overview: () => request<Overview>('/overview'),
   assets: (p: { q?: string; type?: string; stale?: boolean; page?: number; perPage?: number; sort?: string; dir?: string; branch?: string }) =>
     request<AssetsResponse>(`/assets${qs(p)}`),

@@ -49,8 +49,8 @@ async function remove(): Promise<void> {
                 <RouterLink v-if="c.supplier_id" :to="`/suppliers/${c.supplier_id}`">{{ c.supplier }}</RouterLink><template v-else>sem fornecedor</template></p>
             </div>
             <div class="actions">
-              <button class="btn" type="button" @click="edit"><AppIcon name="edit" :size="16" /> Editar</button>
-              <button class="btn btn-danger" type="button" @click="remove"><AppIcon name="trash" :size="16" /> Excluir</button>
+              <button class="edit-only btn" type="button" @click="edit"><AppIcon name="edit" :size="16" /> Editar</button>
+              <button class="edit-only btn btn-danger" type="button" @click="remove"><AppIcon name="trash" :size="16" /> Excluir</button>
             </div>
           </div>
           <dl class="facts">
@@ -65,7 +65,7 @@ async function remove(): Promise<void> {
 
         <section class="panel">
           <div class="panel-head"><h2>Ativos cobertos <span class="muted">({{ c.assets.length }})</span></h2></div>
-          <div class="add-row"><AssetPicker id="ct-asset" label="Vincular ativo (nome, patrimônio, serial, IP)…" @pick="link" /></div>
+          <div class="edit-only add-row"><AssetPicker id="ct-asset" label="Vincular ativo (nome, patrimônio, serial, IP)…" @pick="link" /></div>
           <div class="table-wrap">
             <table class="table">
               <thead><tr><th>Ativo</th><th>Tipo</th><th>Patrimônio</th><th>Serial</th><th><span class="sr-only">Ações</span></th></tr></thead>

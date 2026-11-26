@@ -65,8 +65,8 @@ async function remove(): Promise<void> {
             <div class="actions">
               <a v-if="b.latitude !== null || address" class="btn" :href="googleMapsUrl(b.latitude, b.longitude, address)" target="_blank" rel="noopener noreferrer"><AppIcon name="map" :size="16" /> Google Maps</a>
               <a v-if="b.latitude !== null && b.longitude !== null" class="btn" :href="directionsUrl(b.latitude, b.longitude)" target="_blank" rel="noopener noreferrer"><AppIcon name="pin" :size="16" /> Rota</a>
-              <button class="btn" type="button" @click="editing = true"><AppIcon name="edit" :size="16" /> Editar</button>
-              <button class="btn btn-danger" type="button" @click="remove"><AppIcon name="trash" :size="16" /> Excluir</button>
+              <button class="edit-only btn" type="button" @click="editing = true"><AppIcon name="edit" :size="16" /> Editar</button>
+              <button class="edit-only btn btn-danger" type="button" @click="remove"><AppIcon name="trash" :size="16" /> Excluir</button>
             </div>
           </div>
           <dl class="facts">
@@ -92,7 +92,7 @@ async function remove(): Promise<void> {
             <div class="panel-head">
               <h2>Ativos <span class="muted">({{ b.assets }})</span></h2>
               <div class="head-actions">
-                <button class="btn" type="button" @click="adding = !adding"><AppIcon name="plus" :size="14" /> Vincular ativo</button>
+                <button class="edit-only btn" type="button" @click="adding = !adding"><AppIcon name="plus" :size="14" /> Vincular ativo</button>
                 <RouterLink class="btn" :to="{ path: '/assets', query: { branch: String(b.id) } }">Ver lista <AppIcon name="chevron" :size="14" /></RouterLink>
               </div>
             </div>

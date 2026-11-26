@@ -30,7 +30,7 @@ void load()
   <div class="page">
     <header class="page-head">
       <div><h1>Fornecedores</h1><p class="muted">{{ items.length }} cadastrado(s)</p></div>
-      <div class="actions"><button class="btn btn-primary" type="button" @click="creating = true"><AppIcon name="plus" :size="16" /> Novo fornecedor</button></div>
+      <div class="actions"><button class="edit-only btn btn-primary" type="button" @click="creating = true"><AppIcon name="plus" :size="16" /> Novo fornecedor</button></div>
     </header>
     <section class="panel">
       <div class="filters">

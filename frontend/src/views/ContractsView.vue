@@ -39,7 +39,7 @@ void load()
   <div class="page">
     <header class="page-head">
       <div><h1>Contratos</h1><p class="muted">{{ items.length }} contrato(s) · custo anual vigente {{ money(annual) }}</p></div>
-      <div class="actions"><button class="btn btn-primary" type="button" @click="openNew"><AppIcon name="plus" :size="16" /> Novo contrato</button></div>
+      <div class="actions"><button class="edit-only btn btn-primary" type="button" @click="openNew"><AppIcon name="plus" :size="16" /> Novo contrato</button></div>
     </header>
     <section class="panel">
       <div class="filters">

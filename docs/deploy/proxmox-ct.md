@@ -39,12 +39,14 @@ O que o `install.sh` faz (idempotente):
 |---|---|
 | Pacotes | nginx, postgresql-17, valkey-server, php8.4-fpm + extensões, composer |
 | Usuário | `bianchi` (sistema, sem shell), dono de `/opt/glpi-bianchi` |
-| Segredos | `.env.local` (0640) com `APP_SECRET`, senha do banco e `API_TOKEN` aleatórios, preservados em reexecuções |
+| Segredos | `.env.local` (0640) com `APP_SECRET`, senha do banco, `API_TOKEN` e `DATA_ENCRYPTION_KEY` aleatórios, preservados em reexecuções |
+| Primeiro acesso | conta `admin` com senha temporária aleatória (só se não houver contas) — exibida no final e em `/root/glpi-bianchi-admin.txt` (0600) |
+| HTTPS | certificado auto-assinado ECDSA em `/etc/glpi-bianchi/tls/` (só se não existir) |
 | PostgreSQL | role e banco `bianchi` (+ `bianchi_test` em dev), extensões, tuning em `conf.d/bianchi.conf` |
 | Valkey | bind localhost, AOF, `noeviction` |
 | PHP-FPM | pool `bianchi` (socket `/run/php/bianchi.sock`), limites de memória e upload |
 | App | `composer install`, migrations, cache, transports do Messenger |
-| nginx | vhost em `/etc/nginx/sites-available/glpi-bianchi.conf` |
+| nginx | vhost em `/etc/nginx/sites-available/glpi-bianchi.conf`: `:443` painel/API/agente, `:80` só agente (resto redireciona) |
 | Workers | `bianchi-worker@1..N` (systemd, restart automático) |
 
 ## 3. Validar
@@ -64,14 +66,36 @@ cd /opt/glpi-bianchi && make update      # pull + deps + migrations + cache + re
 ```
 **Antes:** `pct snapshot 500 pre-update-$(date +%F)` no host.
 
-## 5. TLS
+## 5. HTTPS e acesso
 
-O agente aceita HTTP, mas em produção use HTTPS:
+O painel e a API só respondem por **HTTPS**. A porta 80 continua aceitando o GLPI Agent
+(`POST /`, `/front/inventory.php`, `/inventory`), então agentes já instalados com `http://` seguem funcionando.
 
-- **Proxy reverso existente** (FortiGate VIP + SSL offload, ou nginx/HAProxy de borda): mantenha o
-  CT em HTTP na rede interna e configure `TRUSTED_PROXIES=<ip-do-proxy>` no `.env.local`.
-- **No próprio CT:** `apt install certbot python3-certbot-nginx && certbot --nginx -d inventario.empresa.com.br`.
-- Agente com CA interna: `glpi-agent --server https://... --ca-cert-file /caminho/ca.pem`.
+**Certificado da CA interna** (tira o aviso do navegador): gere com SAN contendo o nome e/ou IP do CT e
+substitua os arquivos:
+
+```bash
+install -m 0644 glpi.crt /etc/glpi-bianchi/tls/cert.pem     # inclua a cadeia intermediária no mesmo arquivo
+install -m 0600 glpi.key /etc/glpi-bianchi/tls/key.pem
+nginx -t && systemctl reload nginx
+openssl s_client -connect 127.0.0.1:443 -servername glpi </dev/null 2>/dev/null | openssl x509 -noout -subject -issuer -ext subjectAltName
+```
+
+Com certificado confiável e acesso por **nome**, habilite o HSTS (linha comentada no vhost).
+Atrás de FortiGate com SSL offload: aponte o VIP para a porta 443 do CT (re-encrypt) e mantenha o CT em HTTPS.
+
+**Recuperar acesso** (quem tem root no CT):
+
+```bash
+cd /opt/glpi-bianchi
+sudo -u bianchi php bin/console app:user:recover admin --password   # nova senha temporária
+sudo -u bianchi php bin/console app:user:recover admin --mfa        # celular perdido: desliga o 2FA
+sudo -u bianchi php bin/console app:user:recover admin --unlock     # bloqueado por tentativas
+sudo -u bianchi php bin/console app:user:create maria.souza --role=admin --name="Maria Souza"
+```
+
+**Agente por HTTPS** com o certificado auto-assinado: `glpi-agent --server https://<ip>/ --ca-cert-file cert.pem`
+(ou `--no-ssl-check` só em laboratório).
 
 ## 6. Operação
 
@@ -97,3 +121,7 @@ O agente aceita HTTP, mas em produção use HTTPS:
 | Ativo não aparece | `SELECT status, error FROM raw_inventory ORDER BY id DESC LIMIT 5;` e `make logs` |
 | Fila crescendo | workers parados (`make status`) ou lentos: aumente `--workers` |
 | `ltree` não existe | `runuser -u postgres -- psql bianchi -c 'CREATE EXTENSION ltree'` |
+| "Usuário ou senha inválidos" para todos | `SELECT event, username, ip, details, created_at FROM auth_event ORDER BY id DESC LIMIT 20;` — o motivo real (`bad_password`, `inactive`, `unknown_user`) fica no `details` |
+| "Muitas tentativas" | aguarde 15 min ou `app:user:recover <login> --unlock`; 30 falhas do mesmo IP bloqueiam o IP |
+| Código 2FA sempre inválido | relógio do CT: `timedatectl` (NTP ativo) e o horário automático no celular |
+| "Requisição bloqueada (proteção CSRF)" | proxy reescrevendo `Host`/`Origin`: o painel precisa ser acessado pelo mesmo nome/IP que chega ao nginx |

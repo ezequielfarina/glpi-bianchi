@@ -146,13 +146,6 @@ final readonly class UiApiController
             : new Response($payload, Response::HTTP_OK, ['Content-Type' => 'application/json']);
     }
 
-    /** Usado pela tela de login para validar o token. */
-    #[Route('/me', name: 'me', methods: ['GET'])]
-    public function me(Request $request): JsonResponse
-    {
-        return $this->json(['authenticated' => true, 'server' => 'glpi-bianchi', 'version' => '0.1.0']);
-    }
-
     /** @param array<string, mixed> $data */
     private function json(array $data, int $status = Response::HTTP_OK): JsonResponse
     {

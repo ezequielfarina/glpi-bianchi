@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { auth, onUnauthorized } from './lib/api'
+import { authEvents } from './lib/api'
+import { clearMe, isAdmin, loadMe } from './lib/session'
 
 export const router = createRouter({
   history: createWebHistory('/app/'),
@@ -7,8 +8,8 @@ export const router = createRouter({
     { path: '/login', name: 'login', component: () => import('./views/LoginView.vue'), meta: { public: true, title: 'Entrar' } },
     { path: '/', name: 'overview', component: () => import('./views/OverviewView.vue'), meta: { title: 'Visão geral' } },
     { path: '/assets', name: 'assets', component: () => import('./views/AssetsView.vue'), meta: { title: 'Ativos' } },
-    { path: '/assets/new', name: 'asset-new', component: () => import('./views/AssetFormView.vue'), meta: { title: 'Novo ativo' } },
-    { path: '/assets/:uuid/edit', name: 'asset-edit', component: () => import('./views/AssetFormView.vue'), props: true, meta: { title: 'Editar ativo' } },
+    { path: '/assets/new', name: 'asset-new', component: () => import('./views/AssetFormView.vue'), meta: { title: 'Novo ativo', edit: true } },
+    { path: '/assets/:uuid/edit', name: 'asset-edit', component: () => import('./views/AssetFormView.vue'), props: true, meta: { title: 'Editar ativo', edit: true } },
     { path: '/assets/:uuid', name: 'asset', component: () => import('./views/AssetDetailView.vue'), props: true, meta: { title: 'Ativo' } },
     { path: '/branches', name: 'branches', component: () => import('./views/BranchesView.vue'), meta: { title: 'Matriz e filiais' } },
     { path: '/branches/:id', name: 'branch', component: () => import('./views/BranchDetailView.vue'), props: true, meta: { title: 'Filial' } },
@@ -21,13 +22,22 @@ export const router = createRouter({
     { path: '/agents', name: 'agents', component: () => import('./views/AgentsView.vue'), meta: { title: 'Agentes' } },
     { path: '/inventories', name: 'inventories', component: () => import('./views/InventoriesView.vue'), meta: { title: 'Inventários' } },
     { path: '/settings', name: 'settings', component: () => import('./views/SettingsView.vue'), meta: { title: 'Configurações' } },
+    { path: '/account', name: 'account', component: () => import('./views/AccountView.vue'), meta: { title: 'Minha conta' } },
+    { path: '/users', name: 'users', component: () => import('./views/UsersView.vue'), meta: { title: 'Usuários', admin: true } },
+    { path: '/audit', name: 'audit', component: () => import('./views/AuditView.vue'), meta: { title: 'Auditoria de acesso', admin: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),
 })
 
-router.beforeEach((to) => {
-  if (!to.meta.public && !auth.token) return { name: 'login', query: { redirect: to.fullPath } }
+router.beforeEach(async (to) => {
+  if (to.meta.public) return true
+  const user = await loadMe().catch(() => null)
+  if (!user) return { name: 'login', query: to.fullPath !== '/' ? { redirect: to.fullPath } : {} }
+  // senha temporária: só "Minha conta" até trocar
+  if (user.must_change_password && to.name !== 'account') return { name: 'account' }
+  if (to.meta.admin && !isAdmin.value) return { name: 'overview' }
+  if (to.meta.edit && user.role === 'viewer') return to.params.uuid ? { name: 'asset', params: { uuid: to.params.uuid } } : { name: 'assets' }
   return true
 })
 
@@ -35,9 +45,12 @@ router.afterEach((to) => {
   document.title = `${String(to.meta.title ?? 'Inventário')} — GLPI Bianchi`
 })
 
-onUnauthorized.addEventListener('unauthorized', () => {
-  auth.clear()
+authEvents.addEventListener('unauthorized', () => {
+  clearMe()
   if (router.currentRoute.value.name !== 'login') {
-    void router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
+    void router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath, expired: '1' } })
   }
+})
+authEvents.addEventListener('password-change', () => {
+  void loadMe(true).then(() => router.push({ name: 'account' }))
 })

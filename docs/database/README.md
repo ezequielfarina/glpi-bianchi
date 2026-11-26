@@ -21,6 +21,8 @@ erDiagram
     organization ||--o{ app_group : ""
     organization ||--o{ vlan : ""
     app_user }o--o{ app_group : user_group
+    app_account ||--o{ user_session : ""
+    app_account ||--o{ auth_event : ""
     asset_type ||--o{ asset : ""
     asset_type ||--o{ asset_model : ""
     manufacturer ||--o{ asset_model : ""
@@ -58,6 +60,9 @@ erDiagram
 | `app_user` | pessoas (usuário do ativo, responsável) | `username` minúsculo e único; `auth_source` local/ldap/oidc |
 | `app_group` | grupos responsáveis | `UNIQUE (organization_id, name)` |
 | `user_group` | N:N usuário ↔ grupo | PK composta |
+| `app_account` | **contas de acesso ao painel** (ADR-0011): login, perfil `admin`/`editor`/`viewer`, `password_hash` Argon2id, `totp_secret` cifrado | CHECKs de perfil, formato do login e hash `$argon2id$`; separada de `app_user` |
+| `user_session` | sessões do painel: SHA-256 do token, `state` `active`/`mfa_pending`, IP, user-agent, inatividade/expiração/revogação | apagadas 7 dias após expirar/revogar |
+| `auth_event` | auditoria de acesso (login, falhas, bloqueios, 2FA, ações de admin); base do bloqueio por tentativas | append-only; retenção 365 dias; índices por (username, data) e (ip, data) |
 
 ### Ativos
 

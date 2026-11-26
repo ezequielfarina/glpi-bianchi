@@ -19,6 +19,8 @@ final class Settings
     public const string INVENTORY_FREQUENCY_HOURS = 'inventory.frequency_hours';
     public const string AGENT_HTTP_PORT = 'agent.http_port';
     public const string ASSET_INVENTORY_PREFIX = 'asset.inventory_prefix';
+    public const string SESSION_IDLE_MINUTES = 'security.session_idle_minutes';
+    public const string SESSION_MAX_HOURS = 'security.session_max_hours';
 
     /**
      * @var array<string, array{label: string, help: string, type: 'int'|'string', min: int, max: int, unit?: string, pattern?: string}>
@@ -30,6 +32,22 @@ final class Settings
             'type' => 'int',
             'min' => 1,
             'max' => 168,
+            'unit' => 'horas',
+        ],
+        self::SESSION_IDLE_MINUTES => [
+            'label' => 'Sessão: tempo de inatividade',
+            'help' => 'Minutos sem uso até o painel pedir login de novo.',
+            'type' => 'int',
+            'min' => 5,
+            'max' => 480,
+            'unit' => 'minutos',
+        ],
+        self::SESSION_MAX_HOURS => [
+            'label' => 'Sessão: duração máxima',
+            'help' => 'Horas desde o login até exigir nova autenticação, mesmo em uso contínuo.',
+            'type' => 'int',
+            'min' => 1,
+            'max' => 72,
             'unit' => 'horas',
         ],
         self::ASSET_INVENTORY_PREFIX => [
@@ -161,6 +179,8 @@ final class Settings
             self::INVENTORY_FREQUENCY_HOURS => $this->inventoryFrequencyHours,
             self::AGENT_HTTP_PORT => 62354,
             self::ASSET_INVENTORY_PREFIX => 'BIA-',
+            self::SESSION_IDLE_MINUTES => 30,
+            self::SESSION_MAX_HOURS => 12,
             default => 0,
         };
     }

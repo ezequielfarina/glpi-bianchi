@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Ui;
 
+use App\Tests\Integration\Support\LogsIn;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
@@ -13,11 +14,14 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  */
 final class SettingsAndOutcomeTest extends WebTestCase
 {
+    use LogsIn;
+
     private KernelBrowser $client;
 
     protected function setUp(): void
     {
         $this->client = self::createClient();
+        $this->loginAs($this->client, 'admin');
     }
 
     public function testFrequencySettingIsSentToAgent(): void
@@ -75,10 +79,8 @@ final class SettingsAndOutcomeTest extends WebTestCase
     private function api(string $method, string $uri, ?array $body = null): array
     {
         $this->client->request($method, $uri, server: [
-            'HTTP_AUTHORIZATION' => 'Bearer test-token',
-            'HTTP_ACCEPT' => 'application/json',
             'CONTENT_TYPE' => 'application/json',
-        ], content: null === $body ? null : json_encode($body, \JSON_THROW_ON_ERROR));
+        ] + self::UI, content: null === $body ? null : json_encode($body, \JSON_THROW_ON_ERROR));
 
         /** @var array<string, mixed> */
         return json_decode((string) $this->client->getResponse()->getContent(), true) ?? [];

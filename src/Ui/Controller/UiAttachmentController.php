@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Ui\Controller;
 
 use App\Attachment\Service\AttachmentStorage;
+use App\Identity\Security\CurrentActor;
 use App\Ui\Write\NotFoundException;
 use App\Ui\Write\Refs;
 use App\Ui\Write\ValidationException;
@@ -29,6 +30,7 @@ final readonly class UiAttachmentController
     use UiJson;
 
     public function __construct(
+        private CurrentActor $actor,
         private AttachmentStorage $storage,
         private Refs $refs,
         private Connection $db,
@@ -52,12 +54,12 @@ final readonly class UiAttachmentController
             $ownerId,
             (string) $request->request->get('kind', 'document'),
             ($d = trim((string) $request->request->get('description', ''))) === '' ? null : mb_substr($d, 0, 500),
-            self::ACTOR,
+            $this->actor->name(),
         );
         if ('asset' === $ownerType) {
             $this->db->executeStatement(
                 "INSERT INTO asset_history (asset_id, field, old_value, new_value, source, actor, created_at) VALUES (?, ?, NULL, ?, 'manual', ?, ?)",
-                [$ownerId, 'photo' === $meta['kind'] ? 'photo.added' : 'attachment.added', $meta['filename'], self::ACTOR, Refs::now()],
+                [$ownerId, 'photo' === $meta['kind'] ? 'photo.added' : 'attachment.added', $meta['filename'], $this->actor->name(), Refs::now()],
             );
         }
 
@@ -94,7 +96,7 @@ final readonly class UiAttachmentController
         if ('asset' === $row['owner_type']) {
             $this->db->executeStatement(
                 "INSERT INTO asset_history (asset_id, field, old_value, new_value, source, actor, created_at) VALUES (?, ?, ?, NULL, 'manual', ?, ?)",
-                [$row['owner_id'], 'photo' === $row['kind'] ? 'photo.removed' : 'attachment.removed', $row['filename'], self::ACTOR, Refs::now()],
+                [$row['owner_id'], 'photo' === $row['kind'] ? 'photo.removed' : 'attachment.removed', $row['filename'], $this->actor->name(), Refs::now()],
             );
         }
 

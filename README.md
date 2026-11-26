@@ -61,16 +61,17 @@ bash deploy/lxc/install.sh --env=dev     # lab: inclui PHPUnit/PHPStan
 # bash deploy/lxc/install.sh             # produção
 ```
 
-O script é idempotente e no final mostra a URL e o token da API.
-**Interface web:** `http://<ip-do-ct>/` (redireciona para `/app/`) — entre com o token da API. Passo a passo completo,
+O script é idempotente e no final mostra a URL do painel e a **senha temporária do usuário `admin`**
+(troca obrigatória no primeiro login). **Interface web:** `https://<ip-do-ct>/app/` — certificado auto-assinado
+na primeira instalação (o navegador avisa; troque pelo da CA interna). Passo a passo completo,
 TLS e troubleshooting em [`docs/deploy/proxmox-ct.md`](docs/deploy/proxmox-ct.md).
 
 Teste sem agente nenhum:
 
 ```bash
 make agent-sample                        # CONTACT + INVENTORY de exemplo (zlib)
-TOKEN=$(sed -n 's/^API_TOKEN=//p' .env.local)
-curl -s -H "Authorization: Bearer $TOKEN" http://127.0.0.1/api/assets | jq
+TOKEN=$(sed -n 's/^API_TOKEN=//p' .env.local)       # token só para integrações (/api), não abre o painel
+curl -sk -H "Authorization: Bearer $TOKEN" https://127.0.0.1/api/assets | jq
 ```
 
 ## Apontando o GLPI Agent
@@ -139,10 +140,12 @@ descritas em [`CLAUDE.md`](CLAUDE.md): **banco** (`migrations/`, `docs/database/
 - [x] API REST + OpenAPI (`/api/docs`) com token
 - [x] Provisionamento de CT Proxmox (systemd, sem Docker)
 - [x] Interface web (Vue 3): visão geral, ativos, detalhe, agentes, inventários; tema escuro/claro
+- [x] Gestão: fornecedores, contratos, licenças, anexos, patrimônio; matriz e filiais com mapa
+- [x] Login individual (Argon2id), 2FA TOTP, perfis Administrador/Técnico/Leitura, auditoria de acesso, HTTPS
 
 **Fase 2**
-- [ ] Login LDAP/AD, OIDC (Entra ID/Keycloak) e TOTP; RBAC por organização
-- [ ] Financeiro: fornecedores, contratos, Infocom, depreciação, garantia
+- [ ] Login LDAP/AD e OIDC (Entra ID/Keycloak) com grupos → perfis; permissão por filial
+- [ ] Financeiro: Infocom, depreciação, garantia
 - [ ] Regras de importação configuráveis e dicionários (fabricante, software)
 - [ ] `NetworkEquipment`/`Printer` via SNMP (netdiscovery/netinventory), ESX
 - [ ] Licenças de software, volumes/filesystems, monitores e periféricos via inventário

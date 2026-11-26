@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Ui;
 
+use App\Tests\Integration\Support\LogsIn;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -15,11 +16,14 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
  */
 final class ManageApiTest extends WebTestCase
 {
+    use LogsIn;
+
     private KernelBrowser $client;
 
     protected function setUp(): void
     {
         $this->client = self::createClient();
+        $this->loginAs($this->client, 'admin');
     }
 
     public function testManualAssetWithInventoryNumberPhotoAndHistory(): void
@@ -124,6 +128,6 @@ final class ManageApiTest extends WebTestCase
     /** @return array<string, string> */
     private function auth(): array
     {
-        return ['HTTP_AUTHORIZATION' => 'Bearer test-token', 'HTTP_ACCEPT' => 'application/json'];
+        return self::UI;
     }
 }

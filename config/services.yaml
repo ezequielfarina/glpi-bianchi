@@ -34,6 +34,15 @@ services:
             - '../src/Ui/Write/Payload.php'
             - '../src/Ui/Write/ValidationException.php'
             - '../src/Ui/Write/NotFoundException.php'
+            - '../src/Identity/Security/AuthenticatedAccount.php'
 
     # Conversor/validador oficial do formato de inventário (MIT, glpi-project/inventory_format)
     Glpi\Inventory\Converter: ~
+
+# Testes: Argon2id com custo mínimo (o de produção, 64 MiB × 3, deixaria a suíte lenta)
+when@test:
+    services:
+        App\Identity\Security\PasswordHasher:
+            arguments:
+                $opsLimit: 1
+                $memLimitKib: 8192

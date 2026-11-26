@@ -50,8 +50,8 @@ async function remove(): Promise<void> {
               <p class="muted">{{ s.trade_name ?? '' }} <span class="mono">{{ taxId(s.tax_id) }}</span></p>
             </div>
             <div class="actions">
-              <button class="btn" type="button" @click="editing = true"><AppIcon name="edit" :size="16" /> Editar</button>
-              <button class="btn btn-danger" type="button" @click="remove"><AppIcon name="trash" :size="16" /> Excluir</button>
+              <button class="edit-only btn" type="button" @click="editing = true"><AppIcon name="edit" :size="16" /> Editar</button>
+              <button class="edit-only btn btn-danger" type="button" @click="remove"><AppIcon name="trash" :size="16" /> Excluir</button>
             </div>
           </div>
           <dl class="facts">
@@ -66,7 +66,7 @@ async function remove(): Promise<void> {
         <section class="panel">
           <div class="panel-head">
             <h2>Contatos <span class="muted">({{ s.contacts_list.length }})</span></h2>
-            <button class="btn" type="button" @click="contactEdit = 'new'"><AppIcon name="plus" :size="14" /> Contato</button>
+            <button class="edit-only btn" type="button" @click="contactEdit = 'new'"><AppIcon name="plus" :size="14" /> Contato</button>
           </div>
           <p v-if="!s.contacts_list.length" class="empty">Nenhum contato. Adicione comercial, suporte, financeiro…</p>
           <div v-else class="contacts">
@@ -76,8 +76,8 @@ async function remove(): Promise<void> {
               <div class="small muted">{{ [c.phone, c.mobile].filter(Boolean).join(' · ') }}</div>
               <p v-if="c.notes" class="small muted">{{ c.notes }}</p>
               <div class="c-actions">
-                <button class="btn btn-icon" type="button" :aria-label="`Editar ${c.name}`" @click="contactEdit = c"><AppIcon name="edit" :size="14" /></button>
-                <button class="btn btn-icon" type="button" :aria-label="`Excluir ${c.name}`" @click="removeContact(c)"><AppIcon name="trash" :size="14" /></button>
+                <button class="edit-only btn btn-icon" type="button" :aria-label="`Editar ${c.name}`" @click="contactEdit = c"><AppIcon name="edit" :size="14" /></button>
+                <button class="edit-only btn btn-icon" type="button" :aria-label="`Excluir ${c.name}`" @click="removeContact(c)"><AppIcon name="trash" :size="14" /></button>
               </div>
             </div>
           </div>
@@ -86,7 +86,7 @@ async function remove(): Promise<void> {
         <section class="panel">
           <div class="panel-head">
             <h2>Contratos <span class="muted">({{ s.contracts_list.length }})</span></h2>
-            <button class="btn" type="button" @click="openContract"><AppIcon name="plus" :size="14" /> Contrato</button>
+            <button class="edit-only btn" type="button" @click="openContract"><AppIcon name="plus" :size="14" /> Contrato</button>
           </div>
           <div class="table-wrap">
             <table class="table">

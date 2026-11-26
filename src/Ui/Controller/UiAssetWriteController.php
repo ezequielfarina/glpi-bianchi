@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Ui\Controller;
 
 use App\Asset\Service\InventoryNumberGenerator;
+use App\Identity\Security\CurrentActor;
 use App\Ui\Write\AssetWriter;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,6 +21,7 @@ final readonly class UiAssetWriteController
     use UiJson;
 
     public function __construct(
+        private CurrentActor $actor,
         private AssetWriter $writer,
         private InventoryNumberGenerator $numbers,
     ) {
@@ -35,13 +37,13 @@ final readonly class UiAssetWriteController
     #[Route('', name: 'create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
-        return $this->json(['uuid' => $this->writer->create($this->body($request), self::ACTOR)], Response::HTTP_CREATED);
+        return $this->json(['uuid' => $this->writer->create($this->body($request), $this->actor->name())], Response::HTTP_CREATED);
     }
 
     #[Route('/{uuid}', name: 'update', methods: ['PATCH', 'PUT'])]
     public function update(string $uuid, Request $request): JsonResponse
     {
-        $this->writer->update($uuid, $this->body($request), self::ACTOR);
+        $this->writer->update($uuid, $this->body($request), $this->actor->name());
 
         return $this->json(['uuid' => $uuid]);
     }
@@ -49,7 +51,7 @@ final readonly class UiAssetWriteController
     #[Route('/{uuid}', name: 'delete', methods: ['DELETE'])]
     public function delete(string $uuid): JsonResponse
     {
-        $this->writer->delete($uuid, self::ACTOR);
+        $this->writer->delete($uuid, $this->actor->name());
 
         return $this->json(['deleted' => true]);
     }

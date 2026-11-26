@@ -1,8 +1,15 @@
-# Fase 1 (MVP):
-#   - /api/*           → Bearer token estático (API_TOKEN), stateless
-#   - /front/inventory.php, /inventory → público, como no GLPI (o agente não autentica por padrão)
-# Fase 2: LDAP/AD (symfony/ldap), OIDC (Entra ID / Keycloak) e TOTP.
+# Autenticação e autorização — ADR-0011.
+#
+#   /api/ui/*  → painel: login e senha (Argon2id) + 2FA TOTP opcional; sessão em cookie
+#                HttpOnly/SameSite=Strict, guardada em `user_session`. Perfis:
+#                admin ⊃ editor ⊃ viewer (role_hierarchy).
+#   /api/*     → integrações: Bearer token estático (API_TOKEN), stateless.
+#   /, /front/inventory.php, /inventory → GLPI Agent, público (como no GLPI).
 security:
+    role_hierarchy:
+        ROLE_ADMIN: [ROLE_EDITOR]
+        ROLE_EDITOR: [ROLE_VIEWER]
+
     providers:
         api_users:
             memory:
@@ -20,6 +27,15 @@ security:
         api_docs:
             pattern: ^/api/docs
             security: false
+        ui:
+            pattern: ^/api/ui
+            # sessão própria (user_session), sem sessão PHP
+            stateless: true
+            provider: api_users
+            custom_authenticators:
+                - App\Identity\Security\SessionCookieAuthenticator
+            entry_point: App\Identity\Security\SessionCookieAuthenticator
+            access_denied_handler: App\Identity\Security\JsonAccessDeniedHandler
         api:
             pattern: ^/api
             stateless: true
@@ -27,5 +43,19 @@ security:
             access_token:
                 token_handler: App\Shared\Security\StaticApiTokenHandler
 
+    # Primeira regra que casar vence (ordem importa).
     access_control:
+        # login e 2FA: públicos (protegidos por CSRF + bloqueio progressivo)
+        - { path: ^/api/ui/auth/(login|mfa)$, roles: PUBLIC_ACCESS }
+        # qualquer conta logada: sair e "minha conta"
+        - { path: ^/api/ui/(auth/logout|me)(/|$), roles: ROLE_VIEWER }
+        # administração
+        - { path: ^/api/ui/(users|audit)(/|$), roles: ROLE_ADMIN }
+        - { path: ^/api/ui/settings, methods: [POST, PUT, PATCH, DELETE], roles: ROLE_ADMIN }
+        - { path: ^/api/ui/lookups, methods: [POST, PUT, PATCH, DELETE], roles: ROLE_EDITOR }
+        # ver chave de licença é sensível: técnico ou admin (fica no log)
+        - { path: ^/api/ui/licenses/\d+/key$, roles: ROLE_EDITOR }
+        # escrita em geral: técnico ou admin; leitura: todos
+        - { path: ^/api/ui, methods: [POST, PUT, PATCH, DELETE], roles: ROLE_EDITOR }
+        - { path: ^/api/ui, roles: ROLE_VIEWER }
         - { path: ^/api, roles: ROLE_API }
