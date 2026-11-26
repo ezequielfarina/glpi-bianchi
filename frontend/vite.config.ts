@@ -17,6 +17,8 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist',
+      // NÃO usar 'assets': colide com a rota SPA /app/assets/:uuid (F5 no detalhe → 404 do nginx)
+      assetsDir: '_static',
       emptyOutDir: true,
       sourcemap: false,
       chunkSizeWarningLimit: 600,

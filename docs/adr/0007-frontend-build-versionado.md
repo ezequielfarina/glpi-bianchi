@@ -14,7 +14,7 @@ inspeção SSL).
 
 - Código em `frontend/`, build em `frontend/dist/` **versionado no git**.
 - nginx serve `/app/` direto do disco (`alias`), com fallback da SPA para `index.html`;
-  `/app/assets/*` (nomes com hash) com `Cache-Control: immutable` de 1 ano.
+  `/app/_static/*` (nomes com hash; `build.assetsDir`, para não colidir com a rota SPA `/app/assets/:uuid`) com `Cache-Control: immutable` de 1 ano.
 - `GET /` redireciona para `/app/`; `POST /` continua sendo o endpoint do GLPI Agent.
 - A SPA consome apenas `/api/ui/*` (read models SQL dedicados à interface, em `src/Ui/`)
   com o mesmo token Bearer da API.

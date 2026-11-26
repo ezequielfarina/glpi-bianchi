@@ -1,6 +1,10 @@
 import { ref, shallowRef, type Ref } from 'vue'
 
-/** Estado padrão de carregamento: data / loading / error + reload(). */
+/**
+ * Estado padrão de carregamento: data / loading / error + reload().
+ * Recargas com dados já na tela são silenciosas (sem esqueleto/piscar) e só a
+ * resposta da chamada mais recente é aplicada (evita resposta lenta sobrescrever nova).
+ */
 export function useAsync<T>(fn: () => Promise<T>): {
   data: Ref<T | null>
   loading: Ref<boolean>
@@ -11,15 +15,22 @@ export function useAsync<T>(fn: () => Promise<T>): {
   const loading = ref(true)
   const error = ref<string | null>(null)
 
+  let seq = 0
+
   async function reload(): Promise<void> {
-    loading.value = true
-    error.value = null
+    const mine = ++seq
+    if (data.value === null) loading.value = true
     try {
-      data.value = await fn()
+      const result = await fn()
+      if (mine !== seq) return
+      data.value = result
+      error.value = null
     } catch (e) {
-      error.value = e instanceof Error ? e.message : String(e)
+      if (mine !== seq) return
+      // falha numa recarga em segundo plano não derruba o que já está na tela
+      if (data.value === null) error.value = e instanceof Error ? e.message : String(e)
     } finally {
-      loading.value = false
+      if (mine === seq) loading.value = false
     }
   }
 

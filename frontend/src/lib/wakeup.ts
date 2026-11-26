@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { getCurrentScope, onScopeDispose, ref } from 'vue'
 import { api } from './api'
 import { notify } from './toast'
 
@@ -23,5 +23,20 @@ export async function forceInventory(deviceId: string, label: string): Promise<b
     const next = new Set(waking.value)
     next.delete(deviceId)
     waking.value = next
+  }
+}
+
+/**
+ * Recarrega a tela algumas vezes depois de forçar o inventário: o agente leva de
+ * segundos a ~2 min (Windows com muitos softwares) para enviar. Timers são
+ * cancelados quando o componente sai de cena (navegação), sem reload órfão.
+ */
+export function useInventoryRefresh(reload: () => Promise<void>): () => void {
+  let timers: number[] = []
+  const cancel = (): void => { timers.forEach((t) => window.clearTimeout(t)); timers = [] }
+  if (getCurrentScope()) onScopeDispose(cancel)
+  return () => {
+    cancel()
+    timers = [15, 30, 60, 90, 120].map((s) => window.setTimeout(() => void reload(), s * 1000))
   }
 }

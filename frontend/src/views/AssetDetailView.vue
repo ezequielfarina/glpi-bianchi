@@ -7,7 +7,7 @@ import AuthImage from '../components/AuthImage.vue'
 import LoadState from '../components/LoadState.vue'
 import OutcomePill from '../components/OutcomePill.vue'
 import StatusPill from '../components/StatusPill.vue'
-import { forceInventory, waking } from '../lib/wakeup'
+import { forceInventory, useInventoryRefresh, waking } from '../lib/wakeup'
 import { api } from '../lib/api'
 import { ASSET_STATUS, attrLabel, bytes, dateOnly, dateTime, fieldLabel, kindLabel, mib, num, relative } from '../lib/format'
 import { notify } from '../lib/toast'
@@ -16,6 +16,7 @@ import { useAsync } from '../lib/useAsync'
 
 const props = defineProps<{ uuid: string }>()
 const { data: a, loading, error, reload } = useAsync(() => api.asset(props.uuid))
+const refreshAfterInventory = useInventoryRefresh(reload)
 
 type Tab = 'hardware' | 'software' | 'network' | 'links' | 'attachments' | 'history' | 'inventories'
 const tab = ref<Tab>('hardware')
@@ -172,7 +173,7 @@ async function showPayload(id: number): Promise<void> {
 
 /** Aciona o agente e recarrega a tela ~15 s depois (tempo do agente coletar e enviar). */
 async function force(deviceId: string, label: string): Promise<void> {
-  if (await forceInventory(deviceId, label)) window.setTimeout(() => void reload(), 15_000)
+  if (await forceInventory(deviceId, label)) refreshAfterInventory()
 }
 </script>
 

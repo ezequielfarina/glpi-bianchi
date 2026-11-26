@@ -4,12 +4,13 @@ import LoadState from '../components/LoadState.vue'
 import AppIcon from '../components/AppIcon.vue'
 import OutcomePill from '../components/OutcomePill.vue'
 import StatusPill from '../components/StatusPill.vue'
-import { forceInventory, waking } from '../lib/wakeup'
+import { forceInventory, useInventoryRefresh, waking } from '../lib/wakeup'
 import { api } from '../lib/api'
 import { ageDays, dateTime, num, relative } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 
 const { data, loading, error, reload } = useAsync(() => api.agents())
+const refreshAfterInventory = useInventoryRefresh(reload)
 const filter = ref('')
 
 const items = computed(() => {
@@ -25,7 +26,7 @@ function tasks(json: string): string[] {
 
 /** Aciona o agente e recarrega a tela ~15 s depois (tempo do agente coletar e enviar). */
 async function force(deviceId: string, label: string): Promise<void> {
-  if (await forceInventory(deviceId, label)) window.setTimeout(() => void reload(), 15_000)
+  if (await forceInventory(deviceId, label)) refreshAfterInventory()
 }
 </script>
 
