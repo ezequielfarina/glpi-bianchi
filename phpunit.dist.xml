@@ -23,7 +23,9 @@
         </testsuite>
     </testsuites>
 
-    <source ignoreSuppressionOfDeprecations="true">
+    <!-- Deprecations disparadas por vendor → vendor (ex.: Doctrine/Symfony migrando para
+         native lazy objects do PHP 8.4) não falham a suíte; as do nosso código, sim. -->
+    <source ignoreSuppressionOfDeprecations="true" ignoreIndirectDeprecations="true">
         <include>
             <directory>src</directory>
         </include>
