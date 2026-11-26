@@ -62,8 +62,9 @@ apt-get install -y -q --no-install-recommends \
     valkey-server \
     "php${PHP_VER}-fpm" "php${PHP_VER}-cli" "php${PHP_VER}-pgsql" "php${PHP_VER}-intl" \
     "php${PHP_VER}-mbstring" "php${PHP_VER}-xml" "php${PHP_VER}-zip" "php${PHP_VER}-curl" \
-    "php${PHP_VER}-opcache" "php${PHP_VER}-redis" "php${PHP_VER}-apcu" \
-    composer
+    "php${PHP_VER}-opcache" "php${PHP_VER}-redis" "php${PHP_VER}-apcu" "php${PHP_VER}-snmp" \
+    composer \
+    nmap iproute2
 
 timedatectl set-timezone America/Sao_Paulo 2>/dev/null || ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
 
@@ -238,6 +239,13 @@ for unit in $(systemctl list-units --plain --no-legend 'bianchi-worker@*' | awk 
     n="${unit#bianchi-worker@}"; n="${n%.service}"
     if (( n > WORKERS )); then systemctl disable --now "$unit"; fi
 done
+# Scanner de rede: worker único com CAP_NET_RAW (sem root) — ADR-0012
+sed "s#@APP_DIR@#${APP_DIR}#g; s#@APP_USER@#${APP_USER}#g; s#@PHP_VER@#${PHP_VER}#g" \
+    "$SCRIPT_DIR/systemd/bianchi-scan-worker.service" > /etc/systemd/system/bianchi-scan-worker.service
+systemctl daemon-reload
+systemctl enable bianchi-scan-worker
+systemctl reset-failed bianchi-scan-worker 2>/dev/null || true
+systemctl restart bianchi-scan-worker
 for i in $(seq 1 "$WORKERS"); do
     systemctl enable "bianchi-worker@${i}"
     # zera o StartLimitBurst de falhas anteriores (ex.: deploy quebrado antes deste)

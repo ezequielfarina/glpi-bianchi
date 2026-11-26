@@ -12,9 +12,16 @@ framework:
                     multiplier: 3
                     max_delay: 300000
             failed: '%env(MESSENGER_FAILED_DSN)%'
+            # Scanner de rede (ADR-0012). Consumidor: bianchi-scan-worker.service (CAP_NET_RAW).
+            # Sem retry: uma varredura não deve se repetir sozinha.
+            scan:
+                dsn: '%env(MESSENGER_SCAN_DSN)%'
+                retry_strategy:
+                    max_retries: 0
 
         routing:
             App\Inventory\Message\ProcessInventory: inventory
+            App\Tools\Message\RunNetworkScan: scan
 
         buses:
             messenger.bus.default:

@@ -142,6 +142,7 @@ descritas em [`CLAUDE.md`](CLAUDE.md): **banco** (`migrations/`, `docs/database/
 - [x] Interface web (Vue 3): visão geral, ativos, detalhe, agentes, inventários; tema escuro/claro
 - [x] Gestão: fornecedores, contratos, licenças, anexos, patrimônio; matriz e filiais com mapa
 - [x] Login individual (Argon2id), 2FA TOTP, perfis Administrador/Técnico/Leitura, auditoria de acesso, HTTPS
+- [x] Ferramentas: scanner de rede (nmap, SNMP ARP, correlação com inventário) e calculadora de sub-rede
 
 **Fase 2**
 - [ ] Login LDAP/AD e OIDC (Entra ID/Keycloak) com grupos → perfis; permissão por filial
@@ -156,6 +157,7 @@ descritas em [`CLAUDE.md`](CLAUDE.md): **banco** (`migrations/`, `docs/database/
 | Documento | Conteúdo |
 |---|---|
 | [docs/adr/](docs/adr/) | decisões de arquitetura (por que reescrever, stack, modelo de dados...) |
+| [docs/tools/scanner-de-rede.md](docs/tools/scanner-de-rede.md) | scanner de rede (capabilities, SNMP, FortiGate) e calculadora |
 | [docs/database/README.md](docs/database/README.md) | modelo de dados, ER, índices, triggers, manutenção |
 | [docs/inventory/protocolo-agente.md](docs/inventory/protocolo-agente.md) | protocolo do GLPI Agent implementado |
 | [docs/inventory/forcar-inventario.md](docs/inventory/forcar-inventario.md) | forçar inventário remoto, frequência, firewall e `httpd-trust` |

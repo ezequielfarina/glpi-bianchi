@@ -22,6 +22,8 @@ export const router = createRouter({
     { path: '/agents', name: 'agents', component: () => import('./views/AgentsView.vue'), meta: { title: 'Agentes' } },
     { path: '/inventories', name: 'inventories', component: () => import('./views/InventoriesView.vue'), meta: { title: 'Inventários' } },
     { path: '/settings', name: 'settings', component: () => import('./views/SettingsView.vue'), meta: { title: 'Configurações' } },
+    { path: '/tools/scanner', name: 'scanner', component: () => import('./views/tools/NetworkScannerView.vue'), meta: { title: 'Scanner de rede', edit: true } },
+    { path: '/tools/subnet', name: 'subnet', component: () => import('./views/tools/SubnetCalculatorView.vue'), meta: { title: 'Calculadora de sub-rede' } },
     { path: '/account', name: 'account', component: () => import('./views/AccountView.vue'), meta: { title: 'Minha conta' } },
     { path: '/users', name: 'users', component: () => import('./views/UsersView.vue'), meta: { title: 'Usuários', admin: true } },
     { path: '/audit', name: 'audit', component: () => import('./views/AuditView.vue'), meta: { title: 'Auditoria de acesso', admin: true } },
@@ -37,7 +39,10 @@ router.beforeEach(async (to) => {
   // senha temporária: só "Minha conta" até trocar
   if (user.must_change_password && to.name !== 'account') return { name: 'account' }
   if (to.meta.admin && !isAdmin.value) return { name: 'overview' }
-  if (to.meta.edit && user.role === 'viewer') return to.params.uuid ? { name: 'asset', params: { uuid: to.params.uuid } } : { name: 'assets' }
+  if (to.meta.edit && user.role === 'viewer') {
+    if (to.name === 'scanner') return { name: 'overview' }
+    return to.params.uuid ? { name: 'asset', params: { uuid: to.params.uuid } } : { name: 'assets' }
+  }
   return true
 })
 

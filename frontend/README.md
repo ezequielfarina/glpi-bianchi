@@ -42,9 +42,12 @@ src/
 │   ├── api.ts                      # cliente /api/ui (Bearer, 401 → login)
 │   ├── types.ts                    # contratos (espelham src/Ui/ReadModel/*.php)
 │   ├── format.ts                   # datas relativas, bytes, rótulos pt-BR
+│   ├── subnet.ts                   # cálculo IPv4 (uint32) da calculadora de sub-rede
+│   ├── scanTypes.ts                # tipos de dispositivo do scanner → ícone/tipo de ativo
 │   ├── theme.ts, useAsync.ts
 ├── components/                     # AppShell, AppIcon, KpiCard, StatusPill, LoadState
 └── views/                          # uma por tela
+    └── tools/                      # Ferramentas: scanner de rede (ROLE_EDITOR) e calculadora de sub-rede
 ```
 
 ## Padrões

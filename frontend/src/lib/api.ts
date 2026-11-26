@@ -3,7 +3,7 @@
 // Toda requisição leva X-Requested-With: o backend recusa escrita sem ele (proteção CSRF).
 import type {
   AgentsResponse, Alerts, AssetDetail, AssetsResponse, Attachment, BranchDetail, BranchRow, ContractDetail, ContractRow, AccountRow, AuditPage, Me, SessionRow, InventoriesResponse, LicenseDetail,
-  LicenseRow, Lookups, Overview, SettingsResponse, SupplierDetail, SupplierRow, TypeSummary, WakeupResult,
+  LicenseRow, Lookups, Overview, SettingsResponse, SupplierDetail, SupplierRow, TypeSummary, WakeupResult, ScannerInfo, ScanRow, ScanDetail,
 } from './types'
 
 export class ApiError extends Error {
@@ -96,6 +96,14 @@ export const api = {
   userSessions: (id: number) => request<{ items: SessionRow[] }>(`/users/${id}/sessions`),
   revokeUserSessions: (id: number) => send<{ revoked: number }>('DELETE', `/users/${id}/sessions`),
   audit: (p: { q?: string; event?: string; page?: number }) => request<AuditPage>(`/audit${qs(p)}`),
+  // ---------------------------------------------------------------- ferramentas
+  scannerInfo: () => request<ScannerInfo>('/tools/scanner'),
+  scans: () => request<{ items: ScanRow[] }>('/tools/scanner/scans'),
+  scan: (id: number) => request<ScanDetail>(`/tools/scanner/scans/${id}`),
+  createScan: (body: Record<string, unknown>) => send<{ id: number }>('POST', '/tools/scanner/scans', body),
+  cancelScan: (id: number) => send<{ ok: boolean }>('POST', `/tools/scanner/scans/${id}/cancel`),
+  deleteScan: (id: number) => send<{ deleted: boolean }>('DELETE', `/tools/scanner/scans/${id}`),
+  scanExportUrl: (id: number) => `/api/ui/tools/scanner/scans/${id}/export`,
   // ---------------------------------------------------------------- inventário
   overview: () => request<Overview>('/overview'),
   assets: (p: { q?: string; type?: string; stale?: boolean; page?: number; perPage?: number; sort?: string; dir?: string; branch?: string }) =>

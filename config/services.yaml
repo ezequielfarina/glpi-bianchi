@@ -46,3 +46,7 @@ when@test:
             arguments:
                 $opsLimit: 1
                 $memLimitKib: 8192
+        # nmap falso: emite XML fixo (tests/Fixtures/nmap) — os testes não varrem a rede
+        App\Tools\Scanner\NmapRunner:
+            arguments:
+                $nmapBinary: '%kernel.project_dir%/tests/Fixtures/nmap/fake-nmap.sh'

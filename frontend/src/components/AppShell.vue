@@ -4,14 +4,14 @@ import { useRoute, useRouter } from 'vue-router'
 import AppIcon, { type IconName } from './AppIcon.vue'
 import ToastHost from './ToastHost.vue'
 import { api } from '../lib/api'
-import { clearMe, isAdmin, me, ROLE_LABEL } from '../lib/session'
+import { canEdit, clearMe, isAdmin, me, ROLE_LABEL } from '../lib/session'
 import { theme, toggleTheme } from '../lib/theme'
 
 const route = useRoute()
 const router = useRouter()
 const search = ref('')
 
-const allNav: { to: string; label: string; icon: IconName; group?: string; admin?: boolean }[] = [
+const allNav: { to: string; label: string; icon: IconName; group?: string; admin?: boolean; edit?: boolean }[] = [
   { to: '/', label: 'Visão geral', icon: 'home' },
   { to: '/assets', label: 'Ativos', icon: 'assets' },
   { to: '/branches', label: 'Matriz e filiais', icon: 'building' },
@@ -20,11 +20,23 @@ const allNav: { to: string; label: string; icon: IconName; group?: string; admin
   { to: '/suppliers', label: 'Fornecedores', icon: 'truck' },
   { to: '/agents', label: 'Agentes', icon: 'agents', group: 'Inventário automático' },
   { to: '/inventories', label: 'Inventários recebidos', icon: 'inbox' },
+  { to: '/tools/scanner', label: 'Scanner de rede', icon: 'radar', group: 'Ferramentas', edit: true },
+  { to: '/tools/subnet', label: 'Calculadora de sub-rede', icon: 'calculator', group: 'Ferramentas' },
   { to: '/settings', label: 'Configurações', icon: 'settings', group: 'Sistema' },
   { to: '/users', label: 'Usuários', icon: 'user', admin: true },
   { to: '/audit', label: 'Auditoria de acesso', icon: 'history', admin: true },
 ]
-const nav = computed(() => allNav.filter((i) => !i.admin || isAdmin.value))
+const nav = computed(() => {
+  const items = allNav.filter((i) => (!i.admin || isAdmin.value) && (!i.edit || canEdit.value))
+  // o rótulo do grupo vai no primeiro item visível dele (ex.: Ferramentas para o perfil Leitura)
+  let group: string | undefined
+  return items.map((i) => {
+    const g = i.group ?? group
+    const out = { ...i, group: g !== group ? g : undefined }
+    group = g
+    return out
+  })
+})
 const initials = computed(() => (me.value?.display_name ?? '?').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join(''))
 
 const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.startsWith(to))

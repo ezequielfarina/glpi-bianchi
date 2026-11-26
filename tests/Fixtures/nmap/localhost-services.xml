@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94SVN scan initiated Thu Nov 26 18:22:39 2026 as: nmap -sS -sV -&#45;version-light -O -&#45;osscan-limit -T4 -p 22,80,443,9100,3389 -&#45;script nbstat,smb-os-discovery,http-title,ssl-cert,rdp-ntlm-info -&#45;stats-every 1s -oX - 127.0.0.1 -->
+<nmaprun scanner="nmap" args="nmap -sS -sV -&#45;version-light -O -&#45;osscan-limit -T4 -p 22,80,443,9100,3389 -&#45;script nbstat,smb-os-discovery,http-title,ssl-cert,rdp-ntlm-info -&#45;stats-every 1s -oX - 127.0.0.1" start="1795728159" startstr="Thu Nov 26 18:22:39 2026" version="7.94SVN" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="5" services="22,80,443,3389,9100"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1795728160" endtime="1795728190"><status state="up" reason="localhost-response" reason_ttl="0"/>
+<address addr="127.0.0.1" addrtype="ipv4"/>
+<hostnames>
+<hostname name="localhost" type="PTR"/>
+</hostnames>
+<ports><port protocol="tcp" portid="22"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="ssh" product="OpenSSH" version="9.6p1 Debian 3" extrainfo="protocol 2.0" ostype="Linux" method="probed" conf="10"><cpe>cpe:/a:openbsd:openssh:9.6p1</cpe><cpe>cpe:/o:linux:linux_kernel</cpe></service></port>
+<port protocol="tcp" portid="80"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="http" product="SimpleHTTPServer" version="0.6" extrainfo="Python 3.13.18" method="probed" conf="10"><cpe>cpe:/a:python:simplehttpserver:0.6</cpe></service><script id="http-title" output="Directory listing for /"><elem key="title">Directory listing for /</elem>
+</script></port>
+<port protocol="tcp" portid="443"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="http" product="OpenSSL s_server -www httpd" extrainfo="command line: s_server" tunnel="ssl" method="probed" conf="10"><cpe>cpe:/a:openssl:openssl</cpe></service><script id="http-title" output="Site doesn&apos;t have a title (text/html)."></script><script id="ssl-cert" output="Subject: commonName=GLPI/organizationName=GLPI Bianchi&#xa;Subject Alternative Name: DNS:GLPI, IP Address:127.0.0.1&#xa;Issuer: commonName=GLPI/organizationName=GLPI Bianchi&#xa;Public Key type: ec&#xa;Public Key bits: 256&#xa;Signature Algorithm: ecdsa-with-SHA256&#xa;Not valid before: 2026-11-26T20:43:08&#xa;Not valid after:  2029-02-28T20:43:08&#xa;MD5:   b715:b3fc:f9eb:20ae:1cb2:c3b7:8cbb:32b8&#xa;SHA-1: 12e1:b094:596d:e423:730e:fa01:5ea5:25ae:f640:a1c4"><table key="subject">
+<elem key="commonName">GLPI</elem>
+<elem key="organizationName">GLPI Bianchi</elem>
+</table>
+<table key="issuer">
+<elem key="commonName">GLPI</elem>
+<elem key="organizationName">GLPI Bianchi</elem>
+</table>
+<table key="pubkey">
+<elem key="type">ec</elem>
+<elem key="bits">256</elem>
+<table key="ecdhparams">
+<table key="curve_params">
+<elem key="ec_curve_type">namedcurve</elem>
+<elem key="curve">prime256v1</elem>
+</table>
+</table>
+</table>
+<table key="extensions">
+<table>
+<elem key="name">X509v3 Subject Key Identifier</elem>
+<elem key="value">D9:75:BA:55:3F:A7:2E:4F:53:25:24:D3:7A:DE:78:A8:45:AC:08:D0</elem>
+</table>
+<table>
+<elem key="name">X509v3 Authority Key Identifier</elem>
+<elem key="value">D9:75:BA:55:3F:A7:2E:4F:53:25:24:D3:7A:DE:78:A8:45:AC:08:D0</elem>
+</table>
+<table>
+<elem key="name">X509v3 Basic Constraints</elem>
+<elem key="value">CA:TRUE</elem>
+<elem key="critical">true</elem>
+</table>
+<table>
+<elem key="name">X509v3 Subject Alternative Name</elem>
+<elem key="value">DNS:GLPI, IP Address:127.0.0.1</elem>
+</table>
+<table>
+<elem key="name">X509v3 Key Usage</elem>
+<elem key="value">Digital Signature</elem>
+<elem key="critical">true</elem>
+</table>
+<table>
+<elem key="name">X509v3 Extended Key Usage</elem>
+<elem key="value">TLS Web Server Authentication</elem>
+</table>
+</table>
+<elem key="sig_algo">ecdsa-with-SHA256</elem>
+<table key="validity">
+<elem key="notBefore">2026-11-26T20:43:08</elem>
+<elem key="notAfter">2029-02-28T20:43:08</elem>
+</table>
+<elem key="md5">b715b3fcf9eb20ae1cb2c3b78cbb32b8</elem>
+<elem key="sha1">12e1b094596de423730efa015ea525aef640a1c4</elem>
+<elem key="pem">(omitido)</elem>
+</script></port>
+<port protocol="tcp" portid="3389"><state state="closed" reason="reset" reason_ttl="64"/><service name="ms-wbt-server" method="table" conf="3"/></port>
+<port protocol="tcp" portid="9100"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="jetdirect" method="table" conf="3"/></port>
+</ports>
+<os><portused state="open" proto="tcp" portid="22"/>
+<portused state="closed" proto="tcp" portid="3389"/>
+<portused state="closed" proto="udp" portid="39553"/>
+<osmatch name="Linux 5.0 - 5.7" accuracy="97" line="68076">
+<osclass type="general purpose" vendor="Linux" osfamily="Linux" osgen="5.X" accuracy="97"><cpe>cpe:/o:linux:linux_kernel:5</cpe></osclass>
+</osmatch>
+<osmatch name="Linux 3.1" accuracy="95" line="62926">
+<osclass type="general purpose" vendor="Linux" osfamily="Linux" osgen="3.X" accuracy="95"><cpe>cpe:/o:linux:linux_kernel:3.1</cpe></osclass>
+</osmatch>
+<osmatch name="Linux 3.2" accuracy="95" line="64673">
+<osclass type="general purpose" vendor="Linux" osfamily="Linux" osgen="3.X" accuracy="95"><cpe>cpe:/o:linux:linux_kernel:3.2</cpe></osclass>
+</osmatch>
+<osmatch name="AXIS 210A or 211 Network Camera (Linux 2.6.17)" accuracy="95" line="61824">
+<osclass type="webcam" vendor="Linux" osfamily="Linux" osgen="2.6.X" accuracy="95"><cpe>cpe:/o:linux:linux_kernel:2.6.17</cpe></osclass>
+<osclass type="webcam" vendor="AXIS" osfamily="embedded" accuracy="95"><cpe>cpe:/h:axis:210a_network_camera</cpe><cpe>cpe:/h:axis:211_network_camera</cpe></osclass>
+</osmatch>
+<osmatch name="Linux 3.7 - 3.11" accuracy="94" line="65984">
+<osclass type="general purpose" vendor="Linux" osfamily="Linux" osgen="3.X" accuracy="94"><cpe>cpe:/o:linux:linux_kernel:3</cpe></osclass>
+</osmatch>
+<osmatch name="Linux 2.6.32" accuracy="93" line="55742">
+<osclass type="general purpose" vendor="Linux" osfamily="Linux" osgen="2.6.X" accuracy="93"><cpe>cpe:/o:linux:linux_kernel:2.6.32</cpe></osclass>
+</osmatch>
+<osmatch name="Linux 3.8 - 3.9" accuracy="93" line="66337">
+<osclass type="general purpose" vendor="Linux" osfamily="Linux" osgen="3.X" accuracy="93"><cpe>cpe:/o:linux:linux_kernel:3</cpe></osclass>
+</osmatch>
+<osmatch name="ASUS RT-N56U WAP (Linux 3.4)" accuracy="93" line="8405">
+<osclass type="WAP" vendor="Asus" osfamily="embedded" accuracy="93"><cpe>cpe:/h:asus:rt-n56u</cpe></osclass>
+<osclass type="WAP" vendor="Linux" osfamily="Linux" osgen="3.X" accuracy="93"><cpe>cpe:/o:linux:linux_kernel:3.4</cpe></osclass>
+</osmatch>
+<osmatch name="Linux 3.16" accuracy="93" line="64180">
+<osclass type="general purpose" vendor="Linux" osfamily="Linux" osgen="3.X" accuracy="93"><cpe>cpe:/o:linux:linux_kernel:3.16</cpe></osclass>
+</osmatch>
+<osmatch name="Linux 3.8 - 4.14" accuracy="92" line="66381">
+<osclass type="general purpose" vendor="Linux" osfamily="Linux" osgen="3.X" accuracy="92"><cpe>cpe:/o:linux:linux_kernel:3</cpe></osclass>
+<osclass type="general purpose" vendor="Linux" osfamily="Linux" osgen="4.X" accuracy="92"><cpe>cpe:/o:linux:linux_kernel:4</cpe></osclass>
+</osmatch>
+<osfingerprint fingerprint="OS:SCAN(V=7.94SVN%E=4%D=11/26%OT=22%CT=3389%CU=39553%PV=N%DS=0%DC=L%G=Y%TM=&#xa;OS:6B08A33E%P=x86_64-pc-linux-gnu)SEQ(SP=103%GCD=1%ISR=108%TI=Z%CI=Z%II=I%T&#xa;OS:S=21)OPS(O1=MFFD7ST11NWA%O2=MFFD7ST11NWA%O3=MFFD7NNT11NWA%O4=MFFD7ST11NW&#xa;OS:A%O5=MFFD7ST11NWA%O6=MFFD7ST11)WIN(W1=FFCB%W2=FFCB%W3=FFCB%W4=FFCB%W5=FF&#xa;OS:CB%W6=FFCB)ECN(R=Y%DF=Y%T=40%W=FFD7%O=MFFD7NNSNWA%CC=Y%Q=)T1(R=Y%DF=Y%T=&#xa;OS:40%S=O%A=S+%F=AS%RD=0%Q=)T2(R=N)T3(R=N)T4(R=Y%DF=Y%T=40%W=0%S=A%A=Z%F=R%&#xa;OS:O=%RD=0%Q=)T5(R=Y%DF=Y%T=40%W=0%S=Z%A=S+%F=AR%O=%RD=0%Q=)T6(R=Y%DF=Y%T=4&#xa;OS:0%W=0%S=A%A=Z%F=R%O=%RD=0%Q=)T7(R=Y%DF=Y%T=40%W=0%S=Z%A=S+%F=AR%O=%RD=0%&#xa;OS:Q=)U1(R=Y%DF=N%T=40%IPL=164%UN=0%RIPL=G%RID=G%RIPCK=G%RUCK=G%RUD=G)IE(R=&#xa;OS:Y%DFI=N%T=40%CD=S)&#xa;"/>
+</os>
+<uptime seconds="25" lastboot="Thu Nov 26 18:22:45 2026"/>
+<distance value="0"/>
+<tcpsequence index="259" difficulty="Good luck!" values="6B5027BE,C9C4974D,D62309E0,20C3A2EC,436E6557,1A62D222"/>
+<ipidsequence class="All zeros" values="0,0,0,0,0,0"/>
+<tcptssequence class="other" values="DAAE02BE,834C3BF8,74B376AB,8B5B1809,9D65580D,252C653D"/>
+<times srtt="53" rttvar="7" to="100000"/>
+</host>
+<runstats><finished time="1795728190" timestr="Thu Nov 26 18:23:10 2026" summary="Nmap done at Thu Nov 26 18:23:10 2026; 1 IP address (1 host up) scanned in 30.54 seconds" elapsed="30.54" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

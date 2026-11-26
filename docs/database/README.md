@@ -46,6 +46,9 @@ erDiagram
     agent }o--|| asset : ""
     agent ||--o{ raw_inventory : ""
     raw_inventory }o--|| asset : ""
+    branch ||--o{ network_scan : ""
+    network_scan ||--o{ network_scan_host : ""
+    network_scan_host }o--o| asset : "correlação"
 ```
 
 ## Dicionário
@@ -114,6 +117,13 @@ erDiagram
 | `raw_inventory` | payload recebido (JSONB) | `status` received/processing/processed/failed/rejected; `outcome` created/updated/unchanged + `changes`; `duration_ms` |
 | `app_setting` | configurações editáveis no painel (chave → JSONB) | ver `App\Settings\Service\Settings::DEFINITIONS` |
 | `messenger_messages` | fila "failed" do Messenger | criada por `messenger:setup-transports`; fora do schema diff |
+
+### Ferramentas (ADR-0012)
+
+| Tabela | Descrição | Pontos de atenção |
+|---|---|---|
+| `network_scan` | varredura: alvo CIDR, perfil, `status` queued/running/done/failed/cancelled, `phase`/`progress`, `options` (privilegiado, versão do nmap, avisos), quem pediu | CHECK de status/perfil/progresso; filial `SET NULL`; **community SNMP nunca é gravada** |
+| `network_scan_host` | host encontrado: IP, MAC + origem (`arp`/`snmp`/`netbios`), fabricante, nomes, SO, `device_type`, portas e detalhes (JSONB), `asset_id` + `match_by` | UNIQUE `(scan_id, ip)` para upsert em streaming; some com a varredura (CASCADE); ativo excluído → `SET NULL` |
 
 ## Objetos fora do ORM
 

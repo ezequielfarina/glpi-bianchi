@@ -400,3 +400,76 @@ export interface AuditEvent {
 }
 
 export interface AuditPage { items: AuditEvent[]; total: number; page: number; perPage: number }
+
+// ---------------------------------------------------------------- ferramentas: scanner de rede
+export type ScanStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled'
+export type ScanProfileCode = 'discovery' | 'standard' | 'full'
+
+export interface ScannerInfo {
+  nmap: string | null
+  snmp: boolean
+  profiles: { code: ScanProfileCode; label: string; max_prefix: number }[]
+  suggestions: { cidr: string; label: string }[]
+}
+
+export interface ScanRow {
+  id: number
+  target: string
+  profile: ScanProfileCode
+  status: ScanStatus
+  phase: string | null
+  progress: number
+  hosts_up: number
+  requested_by: string
+  branch_id: number | null
+  branch: string | null
+  error: string | null
+  snmp_gateway: string | null
+  privileged: boolean | null
+  nmap: string | null
+  warnings: string[]
+  addresses: number | null
+  created_at: string
+  started_at: string | null
+  finished_at: string | null
+}
+
+export interface ScanPort {
+  port: number
+  proto: string
+  service?: string
+  product?: string
+  version?: string
+  extra?: string
+  tunnel?: string
+  title?: string
+  server?: string
+  generator?: string
+  cert?: { subject?: string; issuer?: string; expires?: string }
+  scripts?: Record<string, string>
+}
+
+export interface ScanHost {
+  id: number
+  ip: string
+  mac: string | null
+  mac_source: 'arp' | 'nbstat' | 'snmp' | 'inventory' | null
+  vendor: string | null
+  hostname: string | null
+  netbios_name: string | null
+  domain: string | null
+  os: string | null
+  os_accuracy: number | null
+  device_type: string
+  state: 'up' | 'arp'
+  latency_ms: number | null
+  ports: ScanPort[]
+  details: Record<string, unknown>
+  match_by: 'mac' | 'ip' | 'name' | null
+  asset_uuid: string | null
+  asset_name: string | null
+  asset_type: string | null
+  asset_number: string | null
+}
+
+export interface ScanDetail extends ScanRow { hosts: ScanHost[] }

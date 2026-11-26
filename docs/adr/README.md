@@ -16,3 +16,4 @@ Para uma nova decisão, copie [`0000-template.md`](0000-template.md) usando o pr
 | [0009](0009-gestao-fornecedores-contratos-licencas.md) | Gestão: fornecedores, contratos, licenças, anexos, patrimônio | aceito |
 | [0010](0010-matriz-e-filiais.md) | Matriz e filiais com mapa e vínculo automático por rede | aceito |
 | [0011](0011-autenticacao-e-perfis.md) | Login individual: Argon2id, sessão em cookie, 2FA TOTP, perfis, HTTPS | aceito |
+| [0012](0012-ferramentas-scanner-de-rede.md) | Ferramentas: scanner de rede (nmap em worker com CAP_NET_RAW) e calculadora de sub-rede | aceito |

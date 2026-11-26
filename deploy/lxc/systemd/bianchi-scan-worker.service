@@ -1,0 +1,34 @@
+# Worker do scanner de rede (fila "scan") — ADR-0012.
+# Instalado em /etc/systemd/system/ pelo install.sh.
+#
+# Roda como o usuário da aplicação, NÃO como root: recebe só CAP_NET_RAW/CAP_NET_ADMIN
+# (sockets raw para SYN scan, detecção de SO e ARP) via capacidades ambientes, que o
+# nmap herda (`--privileged`). Uma varredura por vez.
+[Unit]
+Description=GLPI Bianchi - worker do scanner de rede
+After=network-online.target valkey-server.service postgresql.service
+Wants=network-online.target valkey-server.service postgresql.service
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=@APP_USER@
+Group=@APP_USER@
+WorkingDirectory=@APP_DIR@
+ExecStart=/usr/bin/php@PHP_VER@ bin/console messenger:consume scan --time-limit=14400 --memory-limit=512M --no-interaction
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ReadWritePaths=@APP_DIR@/var
+
+[Install]
+WantedBy=multi-user.target

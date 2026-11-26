@@ -56,6 +56,15 @@ async function load(): Promise<void> {
     } else {
       const fromQuery = new URLSearchParams(location.search).get('type')
       form.type = fromQuery && l.asset_types.some((t) => t.code === fromQuery) ? fromQuery : ''
+      // pré-preenchimento vindo do scanner de rede ("Cadastrar")
+      const qs = new URLSearchParams(location.search)
+      form.name = (qs.get('name') ?? '').slice(0, 255)
+      form.manufacturer = (qs.get('manufacturer') ?? '').slice(0, 255)
+      form.comment = (qs.get('comment') ?? '').slice(0, 5000)
+      try {
+        const extra = JSON.parse(qs.get('attrs') ?? '{}') as Record<string, unknown>
+        for (const [k, v] of Object.entries(extra)) if (typeof v === 'string' && v) attrs.value.push({ key: k.toUpperCase(), value: v })
+      } catch { /* parâmetro inválido: ignora */ }
       const qBranch = Number(new URLSearchParams(location.search).get('branch'))
       if (l.branches.some((b) => b.id === qBranch)) form.branch_id = qBranch
       else if (l.branches.length === 1) form.branch_id = l.branches[0]!.id

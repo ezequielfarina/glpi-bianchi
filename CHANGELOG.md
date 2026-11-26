@@ -17,6 +17,19 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- **Menu Ferramentas (ADR-0012):**
+  - **Scanner de rede:** nmap em worker dedicado (`bianchi-scan-worker`, `CAP_NET_RAW` sem root).
+    - Perfis Descoberta/Padrão/Completo e progresso ao vivo.
+    - Mostra IP, MAC, fabricante, NetBIOS/DNS, SO, portas e serviços, títulos web, certificados TLS, SMB/RDP.
+    - MAC de outras VLANs via tabela ARP do gateway (SNMP v2c, community não persistida).
+    - Classifica o tipo de dispositivo, cruza com o inventário (MAC → IP → nome) e detecta a filial.
+    - "Cadastrar" abre o formulário de ativo já preenchido.
+    - Exporta CSV e guarda histórico.
+    - Restrito a redes privadas e ao perfil Técnico/Administrador.
+  - **Calculadora de sub-rede:** rede, broadcast, faixa utilizável, máscara/wildcard e tipo de IP com RFC.
+    - Binário com bits de rede/host, hexadecimal e DNS reverso.
+    - Divisão em sub-redes, redes vizinhas e "N hosts → prefixo".
+    - Configuração pronta para FortiOS, RouterOS, Linux, PowerShell e Cisco.
 - **Login individual (ADR-0011):** usuário e senha com **Argon2id**, sessão em cookie HttpOnly/SameSite=Strict
   (só o SHA-256 do token no banco), **2FA TOTP** com QR code e anti-replay, perfis Administrador/Técnico/Leitura
   aplicados no servidor, bloqueio progressivo (5 falhas por login / 30 por IP), proteção CSRF, troca obrigatória
