@@ -69,6 +69,24 @@ jobs:
           php bin/console doctrine:migrations:migrate --no-interaction --env=test
       - run: vendor/bin/phpunit --testdox
 
+  frontend:
+    name: Frontend (typecheck + build + dist atualizado)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: dist versionado precisa bater com o código (ADR-0007)
+        run: git diff --exit-code -- dist || (echo "::error::frontend/dist desatualizado — rode 'npm run build' e commite" && exit 1)
+
   shell:
     name: ShellCheck (deploy/tools)
     runs-on: ubuntu-latest

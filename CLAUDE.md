@@ -47,8 +47,9 @@ Escopo: `src/`, `config/`, `tests/`, `tools/`.
 
 Escopo: `frontend/` (+ `deploy/lxc/nginx/` para servir o build).
 
-- Vue 3 + Vite + TypeScript (strict), consumindo **somente** a API `/api` (JSON).
-- Build estático em `frontend/dist`, servido pelo nginx do CT em `/app/` — sem Node em produção.
+- Vue 3 + Vite + TypeScript (strict), consumindo **somente** `/api/ui/*` (read models em `src/Ui/`).
+- Build estático em `frontend/dist`, **versionado** e servido pelo nginx do CT em `/app/` —
+  sem Node em produção (ADR-0007). Mudou `frontend/src` → `npm run build` e commite o `dist`.
 - Não acessar banco nem rotas do agente; contratos vêm do OpenAPI (`/api/docs.json`).
 - Ver `frontend/README.md` para stack, estrutura e padrões visuais.
 

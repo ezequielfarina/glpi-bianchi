@@ -1,0 +1,157 @@
+/* =========================================================================
+   GLPI Bianchi — tokens e base. Tema escuro (padrão, estilo NOC) e claro.
+   Contraste verificado: texto ≥ 4.5:1 nos dois temas.
+   ========================================================================= */
+:root {
+  --font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --sidebar: 240px;
+}
+
+[data-theme='dark'] {
+  --bg: #0b1016;
+  --bg-elev: #0e141b;
+  --panel: #121a23;
+  --panel-hover: #16212c;
+  --border: #1f2a36;
+  --border-soft: #18222d;
+  --text: #e6edf3;
+  --text-2: #a9b4bf;
+  --text-3: #8b98a5;
+  --accent: #38bdf8;
+  --accent-fg: #082f49;
+  --accent-soft: rgba(56, 189, 248, 0.12);
+  --accent-text: #7dd3fc;
+  --ok: #4ade80;
+  --ok-soft: rgba(74, 222, 128, 0.12);
+  --warn: #f59e0b;
+  --warn-text: #fbbf24;
+  --warn-soft: rgba(245, 158, 11, 0.14);
+  --muted-soft: rgba(139, 152, 165, 0.14);
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.02);
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --bg: #f5f7fa;
+  --bg-elev: #ffffff;
+  --panel: #ffffff;
+  --panel-hover: #f1f5f9;
+  --border: #dde3ea;
+  --border-soft: #eaeef3;
+  --text: #0f172a;
+  --text-2: #334155;
+  --text-3: #5b6878;
+  --accent: #0369a1;
+  --accent-fg: #ffffff;
+  --accent-soft: rgba(3, 105, 161, 0.1);
+  --accent-text: #075985;
+  --ok: #15803d;
+  --ok-soft: rgba(21, 128, 61, 0.1);
+  --warn: #c2410c;
+  --warn-text: #9a3412;
+  --warn-soft: rgba(194, 65, 12, 0.1);
+  --muted-soft: rgba(91, 104, 120, 0.12);
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent-text); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1, h2, h3 { margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: 22px; font-weight: 600; }
+h2 { font-size: 15px; font-weight: 600; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+.mono { font-family: var(--mono); font-size: 12.5px; }
+.muted { color: var(--text-3); }
+.num { font-variant-numeric: tabular-nums; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- blocos ---------- */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 16px 20px;
+}
+.panel-body { padding: 0 20px 20px; }
+.grid { display: grid; gap: 16px; }
+
+/* ---------- controles ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 40px; padding: 0 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--panel); color: var(--text-2);
+  cursor: pointer; font-weight: 500; white-space: nowrap;
+}
+.btn:hover { background: var(--panel-hover); color: var(--text); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.btn-primary:hover { filter: brightness(1.08); background: var(--accent); color: var(--accent-fg); }
+.btn-icon { width: 40px; padding: 0; }
+.input {
+  height: 40px; padding: 0 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-elev); color: var(--text); min-width: 0;
+}
+.input::placeholder { color: var(--text-3); }
+select.input { padding-right: 28px; }
+
+/* ---------- tabela ---------- */
+.table-wrap { overflow-x: auto; }
+table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th {
+  text-align: left; font-weight: 500; font-size: 12px; color: var(--text-3);
+  padding: 10px 12px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.table td { padding: 11px 12px; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+.table th:first-child, .table td:first-child { padding-left: 20px; }
+.table th:last-child, .table td:last-child { padding-right: 20px; }
+.table tbody tr:hover { background: var(--panel-hover); }
+.table th button { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+.table th button:focus-visible { outline: 2px solid var(--accent); border-radius: 4px; }
+
+/* ---------- pílulas ---------- */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 99px;
+  font-size: 12px; font-weight: 500; white-space: nowrap;
+}
+.pill::before { content: ''; width: 6px; height: 6px; border-radius: 99px; background: currentColor; }
+.pill-ok { background: var(--ok-soft); color: var(--ok); }
+.pill-accent { background: var(--accent-soft); color: var(--accent-text); }
+.pill-warn { background: var(--warn-soft); color: var(--warn-text); }
+.pill-muted { background: var(--muted-soft); color: var(--text-3); }
+.tag {
+  display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 11.5px;
+  background: var(--muted-soft); color: var(--text-2);
+}
+
+/* ---------- estados ---------- */
+.empty { padding: 40px 20px; text-align: center; color: var(--text-3); }
+.skeleton {
+  background: linear-gradient(90deg, var(--panel-hover) 0%, var(--border-soft) 50%, var(--panel-hover) 100%);
+  background-size: 200% 100%; animation: shimmer 1.2s infinite linear; border-radius: 6px;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+.error-box {
+  padding: 14px 16px; border-radius: var(--radius-sm); background: var(--warn-soft); color: var(--warn-text);
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+}
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }

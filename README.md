@@ -12,7 +12,7 @@ problemas, mudanças, SLA, base de conhecimento e projetos).
 | **Stack** | PHP 8.3+ · Symfony 7.3 · API Platform 4 · Doctrine ORM 3 · PostgreSQL 17 · Valkey · Messenger |
 | **Deploy** | CT LXC no Proxmox (Debian 13), serviços nativos com systemd — sem Docker |
 | **Licença** | GPL-3.0-or-later |
-| **Status** | MVP (fase 1): ingestão do agente + ativos `Computer` + API REST |
+| **Status** | MVP (fase 1): ingestão do agente + ativos `Computer` + API REST + interface web |
 
 ---
 
@@ -61,7 +61,8 @@ bash deploy/lxc/install.sh --env=dev     # lab: inclui PHPUnit/PHPStan
 # bash deploy/lxc/install.sh             # produção
 ```
 
-O script é idempotente e no final mostra a URL e o token da API. Passo a passo completo,
+O script é idempotente e no final mostra a URL e o token da API.
+**Interface web:** `http://<ip-do-ct>/` (redireciona para `/app/`) — entre com o token da API. Passo a passo completo,
 TLS e troubleshooting em [`docs/deploy/proxmox-ct.md`](docs/deploy/proxmox-ct.md).
 
 Teste sem agente nenhum:
@@ -98,11 +99,12 @@ Rotas aceitas: `/`, `/front/inventory.php` (legado), `/inventory`. Detalhes do p
 │   ├── Software/              #   catálogo de software, versões, instalações
 │   ├── Network/               #   portas, IPs, VLANs
 │   ├── Inventory/             #   protocolo do agente, recepção, fila, importador por seção
+│   ├── Ui/                    #   read models SQL + endpoints /api/ui/* da interface web
 │   └── Shared/                #   tipos Doctrine, segurança, traits
 ├── migrations/                # banco — migrations Doctrine (SQL explícito)
 ├── config/                    # Symfony (packages, rotas, serviços)
 ├── deploy/lxc/                # provisionamento do CT: install.sh, nginx, FPM, PostgreSQL, systemd
-├── frontend/                  # frontend — Vue 3 (fase 2, ver frontend/README.md)
+├── frontend/                  # interface web — Vue 3 + Vite + TS; build versionado em dist/
 ├── tests/                     # Unit + Integration (PHPUnit) e fixtures de inventário
 ├── tools/                     # utilitários (send-inventory.sh)
 └── docs/                      # ADRs, banco, protocolo, deploy, API
@@ -135,9 +137,9 @@ descritas em [`CLAUDE.md`](CLAUDE.md): **banco** (`migrations/`, `docs/database/
 - [x] Inventário parcial, campos travados e histórico por campo
 - [x] API REST + OpenAPI (`/api/docs`) com token
 - [x] Provisionamento de CT Proxmox (systemd, sem Docker)
+- [x] Interface web (Vue 3): visão geral, ativos, detalhe, agentes, inventários; tema escuro/claro
 
 **Fase 2**
-- [ ] Frontend Vue 3 + Tabler
 - [ ] Login LDAP/AD, OIDC (Entra ID/Keycloak) e TOTP; RBAC por organização
 - [ ] Financeiro: fornecedores, contratos, Infocom, depreciação, garantia
 - [ ] Regras de importação configuráveis e dicionários (fabricante, software)

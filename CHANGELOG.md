@@ -10,6 +10,10 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- Interface web Vue 3 em `/app/`: visão geral (KPIs, inventários/hora, SOs), ativos (busca por
+  nome/serial/patrimônio/UUID/MAC/IP), detalhe (hardware, software, rede, histórico, payload),
+  agentes e inventários recebidos; tema escuro/claro; responsiva.
+- Endpoints `/api/ui/*` com read models SQL dedicados (`src/Ui/`).
 - Estrutura inicial do projeto (Symfony 7.3, API Platform 4, Doctrine ORM 3, PostgreSQL 17).
 - Endpoint compatível com o GLPI Agent: `/`, `/front/inventory.php`, `/inventory`
   (PROLOG XML, CONTACT, GET_PARAMS, INVENTORY; JSON e XML legado; zlib/gzip/deflate).

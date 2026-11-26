@@ -28,3 +28,9 @@
 .DS_Store
 Thumbs.db
 
+
+###> frontend ###
+/frontend/node_modules/
+/frontend/.vite/
+# frontend/dist É versionado de propósito (ADR-0007): o CT não precisa de Node.
+###< frontend ###
