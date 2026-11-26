@@ -142,6 +142,14 @@ final readonly class LicenseWriter
             throw new NotFoundException('Licença não encontrada.');
         }
 
-        return null === $enc ? null : $this->secretBox->decrypt((string) $enc);
+        if (null === $enc) {
+            return null;
+        }
+        try {
+            return $this->secretBox->decrypt((string) $enc);
+        } catch (\RuntimeException $e) {
+            // chave de criptografia trocada/ausente: erro explicável, não 500
+            throw new ValidationException(['license_key' => $e->getMessage().' Cadastre a chave novamente na edição da licença.']);
+        }
     }
 }

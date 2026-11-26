@@ -10,12 +10,15 @@ const route = useRoute()
 const router = useRouter()
 const search = ref('')
 
-const nav: { to: string; label: string; icon: IconName }[] = [
+const nav: { to: string; label: string; icon: IconName; group?: string }[] = [
   { to: '/', label: 'Visão geral', icon: 'home' },
   { to: '/assets', label: 'Ativos', icon: 'assets' },
-  { to: '/agents', label: 'Agentes', icon: 'agents' },
+  { to: '/licenses', label: 'Licenças', icon: 'key', group: 'Gestão' },
+  { to: '/contracts', label: 'Contratos', icon: 'contract' },
+  { to: '/suppliers', label: 'Fornecedores', icon: 'truck' },
+  { to: '/agents', label: 'Agentes', icon: 'agents', group: 'Inventário automático' },
   { to: '/inventories', label: 'Inventários recebidos', icon: 'inbox' },
-  { to: '/settings', label: 'Configurações', icon: 'settings' },
+  { to: '/settings', label: 'Configurações', icon: 'settings', group: 'Sistema' },
 ]
 
 const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.startsWith(to))
@@ -45,17 +48,18 @@ function logout(): void {
       </RouterLink>
 
       <nav aria-label="Principal">
-        <RouterLink
-          v-for="item in nav"
-          :key="item.to"
-          :to="item.to"
-          class="nav-item"
-          :class="{ active: isActive(item.to) }"
-          :aria-current="isActive(item.to) ? 'page' : undefined"
-        >
-          <AppIcon :name="item.icon" />
-          <span>{{ item.label }}</span>
-        </RouterLink>
+        <template v-for="item in nav" :key="item.to">
+          <span v-if="item.group" class="nav-group">{{ item.group }}</span>
+          <RouterLink
+            :to="item.to"
+            class="nav-item"
+            :class="{ active: isActive(item.to) }"
+            :aria-current="isActive(item.to) ? 'page' : undefined"
+          >
+            <AppIcon :name="item.icon" />
+            <span>{{ item.label }}</span>
+          </RouterLink>
+        </template>
       </nav>
 
       <div class="sidebar-foot">
@@ -114,6 +118,7 @@ nav { display: flex; flex-direction: column; gap: 2px; }
   border-radius: var(--radius-sm); color: var(--text-2); text-decoration: none; font-weight: 500;
 }
 .nav-item:hover { background: var(--panel-hover); color: var(--text); text-decoration: none; }
+.nav-group { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); padding: 14px 12px 4px; }
 .nav-item.active { background: var(--accent-soft); color: var(--accent-text); }
 
 .sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
@@ -140,6 +145,7 @@ main { padding: 24px 32px 48px; outline: none; }
   .brand { padding: 4px 8px; }
   .brand { flex: 1; }
   nav { order: 3; flex-basis: 100%; flex-direction: row; overflow-x: auto; }
+  .nav-group { display: none; }
   .nav-item { white-space: nowrap; }
   .sidebar-foot { margin: 0; flex-direction: row; }
   .sidebar-foot .btn span { display: none; }

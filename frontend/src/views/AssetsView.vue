@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
+import AuthImage from '../components/AuthImage.vue'
 import LoadState from '../components/LoadState.vue'
 import { api } from '../lib/api'
 import { ageDays, mib, num, relative } from '../lib/format'
@@ -78,6 +79,9 @@ void load()
         <h1>Ativos</h1>
         <p class="muted">{{ data ? `${num(data.total)} encontrado(s)` : 'Carregando…' }}</p>
       </div>
+      <div class="actions">
+        <RouterLink to="/assets/new" class="btn btn-primary"><AppIcon name="plus" :size="16" /> Novo ativo</RouterLink>
+      </div>
     </header>
 
     <section class="panel">
@@ -92,6 +96,9 @@ void load()
           <option value="printer">Impressoras</option>
           <option value="monitor">Monitores</option>
           <option value="phone">Telefones</option>
+          <option value="tablet">Tablets</option>
+          <option value="data_collector">Coletores de dados</option>
+          <option value="peripheral">Periféricos</option>
         </select>
         <label class="check">
           <input v-model="stale" type="checkbox" />
@@ -107,7 +114,7 @@ void load()
               <tr>
                 <th :aria-sort="ariaSort('name')"><button type="button" @click="sortBy('name')">Ativo <AppIcon name="sort" :size="12" /></button></th>
                 <th :aria-sort="ariaSort('os')"><button type="button" @click="sortBy('os')">Sistema operacional <AppIcon name="sort" :size="12" /></button></th>
-                <th>Serial / patrimônio</th>
+                <th>Patrimônio / serial</th>
                 <th>IP</th>
                 <th>Memória</th>
                 <th>Local</th>
@@ -117,16 +124,21 @@ void load()
             <tbody>
               <tr v-for="a in data.items" :key="a.uuid">
                 <td>
-                  <RouterLink :to="`/assets/${a.uuid}`" class="strong">{{ a.name }}</RouterLink>
-                  <div class="muted small">
-                    <span class="tag">{{ a.type_label }}</span>
-                    {{ [a.manufacturer, a.model].filter(Boolean).join(' · ') }}
+                  <div class="asset-cell">
+                    <span class="thumb"><AuthImage :uuid="a.photo_uuid" alt=""><template #fallback><AppIcon name="assets" :size="16" /></template></AuthImage></span>
+                    <div>
+                      <RouterLink :to="`/assets/${a.uuid}`" class="strong">{{ a.name }}</RouterLink>
+                      <div class="muted small">
+                        <span class="tag">{{ a.type_label }}</span>
+                        {{ [a.manufacturer, a.model].filter(Boolean).join(' · ') }}
+                      </div>
+                    </div>
                   </div>
                 </td>
                 <td>{{ a.os ?? '—' }} <span class="muted">{{ a.os_version }}</span></td>
-                <td class="mono muted">
-                  {{ a.serial_number ?? '—' }}
-                  <div v-if="a.inventory_number" class="small">{{ a.inventory_number }}</div>
+                <td class="mono">
+                  {{ a.inventory_number ?? '—' }}
+                  <div class="small muted">{{ a.serial_number ?? '' }}</div>
                 </td>
                 <td class="mono muted">{{ a.ip ?? '—' }}</td>
                 <td class="num">{{ mib(a.memory_mib) }}</td>
@@ -152,7 +164,11 @@ void load()
 
 <style scoped>
 .page { display: flex; flex-direction: column; gap: 20px; max-width: 1480px; }
+.page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .page-head p { margin: 4px 0 0; font-size: 13px; }
+.asset-cell { display: flex; gap: 10px; align-items: center; }
+.thumb { width: 36px; height: 36px; border-radius: 8px; background: var(--panel-hover); display: grid; place-items: center; overflow: hidden; color: var(--text-3); flex: none; }
+.thumb :deep(img) { width: 100%; height: 100%; object-fit: cover; }
 .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 16px 20px; }
 .grow { flex: 1 1 320px; }
 .check { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 13px; min-height: 40px; cursor: pointer; }

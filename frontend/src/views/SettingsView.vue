@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
+import LookupEditor from '../components/LookupEditor.vue'
 import LoadState from '../components/LoadState.vue'
 import { api } from '../lib/api'
 import { dateTime } from '../lib/format'
 import { notify } from '../lib/toast'
-import type { SettingItem } from '../lib/types'
+import type { Lookups, SettingItem } from '../lib/types'
 import { useAsync } from '../lib/useAsync'
 
 const { data, loading, error, reload } = useAsync(() => api.settings())
-const form = reactive<Record<string, number>>({})
+const form = reactive<Record<string, number | string>>({})
+const lookups = ref<Lookups | null>(null)
+async function loadLookups(): Promise<void> { lookups.value = await api.lookups() }
+void loadLookups()
 const saving = ref(false)
 
 watch(data, (d) => {
@@ -24,7 +28,7 @@ async function save(): Promise<void> {
   saving.value = true
   try {
     data.value = await api.saveSettings({ ...form })
-    notify('ok', 'Configurações salvas', 'A nova frequência vale a partir do próximo contato de cada agente.')
+    notify('ok', 'Configurações salvas')
   } catch (e) {
     notify('warn', 'Não foi possível salvar', e instanceof Error ? e.message : String(e))
   } finally {
@@ -42,7 +46,7 @@ function restore(key: string, item: SettingItem): void {
     <header class="page-head">
       <div>
         <h1>Configurações</h1>
-        <p class="muted">Parâmetros de coleta do inventário</p>
+        <p class="muted">Coleta do inventário, patrimônio e cadastros auxiliares</p>
       </div>
     </header>
 
@@ -55,6 +59,15 @@ function restore(key: string, item: SettingItem): void {
           </div>
           <div class="field-row">
             <input
+              v-if="item.type === 'string'"
+              :id="key"
+              v-model="form[key]"
+              class="input mono"
+              :maxlength="item.max"
+              :aria-describedby="`${key}-help`"
+            />
+            <input
+              v-else
               :id="key"
               v-model.number="form[key]"
               class="input num"
@@ -79,6 +92,13 @@ function restore(key: string, item: SettingItem): void {
         </div>
       </form>
     </LoadState>
+
+    <h2 class="section-title">Cadastros auxiliares</h2>
+    <div v-if="lookups" class="lookups">
+      <LookupEditor kind="license_types" title="Tipos de licença" :items="lookups.license_types" @changed="loadLookups" />
+      <LookupEditor kind="license_categories" title="Categorias de licença" :items="lookups.license_categories" @changed="loadLookups" />
+      <LookupEditor kind="contract_types" title="Tipos de contrato" :items="lookups.contract_types" @changed="loadLookups" />
+    </div>
 
     <section class="panel info">
       <div class="panel-head"><h2><AppIcon name="bolt" :size="16" /> Como funciona a coleta</h2></div>
@@ -108,7 +128,10 @@ function restore(key: string, item: SettingItem): void {
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 20px; max-width: 920px; }
+.page { display: flex; flex-direction: column; gap: 20px; max-width: 1200px; }
+.form { max-width: 920px; }
+.section-title { margin-top: 8px; }
+.lookups { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; align-items: start; }
 .page-head p { margin: 4px 0 0; font-size: 13px; }
 .form { padding: 8px 24px 20px; }
 .field { padding: 18px 0; border-bottom: 1px solid var(--border-soft); }

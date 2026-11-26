@@ -101,3 +101,63 @@ export const OUTCOME_PILL: Record<string, { label: string; cls: string; hint: st
   updated: { label: 'Atualizado', cls: 'pill-accent', hint: 'Item já cadastrado — houve alterações (ver histórico do ativo).' },
   unchanged: { label: 'Sem alterações', cls: 'pill-muted', hint: 'Item já cadastrado — nada mudou desde o último inventário.' },
 }
+
+const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+export function money(v: string | number | null | undefined): string {
+  if (v === null || v === undefined || v === '') return '—'
+  const n = typeof v === 'number' ? v : Number(v)
+  return Number.isFinite(n) ? brl.format(n) : '—'
+}
+
+/** "2026-12-31" → "31/12/2026" (datas sem hora, sem fuso). */
+export function dateOnly(v: string | null | undefined): string {
+  if (!v) return '—'
+  const [y, m, d] = v.slice(0, 10).split('-')
+  return y && m && d ? `${d}/${m}/${y}` : v
+}
+
+export function taxId(v: string | null | undefined): string {
+  if (!v) return '—'
+  if (v.length === 14) return v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+  if (v.length === 11) return v.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
+  return v
+}
+
+export const ASSIGNMENT_LABEL: Record<string, string> = { device: 'Por máquina', user: 'Por usuário', volume: 'Volume (ativações)' }
+export const RENEWAL_LABEL: Record<string, string> = { none: 'Sem renovação', manual: 'Renovação manual', automatic: 'Renovação automática' }
+export const BILLING_LABEL: Record<string, string> = { one_time: 'Pagamento único', monthly: 'Mensal', quarterly: 'Trimestral', semiannual: 'Semestral', yearly: 'Anual' }
+export const CONTRACT_STATUS: Record<string, { label: string; cls: string }> = {
+  open: { label: 'Sem prazo', cls: 'pill-muted' },
+  active: { label: 'Vigente', cls: 'pill-ok' },
+  expiring: { label: 'Vencendo', cls: 'pill-warn' },
+  expired: { label: 'Vencido', cls: 'pill-warn' },
+}
+export const COMPLIANCE: Record<string, { label: string; cls: string }> = {
+  ok: { label: 'Em conformidade', cls: 'pill-ok' },
+  over: { label: 'Excedida', cls: 'pill-warn' },
+  expiring: { label: 'Vence em 30 dias', cls: 'pill-warn' },
+  expired: { label: 'Vencida', cls: 'pill-warn' },
+}
+export const ASSET_STATUS: Record<string, string> = {
+  in_use: 'Em uso', in_stock: 'Em estoque', in_repair: 'Em manutenção', reserved: 'Reservado', retired: 'Desativado', disposed: 'Descartado', lost: 'Extraviado',
+}
+
+/** Campos sugeridos por tipo no cadastro manual (viram attributes). */
+export const TYPE_FIELDS: Record<string, string[]> = {
+  printer: ['IP', 'MAC', 'Contador de páginas', 'Suprimento / toner'],
+  monitor: ['Polegadas', 'Resolução', 'Conexões'],
+  data_collector: ['IMEI', 'Sistema operacional', 'MAC Wi-Fi'],
+  tablet: ['IMEI', 'Sistema operacional', 'Número da linha', 'Operadora'],
+  phone: ['IMEI', 'Número da linha', 'Ramal', 'Operadora'],
+  peripheral: ['Conexão'],
+  network_equipment: ['IP de gerência', 'Firmware', 'Portas'],
+  computer: ['Processador', 'Memória (GB)', 'Disco'],
+}
+
+const ACRONYMS = new Set(['ip', 'mac', 'imei', 'os', 'sku', 'ssd', 'hd', 'dns', 'sim', 'ddd', 'wifi'])
+/** "numero_da_linha" → "Número da linha"; "ip" → "IP" (rótulo de característica manual). */
+export function attrLabel(key: string): string {
+  const words = key.split('_').filter(Boolean).map((w) => (ACRONYMS.has(w) ? w.toUpperCase() : w))
+  const s = words.join(' ').replace(/\bnumero\b/i, 'número').replace(/\bpaginas\b/i, 'páginas').replace(/\bresolucao\b/i, 'resolução').replace(/\bconexao\b/i, 'conexão').replace(/\bconexoes\b/i, 'conexões')
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}

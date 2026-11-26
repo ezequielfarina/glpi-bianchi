@@ -4,10 +4,17 @@ import AppIcon from '../components/AppIcon.vue'
 import KpiCard from '../components/KpiCard.vue'
 import LoadState from '../components/LoadState.vue'
 import { api } from '../lib/api'
-import { ageDays, num, relative } from '../lib/format'
+import type { Alerts } from '../lib/types'
+import { ref } from 'vue'
+import { ageDays, money, num, relative } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 
-const { data, loading, error, reload } = useAsync(() => api.overview())
+const alerts = ref<Alerts | null>(null)
+const { data, loading, error, reload } = useAsync(async () => {
+  const [o, a] = await Promise.all([api.overview(), api.alerts()])
+  alerts.value = a
+  return o
+})
 
 // Painel NOC: atualiza sozinho a cada 30 s
 let timer: number | undefined
@@ -52,6 +59,21 @@ const hourlyTotal = computed(() => (data.value?.hourly ?? []).reduce((s, h) => s
             :tone="k.failed_24h ? 'warn' : 'ok'"
             :to="k.failed_24h ? '/inventories?status=failed' : undefined"
           />
+        </section>
+
+        <section v-if="alerts" class="alerts" aria-label="Alertas de gestão">
+          <RouterLink to="/contracts?status=expiring" class="alert panel" :class="{ hot: alerts.contracts_expiring > 0 }">
+            <AppIcon name="contract" :size="20" />
+            <span><strong class="num">{{ alerts.contracts_expiring }}</strong> contrato(s) vencendo<small v-if="alerts.contracts_expired"> · {{ alerts.contracts_expired }} vencido(s)</small></span>
+          </RouterLink>
+          <RouterLink to="/licenses" class="alert panel" :class="{ hot: alerts.licenses_over > 0 }">
+            <AppIcon name="key" :size="20" />
+            <span><strong class="num">{{ alerts.licenses_over }}</strong> licença(s) excedida(s)<small> · {{ alerts.licenses_expiring }} vencem em 30 dias</small></span>
+          </RouterLink>
+          <RouterLink to="/contracts" class="alert panel">
+            <AppIcon name="truck" :size="20" />
+            <span>Custo anual em contratos <strong class="num">{{ money(alerts.contracts_annual_value) }}</strong></span>
+          </RouterLink>
         </section>
 
         <section class="two">
@@ -135,6 +157,12 @@ const hourlyTotal = computed(() => (data.value?.hourly ?? []).reduce((s, h) => s
 .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .page-head p { margin: 4px 0 0; font-size: 13px; }
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.alerts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.alert { display: flex; align-items: center; gap: 12px; padding: 14px 18px; color: var(--text-2); text-decoration: none; font-size: 13.5px; }
+.alert:hover { border-color: var(--accent); text-decoration: none; }
+.alert.hot { border-color: color-mix(in srgb, var(--warn) 45%, var(--border)); color: var(--warn-text); }
+.alert strong { color: var(--text); font-size: 15px; }
+.alert small { color: var(--text-3); font-size: 12.5px; }
 .two { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; }
 .legend { display: flex; gap: 14px; font-size: 12px; color: var(--text-3); flex-wrap: wrap; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -152,6 +180,6 @@ const hourlyTotal = computed(() => (data.value?.hourly ?? []).reduce((s, h) => s
 .fill { height: 100%; background: var(--accent); border-radius: 99px; }
 .strong { color: var(--text); font-weight: 500; }
 .small { font-size: 12px; }
-@media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .two { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .two, .alerts { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .kpis { grid-template-columns: 1fr; } }
 </style>

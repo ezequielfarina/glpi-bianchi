@@ -53,6 +53,7 @@ export interface AssetRow {
   dynamic: boolean
   memory_mib: number | null
   ip: string | null
+  photo_uuid: string | null
 }
 
 export interface AssetsResponse {
@@ -174,17 +175,23 @@ export interface AssetDetail {
   history: HistoryEntry[]
   agents: AgentRow[]
   inventories: InventoryRow[]
+  attachments: Attachment[]
+  photo_uuid: string | null
+  licenses: { assignment_id: number; id: number; name: string; expires_at: string | null; license_type: string }[]
+  contracts: { id: number; title: string; number: string | null; end_date: string | null; supplier: string | null }[]
+  locked_fields: string[]
+  deleted_at: string | null
 }
 
 export interface AgentsResponse { items: AgentRow[] }
 export interface InventoriesResponse { items: InventoryRow[] }
 
 export interface SettingItem {
-  value: number
-  default: number
+  value: number | string
+  default: number | string
   label: string
   help: string
-  type: 'int'
+  type: 'int' | 'string'
   min: number
   max: number
   unit?: string
@@ -198,4 +205,77 @@ export interface WakeupResult {
   address: string | null
   tried: string[]
   answer: string | null
+}
+
+// ---------------------------------------------------------------- gestão
+export interface Attachment {
+  uuid: string
+  kind: 'photo' | 'document'
+  filename: string
+  mime_type: string
+  size_bytes: number
+  description?: string | null
+  created_by?: string | null
+  created_at?: string
+}
+
+export type Assignment = 'device' | 'user' | 'volume'
+export interface Lookups {
+  asset_types: { code: string; label: string; inventoriable: boolean }[]
+  license_types: { id: number; name: string; assignment: Assignment; in_use: number }[]
+  license_categories: { id: number; name: string; in_use: number }[]
+  contract_types: { id: number; name: string; in_use: number }[]
+  suppliers: { id: number; name: string }[]
+  contracts: { id: number; title: string; number: string | null }[]
+  locations: { id: number; name: string }[]
+  manufacturers: { id: number; name: string }[]
+}
+
+export interface Alerts {
+  contracts_expiring: number
+  contracts_expired: number
+  contracts_annual_value: string
+  licenses_expiring: number
+  licenses_over: number
+}
+
+export interface SupplierRow {
+  id: number; name: string; trade_name: string | null; tax_id: string | null; email: string | null; phone: string | null
+  website: string | null; active: boolean; contacts: number; contracts: number; licenses: number
+}
+export interface Contact { id: number; name: string; role: string | null; email: string | null; phone: string | null; mobile: string | null; notes: string | null }
+export interface SupplierDetail extends Omit<SupplierRow, 'contacts' | 'contracts' | 'licenses'> {
+  address: string | null; notes: string | null; created_at: string; updated_at: string
+  contacts_list: Contact[]; contracts_list: ContractRow[]; licenses_list: { id: number; name: string; seats: number; expires_at: string | null }[]
+  attachments: Attachment[]
+}
+
+export type ContractStatus = 'open' | 'active' | 'expiring' | 'expired'
+export interface ContractRow {
+  id: number; title: string; number: string | null; start_date: string | null; end_date: string | null
+  renewal: 'none' | 'manual' | 'automatic'; notice_days: number | null
+  billing_period: 'one_time' | 'monthly' | 'quarterly' | 'semiannual' | 'yearly'; value: string | null
+  status: ContractStatus; annual_value: string | null; days_left: number | null
+  supplier_id: number | null; supplier: string | null; contract_type: string | null; assets: number; attachments: number
+}
+export interface ContractDetail extends Omit<ContractRow, 'assets' | 'attachments'> {
+  description: string | null; contract_type_id: number | null; created_at: string; updated_at: string
+  assets: { uuid: string; name: string; inventory_number: string | null; serial_number: string | null; type_label: string }[]
+  licenses: { id: number; name: string; seats: number }[]
+  attachments: Attachment[]
+}
+
+export type Compliance = 'ok' | 'over' | 'expiring' | 'expired'
+export interface LicenseRow {
+  id: number; name: string; assignment: Assignment; seats: number; unit_price: string | null; total_price: string | null
+  purchase_date: string | null; expires_at: string | null; software_match: string | null; has_key: boolean
+  license_type: string; category: string | null; supplier: string | null; contract: string | null
+  used: number; detected: number | null; compliance: Compliance
+}
+export interface LicenseDetail extends LicenseRow {
+  license_type_id: number; license_category_id: number | null; supplier_id: number | null; contract_id: number | null
+  notes: string | null; created_at: string; updated_at: string
+  assignments: { id: number; assigned_at: string; notes: string | null; asset_uuid: string | null; asset_name: string | null; inventory_number: string | null; user: string | null; user_name: string | null }[]
+  unassigned_detected: { uuid: string; name: string; inventory_number: string | null; software: string; version: string }[]
+  attachments: Attachment[]
 }

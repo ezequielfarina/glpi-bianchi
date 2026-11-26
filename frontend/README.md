@@ -13,7 +13,11 @@ Interface web do GLPI Bianchi — Vue 3 + Vite + TypeScript (strict). Servida pe
 | `/app/assets/:uuid` | detalhe: hardware, software, rede (oculta adaptadores virtuais), histórico, inventários + payload JSON | `GET /api/ui/assets/{uuid}` |
 | `/app/agents` | agentes, versão, IP de origem, tarefas, último contato, **forçar inventário** | `GET /api/ui/agents`, `POST …/wakeup` |
 | `/app/inventories` | payloads recebidos, status, **resultado** (novo/atualizado/sem alteração), erros, JSON bruto | `GET /api/ui/inventories` |
-| `/app/settings` | frequência de inventário, porta do agente | `GET/PUT /api/ui/settings` |
+| `/app/assets/new`, `/app/assets/:uuid/edit` | cadastro/edição manual (tipo, patrimônio automático, foto pela câmera, características por tipo) | `POST/PATCH /api/ui/assets`, `POST /api/ui/attachments` |
+| `/app/licenses`, `/app/licenses/:id` | licenças, conformidade (usados × comprados × detectados), chave, atribuições, anexos | `/api/ui/licenses…` |
+| `/app/contracts`, `/app/contracts/:id` | contratos, vigência/vencimento, custo anual, ativos cobertos, anexos | `/api/ui/contracts…` |
+| `/app/suppliers`, `/app/suppliers/:id` | fornecedores, contatos, contratos, documentos | `/api/ui/suppliers…`, `/api/ui/contacts…` |
+| `/app/settings` | frequência de inventário, prefixo do patrimônio, porta do agente, tipos/categorias de licença, tipos de contrato | `/api/ui/settings`, `/api/ui/lookups…` |
 
 ## Desenvolvimento
 

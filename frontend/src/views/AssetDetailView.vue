@@ -1,27 +1,34 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AppIcon, { type IconName } from '../components/AppIcon.vue'
+import AttachmentsPanel from '../components/AttachmentsPanel.vue'
+import AuthImage from '../components/AuthImage.vue'
 import LoadState from '../components/LoadState.vue'
 import OutcomePill from '../components/OutcomePill.vue'
 import StatusPill from '../components/StatusPill.vue'
 import { forceInventory, waking } from '../lib/wakeup'
 import { api } from '../lib/api'
-import { bytes, dateTime, fieldLabel, kindLabel, mib, num, relative } from '../lib/format'
-import type { Component } from '../lib/types'
+import { ASSET_STATUS, attrLabel, bytes, dateOnly, dateTime, fieldLabel, kindLabel, mib, num, relative } from '../lib/format'
+import { notify } from '../lib/toast'
+import type { Component, LicenseRow, Lookups } from '../lib/types'
 import { useAsync } from '../lib/useAsync'
 
 const props = defineProps<{ uuid: string }>()
 const { data: a, loading, error, reload } = useAsync(() => api.asset(props.uuid))
 
-type Tab = 'hardware' | 'software' | 'network' | 'history' | 'inventories'
+type Tab = 'hardware' | 'software' | 'network' | 'links' | 'attachments' | 'history' | 'inventories'
 const tab = ref<Tab>('hardware')
+const router = useRouter()
 const swFilter = ref('')
 const showVirtual = ref(false)
 
 const tabs = computed<{ id: Tab; label: string; icon: IconName; count?: number }[]>(() => [
-  { id: 'hardware', label: 'Hardware', icon: 'cpu', count: a.value?.components.length },
+  { id: 'hardware', label: isComputer.value ? 'Hardware' : 'Detalhes', icon: 'cpu', count: isComputer.value ? a.value?.components.length : undefined },
   { id: 'software', label: 'Software', icon: 'software', count: a.value?.software.length },
   { id: 'network', label: 'Rede', icon: 'network', count: a.value?.networkPorts.length },
+  { id: 'links', label: 'Licenças e contratos', icon: 'key', count: (a.value?.licenses.length ?? 0) + (a.value?.contracts.length ?? 0) },
+  { id: 'attachments', label: 'Anexos', icon: 'file', count: a.value?.attachments.length },
   { id: 'history', label: 'Histórico', icon: 'history', count: a.value?.history.length },
   { id: 'inventories', label: 'Inventários', icon: 'inbox', count: a.value?.inventories.length },
 ])
@@ -35,6 +42,7 @@ const groups = computed(() => {
 const ramTotal = computed(() => (a.value?.components ?? []).filter((c) => c.kind === 'memory').reduce((s, c) => s + (c.capacity_mib ?? 0), 0))
 const diskTotal = computed(() => (a.value?.components ?? []).filter((c) => c.kind === 'storage').reduce((s, c) => s + (c.capacity_mib ?? 0), 0))
 const cpu = computed(() => a.value?.components.find((c) => c.kind === 'processor'))
+const isComputer = computed(() => a.value?.type === 'computer' || (a.value?.components.length ?? 0) > 0)
 
 const software = computed(() => {
   const f = swFilter.value.trim().toLowerCase()
@@ -72,7 +80,7 @@ const ATTR_LABELS: Record<string, string> = {
 const attrs = computed(() =>
   Object.entries(a.value?.attributes ?? {})
     .filter(([k, v]) => k !== 'memory_mib' && v !== null && v !== '')
-    .map(([k, v]) => ({ label: ATTR_LABELS[k] ?? k.replace(/_/g, ' '), value: k === 'swap_mib' ? mib(Number(v)) : String(v) })),
+    .map(([k, v]) => ({ label: ATTR_LABELS[k] ?? attrLabel(k), value: k === 'swap_mib' ? mib(Number(v)) : String(v) })),
 )
 
 async function copy(text: string | null): Promise<void> {
@@ -95,6 +103,67 @@ function compDetail(c: Component): string {
   return parts.join(' · ')
 }
 
+// ---- foto, exclusão, vínculos
+const photoInput = ref<HTMLInputElement | null>(null)
+async function changePhoto(files: FileList | null): Promise<void> {
+  const f = files?.[0]
+  if (!f || !a.value) return
+  try {
+    await api.upload('asset', a.value.uuid, f, 'photo')
+    notify('ok', 'Foto atualizada')
+    await reload()
+  } catch (e) {
+    notify('warn', 'Falha ao enviar foto', e instanceof Error ? e.message : String(e))
+  }
+}
+async function removeAsset(): Promise<void> {
+  if (!a.value || !window.confirm(`Enviar "${a.value.name}" para a lixeira? O histórico e os anexos são mantidos.`)) return
+  await api.deleteAsset(a.value.uuid)
+  notify('ok', 'Ativo enviado para a lixeira')
+  await router.push('/assets')
+}
+
+const lookups = ref<Lookups | null>(null)
+const licenseOptions = ref<LicenseRow[]>([])
+const pickContract = ref<number | ''>('')
+const pickLicense = ref<number | ''>('')
+async function loadLinkOptions(): Promise<void> {
+  if (lookups.value) return
+  const [l, lic] = await Promise.all([api.lookups(), api.licenses()])
+  lookups.value = l
+  licenseOptions.value = lic.items.filter((x) => x.assignment !== 'user')
+}
+async function linkContract(): Promise<void> {
+  if (!a.value || pickContract.value === '') return
+  await api.linkContractAsset(Number(pickContract.value), a.value.uuid)
+  pickContract.value = ''
+  notify('ok', 'Contrato vinculado')
+  await reload()
+}
+async function unlinkContract(id: number): Promise<void> {
+  if (!a.value) return
+  await api.unlinkContractAsset(id, a.value.uuid)
+  await reload()
+}
+async function assignLicense(force = false): Promise<void> {
+  if (!a.value || pickLicense.value === '') return
+  try {
+    await api.assignLicense(Number(pickLicense.value), { asset_uuid: a.value.uuid, force })
+    pickLicense.value = ''
+    notify('ok', 'Licença atribuída')
+    await reload()
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (msg.includes('assentos livres') && window.confirm(`${msg}\n\nRegistrar mesmo assim (excedente)?`)) return assignLicense(true)
+    notify('warn', 'Não foi possível atribuir', msg)
+  }
+}
+async function unassignLicense(assignmentId: number): Promise<void> {
+  await api.unassignLicense(assignmentId)
+  await reload()
+}
+const LOCK_LABEL: Record<string, string> = { name: 'Nome', serialNumber: 'Número de série', manufacturer: 'Fabricante', model: 'Modelo' }
+
 const payload = ref<{ id: number; text: string } | null>(null)
 async function showPayload(id: number): Promise<void> {
   const json = await api.payload(id)
@@ -115,18 +184,28 @@ async function force(deviceId: string, label: string): Promise<void> {
       <template v-if="a">
         <header class="hero panel">
           <div class="hero-top">
+          <button class="hero-photo" type="button" :aria-label="a.photo_uuid ? 'Trocar foto' : 'Adicionar foto'" @click="photoInput?.click()">
+            <AuthImage :uuid="a.photo_uuid" :alt="`Foto de ${a.name}`">
+              <template #fallback><span class="ph"><AppIcon name="camera" :size="26" /><span>Adicionar foto</span></span></template>
+            </AuthImage>
+          </button>
+          <input ref="photoInput" type="file" accept="image/*" capture="environment" class="sr-only" aria-label="Selecionar foto" @change="changePhoto(($event.target as HTMLInputElement).files)" />
           <div class="hero-main">
             <div class="title-row">
               <h1>{{ a.name }}</h1>
+              <span class="pill pill-accent mono">{{ a.inventory_number ?? 'sem patrimônio' }}</span>
               <span class="tag">{{ a.type_label }}</span>
               <span v-if="a.dynamic" class="pill pill-accent">inventário automático</span>
               <span v-else class="pill pill-muted">cadastro manual</span>
             </div>
             <p class="muted">
               {{ [a.manufacturer, a.model].filter(Boolean).join(' · ') || 'Fabricante não informado' }}
-              · {{ a.organization }}<template v-if="a.location"> · {{ a.location }}</template>
+              · {{ ASSET_STATUS[a.status] ?? a.status }}<template v-if="a.location"> · {{ a.location }}</template><template v-if="a.user"> · {{ a.user }}</template>
             </p>
           </div>
+          <div class="hero-actions">
+          <RouterLink :to="`/assets/${a.uuid}/edit`" class="btn"><AppIcon name="edit" :size="16" /> Editar</RouterLink>
+          <button class="btn btn-danger" type="button" @click="removeAsset"><AppIcon name="trash" :size="16" /> Excluir</button>
           <button
             v-if="a.agents[0]"
             class="btn btn-primary"
@@ -137,11 +216,17 @@ async function force(deviceId: string, label: string): Promise<void> {
             <AppIcon name="bolt" :size="16" /> {{ waking.has(a.agents[0].device_id) ? 'Acionando…' : 'Forçar inventário' }}
           </button>
           </div>
+          </div>
           <dl class="facts">
-            <div><dt>Sistema operacional</dt><dd>{{ a.os_full_name ?? a.os_name ?? '—' }} <span class="muted">{{ a.os_version }}</span></dd></div>
-            <div><dt>Processador</dt><dd>{{ cpu?.designation ?? '—' }}</dd></div>
-            <div><dt>Memória</dt><dd class="num">{{ mib(ramTotal || Number(a.attributes.memory_mib) || null) }}</dd></div>
-            <div><dt>Armazenamento</dt><dd class="num">{{ diskTotal ? mib(diskTotal) : '—' }}</dd></div>
+            <template v-if="isComputer">
+              <div><dt>Sistema operacional</dt><dd>{{ a.os_full_name ?? a.os_name ?? '—' }} <span class="muted">{{ a.os_version }}</span></dd></div>
+              <div><dt>Processador</dt><dd>{{ cpu?.designation ?? '—' }}</dd></div>
+              <div><dt>Memória</dt><dd class="num">{{ mib(ramTotal || Number(a.attributes.memory_mib) || null) }}</dd></div>
+              <div><dt>Armazenamento</dt><dd class="num">{{ diskTotal ? mib(diskTotal) : '—' }}</dd></div>
+            </template>
+            <div v-else><dt>Tipo</dt><dd>{{ a.type_label }}</dd></div>
+            <div v-if="!isComputer"><dt>Localização</dt><dd>{{ a.location ?? '—' }}</dd></div>
+            <div v-if="!isComputer"><dt>Usuário</dt><dd>{{ a.user ?? '—' }}</dd></div>
             <div><dt>Número de série</dt><dd class="mono">{{ a.serial_number ?? '—' }}</dd></div>
             <div><dt>Patrimônio</dt><dd class="mono">{{ a.inventory_number ?? '—' }}</dd></div>
             <div>
@@ -151,7 +236,8 @@ async function force(deviceId: string, label: string): Promise<void> {
                 <button v-if="a.hardware_uuid" class="icon-btn" type="button" aria-label="Copiar UUID" @click="copy(a.hardware_uuid)"><AppIcon name="copy" :size="14" /></button>
               </dd>
             </div>
-            <div><dt>Último inventário</dt><dd>{{ relative(a.last_inventory_at) }} <span class="muted">({{ dateTime(a.last_inventory_at) }})</span></dd></div>
+            <div v-if="a.dynamic"><dt>Último inventário</dt><dd>{{ relative(a.last_inventory_at) }} <span class="muted">({{ dateTime(a.last_inventory_at) }})</span></dd></div>
+            <div v-else><dt>Cadastrado em</dt><dd>{{ dateTime(a.created_at) }}</dd></div>
           </dl>
         </header>
 
@@ -174,8 +260,8 @@ async function force(deviceId: string, label: string): Promise<void> {
         </div>
 
         <!-- HARDWARE -->
-        <section v-if="tab === 'hardware'" id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" class="hw">
-          <div class="panel">
+        <section v-if="tab === 'hardware'" id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" class="hw" :class="{ single: !groups.length }">
+          <div v-if="groups.length" class="panel">
             <div class="panel-head"><h2>Componentes</h2></div>
             <div v-if="!groups.length" class="empty">Nenhum componente.</div>
             <div v-for="[kind, items] in groups" :key="kind" class="group">
@@ -205,6 +291,8 @@ async function force(deviceId: string, label: string): Promise<void> {
               <template v-if="a.os_architecture"><dt>Arquitetura</dt><dd>{{ a.os_architecture }}</dd></template>
               <template v-if="a.os_installed_at"><dt>SO instalado em</dt><dd>{{ dateTime(a.os_installed_at) }}</dd></template>
               <template v-if="a.agents[0]"><dt>Agente</dt><dd>{{ a.agents[0].version?.replace('GLPI-Agent_', 'GLPI Agent ') ?? '—' }} · <span class="mono">{{ a.agents[0].remote_ip ?? '—' }}</span></dd></template>
+              <template v-if="a.comment"><dt>Observações</dt><dd style="white-space: pre-line">{{ a.comment }}</dd></template>
+              <template v-if="a.locked_fields.length"><dt>Campos travados</dt><dd><span v-for="f in a.locked_fields" :key="f" class="tag" style="margin: 0 4px 4px 0"><AppIcon name="lock" :size="11" /> {{ LOCK_LABEL[f] ?? f }}</span></dd></template>
               <dt>Cadastrado em</dt><dd>{{ dateTime(a.created_at) }}</dd>
             </dl>
           </div>
@@ -266,6 +354,65 @@ async function force(deviceId: string, label: string): Promise<void> {
           </div>
         </section>
 
+        <!-- LICENÇAS E CONTRATOS -->
+        <section v-else-if="tab === 'links'" id="panel-links" role="tabpanel" aria-labelledby="tab-links" class="links" @vue:mounted="loadLinkOptions">
+          <div class="panel">
+            <div class="panel-head"><h2>Licenças atribuídas</h2></div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Licença</th><th>Tipo</th><th>Vencimento</th><th><span class="sr-only">Ações</span></th></tr></thead>
+                <tbody>
+                  <tr v-for="l in a.licenses" :key="l.assignment_id">
+                    <td><RouterLink :to="`/licenses/${l.id}`">{{ l.name }}</RouterLink></td>
+                    <td class="muted">{{ l.license_type }}</td>
+                    <td class="muted">{{ dateOnly(l.expires_at) }}</td>
+                    <td><button class="btn btn-icon" type="button" :aria-label="`Remover ${l.name}`" @click="unassignLicense(l.assignment_id)"><AppIcon name="close" :size="14" /></button></td>
+                  </tr>
+                </tbody>
+              </table>
+              <p v-if="!a.licenses.length" class="empty">Nenhuma licença atribuída a este ativo.</p>
+            </div>
+            <div class="add-row">
+              <label for="pick-license" class="sr-only">Licença</label>
+              <select id="pick-license" v-model="pickLicense" class="input" @focus="loadLinkOptions">
+                <option value="">Atribuir licença (por máquina / volume)…</option>
+                <option v-for="l in licenseOptions" :key="l.id" :value="l.id">{{ l.name }} — {{ l.used }}/{{ l.seats }} em uso</option>
+              </select>
+              <button class="btn" type="button" :disabled="pickLicense === ''" @click="assignLicense()"><AppIcon name="plus" :size="14" /> Atribuir</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Contratos</h2></div>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Contrato</th><th>Fornecedor</th><th>Término</th><th><span class="sr-only">Ações</span></th></tr></thead>
+                <tbody>
+                  <tr v-for="c in a.contracts" :key="c.id">
+                    <td><RouterLink :to="`/contracts/${c.id}`">{{ c.title }}</RouterLink> <span class="muted mono small">{{ c.number }}</span></td>
+                    <td class="muted">{{ c.supplier ?? '—' }}</td>
+                    <td class="muted">{{ dateOnly(c.end_date) }}</td>
+                    <td><button class="btn btn-icon" type="button" :aria-label="`Desvincular ${c.title}`" @click="unlinkContract(c.id)"><AppIcon name="close" :size="14" /></button></td>
+                  </tr>
+                </tbody>
+              </table>
+              <p v-if="!a.contracts.length" class="empty">Nenhum contrato vinculado (garantia, locação, manutenção…).</p>
+            </div>
+            <div class="add-row">
+              <label for="pick-contract" class="sr-only">Contrato</label>
+              <select id="pick-contract" v-model="pickContract" class="input" @focus="loadLinkOptions">
+                <option value="">Vincular contrato…</option>
+                <option v-for="c in lookups?.contracts ?? []" :key="c.id" :value="c.id">{{ c.title }}{{ c.number ? ` (${c.number})` : '' }}</option>
+              </select>
+              <button class="btn" type="button" :disabled="pickContract === ''" @click="linkContract"><AppIcon name="plus" :size="14" /> Vincular</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ANEXOS -->
+        <section v-else-if="tab === 'attachments'" id="panel-attachments" role="tabpanel" aria-labelledby="tab-attachments">
+          <AttachmentsPanel owner-type="asset" :owner="a.uuid" :items="a.attachments" title="Fotos e documentos" @changed="reload" />
+        </section>
+
         <!-- HISTÓRICO -->
         <section v-else-if="tab === 'history'" id="panel-history" role="tabpanel" aria-labelledby="tab-history" class="panel">
           <div class="panel-head"><h2>Histórico de alterações</h2><span class="muted small">últimas 200</span></div>
@@ -323,7 +470,17 @@ async function force(deviceId: string, label: string): Promise<void> {
 .page { display: flex; flex-direction: column; gap: 16px; max-width: 1480px; }
 .back { display: inline-flex; align-items: center; gap: 4px; color: var(--text-3); font-size: 13px; width: fit-content; }
 .hero { padding: 22px 24px; display: flex; flex-direction: column; gap: 18px; }
-.hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.hero-top { display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap; }
+.hero-main { flex: 1; min-width: 260px; }
+.hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.hero-photo { width: 120px; height: 120px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-elev); overflow: hidden; padding: 0; cursor: pointer; display: grid; place-items: center; color: var(--text-3); flex: none; }
+.hero-photo:hover { border-color: var(--accent); }
+.hero-photo :deep(img) { width: 100%; height: 100%; object-fit: cover; }
+.ph { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11.5px; }
+.links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.add-row { display: flex; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border-soft); }
+.add-row select { flex: 1; min-width: 0; }
+@media (max-width: 1100px) { .links { grid-template-columns: 1fr; } }
 .hero-top .btn-primary:disabled { opacity: 0.6; cursor: progress; }
 .title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hero-main p { margin: 6px 0 0; }
@@ -345,6 +502,7 @@ async function force(deviceId: string, label: string): Promise<void> {
 .count { font-size: 11.5px; padding: 0 7px; border-radius: 99px; background: var(--muted-soft); color: var(--text-2); }
 
 .hw { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+.hw.single { grid-template-columns: minmax(0, 720px); }
 .group { padding: 0 20px 16px; }
 .group h3 { font-size: 13px; font-weight: 600; margin: 4px 0 8px; }
 .group ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }

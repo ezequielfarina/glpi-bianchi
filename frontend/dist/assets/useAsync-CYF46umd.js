@@ -1,0 +1,1 @@
+import{r as t,O as u}from"./index-BFQ-8Uot.js";function c(o){const n=u(null),a=t(!0),e=t(null);async function r(){a.value=!0,e.value=null;try{n.value=await o()}catch(l){e.value=l instanceof Error?l.message:String(l)}finally{a.value=!1}}return r(),{data:n,loading:a,error:e,reload:r}}export{c as u};

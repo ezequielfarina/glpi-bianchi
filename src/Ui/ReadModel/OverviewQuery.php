@@ -49,6 +49,7 @@ final readonly class OverviewQuery
         $os = $this->db->fetchAllAssociative(<<<'SQL'
             SELECT coalesce(os_full_name, os_name, 'Não informado') AS name, count(*) AS count
             FROM asset WHERE deleted_at IS NULL
+              AND asset_type_id = (SELECT id FROM asset_type WHERE code = 'computer')
             GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 6
             SQL);
 
