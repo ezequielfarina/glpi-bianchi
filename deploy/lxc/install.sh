@@ -101,6 +101,18 @@ chmod 0640 "$ENV_LOCAL"
 DB_PASS="$(sed -nE 's#^DATABASE_URL="postgresql://[^:]+:([^@]+)@.*#\1#p' "$ENV_LOCAL")"
 [[ -n "$DB_PASS" ]] || die "Não consegui ler a senha do banco em $ENV_LOCAL"
 
+# APP_ENV=test NÃO carrega .env.local (comportamento do Symfony): o banco de teste
+# precisa da mesma credencial em .env.test.local. O sufixo "_test" é aplicado pelo
+# doctrine.yaml (dbname_suffix), portanto a URL aponta para o banco base.
+if [[ "$APP_ENV" == "dev" ]]; then
+    cat > "$APP_DIR/.env.test.local" <<EOF
+# Gerado por deploy/lxc/install.sh. NÃO versionar.
+DATABASE_URL="postgresql://${DB_USER}:${DB_PASS}@127.0.0.1:5432/${DB_NAME}?serverVersion=${PG_VER}&charset=utf8"
+EOF
+    chown "$APP_USER:$APP_USER" "$APP_DIR/.env.test.local"
+    chmod 0640 "$APP_DIR/.env.test.local"
+fi
+
 # ----------------------------------------------------------------------------
 log "4/9 PostgreSQL ${PG_VER}"
 install -m 0644 "$SCRIPT_DIR/postgresql/bianchi.conf" "/etc/postgresql/${PG_VER}/main/conf.d/bianchi.conf"
