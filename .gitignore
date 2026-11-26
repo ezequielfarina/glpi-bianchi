@@ -34,3 +34,6 @@ Thumbs.db
 /frontend/.vite/
 # frontend/dist É versionado de propósito (ADR-0007): o CT não precisa de Node.
 ###< frontend ###
+
+# APP_SECRET de dev gerado pelo Flex — segredos ficam só no .env.local
+/.env.dev

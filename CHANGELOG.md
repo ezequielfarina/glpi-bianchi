@@ -7,9 +7,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 ### Corrigido
 - MAC das interfaces lido de `mac` (formato JSON), não `macaddr`.
 - Inventário parcial não apaga mais atributos ausentes do payload (ex.: `last_logged_user`).
+- `install.sh`: `composer update` automático em dev com lock dessincronizado; `reset-failed` dos workers.
+- Escritas sujeitas a constraint isoladas em savepoint (evita `25P02` na transação externa).
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- `composer.lock`/`symfony.lock` versionados (deploy reprodutível) e configs geradas pelo Flex.
 - **Gestão (ADR-0009):** fornecedores e contatos; contratos (vigência, renovação, valor, ativos);
   licenças (tipos/categorias editáveis, por máquina/usuário/volume, chave cifrada, conformidade
   com software detectado); anexos (fotos e documentos); patrimônio sequencial automático.
