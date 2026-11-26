@@ -55,6 +55,10 @@ final readonly class ComputerImporter
         }
 
         $context = new ImportContext($raw, $asset, $isNew, $this->em);
+        if ($asset->isDeleted()) {
+            $asset->restore();
+            $context->event('asset.restored', null, 'agente voltou a reportar');
+        }
         $executed = [];
         foreach ($this->sections as $section) {
             $present = array_intersect($section->sections(), array_keys($content));

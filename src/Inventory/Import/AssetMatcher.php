@@ -47,10 +47,15 @@ final readonly class AssetMatcher
             return $linked;
         }
 
-        if (null !== ($name = Value::str($hw['name'] ?? null))) {
-            return $this->assets->findOneByName($name, $type);
+        if (null !== ($name = Value::str($hw['name'] ?? null))
+            && null !== ($asset = $this->assets->findOneByName($name, $type))) {
+            return $asset;
         }
 
-        return null;
+        // Excluído no painel mas o agente continua instalado: devolve o mesmo ativo
+        // (o importador restaura) em vez de criar um duplicado com novo patrimônio.
+        // Só por identificador forte — nome sozinho não ressuscita nada.
+        return $this->assets->findDeletedByIdentity($uuid, $serial, $type)
+            ?? (null !== $linked && $linked->isDeleted() && $linked->getAssetType() === $type ? $linked : null);
     }
 }
