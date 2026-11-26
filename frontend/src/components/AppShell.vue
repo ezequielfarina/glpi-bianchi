@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon, { type IconName } from './AppIcon.vue'
+import ToastHost from './ToastHost.vue'
 import { auth } from '../lib/api'
 import { theme, toggleTheme } from '../lib/theme'
 
@@ -14,6 +15,7 @@ const nav: { to: string; label: string; icon: IconName }[] = [
   { to: '/assets', label: 'Ativos', icon: 'assets' },
   { to: '/agents', label: 'Agentes', icon: 'agents' },
   { to: '/inventories', label: 'Inventários recebidos', icon: 'inbox' },
+  { to: '/settings', label: 'Configurações', icon: 'settings' },
 ]
 
 const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.startsWith(to))
@@ -86,6 +88,7 @@ function logout(): void {
         <slot />
       </main>
     </div>
+    <ToastHost />
   </div>
 </template>
 

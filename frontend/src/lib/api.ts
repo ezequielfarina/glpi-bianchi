@@ -1,6 +1,6 @@
 // Cliente HTTP da API (/api). Token Bearer guardado no navegador (MVP).
 // Fase 2: OIDC — o token deixa de ser estático e passa a vir do IdP.
-import type { AgentsResponse, AssetDetail, AssetsResponse, InventoriesResponse, Overview } from './types'
+import type { AgentsResponse, AssetDetail, AssetsResponse, InventoriesResponse, Overview, SettingsResponse, WakeupResult } from './types'
 
 const TOKEN_KEY = 'bianchi.token'
 
@@ -39,11 +39,15 @@ async function request<T>(path: string, init: RequestInit = {}, token = auth.tok
     onUnauthorized.dispatchEvent(new Event('unauthorized'))
     throw new ApiError(401, 'Sessão inválida ou token expirado.')
   }
+  // wake-up devolve 502 com corpo útil (agente inalcançável/recusou): não é erro da API
+  if (res.status === 502 && path.endsWith('/wakeup')) {
+    return (await res.json()) as T
+  }
   if (!res.ok) {
     let message = `Erro ${res.status} ao consultar a API.`
     try {
-      const body = (await res.json()) as { error?: string; detail?: string }
-      message = body.error ?? body.detail ?? message
+      const body = (await res.json()) as { error?: string; detail?: string; errors?: Record<string, string> }
+      message = body.errors ? Object.values(body.errors).join(' ') : (body.error ?? body.detail ?? message)
     } catch { /* corpo não-JSON */ }
     throw new ApiError(res.status, message)
   }
@@ -69,4 +73,13 @@ export const api = {
   agents: () => request<AgentsResponse>('/agents'),
   inventories: (status?: string) => request<InventoriesResponse>(`/inventories${qs({ status })}`),
   payload: (id: number | string) => request<unknown>(`/inventories/${id}/payload`),
+  wakeup: (deviceId: string) => request<WakeupResult>(`/agents/${encodeURIComponent(deviceId)}/wakeup`, { method: 'POST' }),
+  agentStatus: (deviceId: string) => request<WakeupResult>(`/agents/${encodeURIComponent(deviceId)}/status`),
+  settings: () => request<SettingsResponse>('/settings'),
+  saveSettings: (values: Record<string, number>) =>
+    request<SettingsResponse>('/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(values),
+    }),
 }

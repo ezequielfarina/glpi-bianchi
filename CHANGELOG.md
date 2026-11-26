@@ -10,6 +10,9 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- Resultado de cada inventário (novo ativo / atualizado + nº de alterações / sem alterações).
+- Forçar inventário pelo painel (agente e ativo) via `/now` do GLPI Agent, com diagnóstico (ADR-0008).
+- Tela Configurações: frequência de inventário (`expiration`) e porta HTTP do agente.
 - Interface web Vue 3 em `/app/`: visão geral (KPIs, inventários/hora, SOs), ativos (busca por
   nome/serial/patrimônio/UUID/MAC/IP), detalhe (hardware, software, rede, histórico, payload),
   agentes e inventários recebidos; tema escuro/claro; responsiva.

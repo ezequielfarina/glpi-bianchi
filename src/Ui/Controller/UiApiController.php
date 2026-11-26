@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Ui\Controller;
 
+use App\Inventory\Entity\Agent;
+use App\Inventory\Service\AgentWakeup;
+use App\Settings\Service\Settings;
 use App\Ui\ReadModel\AgentQuery;
 use App\Ui\ReadModel\AssetQuery;
 use App\Ui\ReadModel\OverviewQuery;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,6 +31,9 @@ final readonly class UiApiController
         private OverviewQuery $overview,
         private AssetQuery $assets,
         private AgentQuery $agents,
+        private AgentWakeup $wakeup,
+        private Settings $settings,
+        private EntityManagerInterface $em,
     ) {
     }
 
@@ -59,10 +66,60 @@ final readonly class UiApiController
             : $this->json($detail);
     }
 
-    #[Route('/agents', name: 'agents', methods: ['GET'])]
+    #[Route('/agents', name: 'agents', methods: ['GET'], priority: 1)]
     public function agents(): JsonResponse
     {
         return $this->json(['items' => $this->agents->agents()]);
+    }
+
+    /** Forçar inventário: chama GET /now no servidor HTTP do GLPI Agent. */
+    #[Route('/agents/{deviceId}/wakeup', name: 'agent_wakeup', methods: ['POST'])]
+    public function agentWakeup(string $deviceId): JsonResponse
+    {
+        $agent = $this->em->getRepository(Agent::class)->findOneBy(['deviceId' => $deviceId]);
+        if (null === $agent) {
+            return $this->json(['error' => 'Agente não encontrado'], Response::HTTP_NOT_FOUND);
+        }
+        $result = $this->wakeup->now($agent);
+
+        return $this->json($result, AgentWakeup::RESULT_OK === $result['result'] ? Response::HTTP_OK : Response::HTTP_BAD_GATEWAY);
+    }
+
+    /** Status do agente: GET /status no servidor HTTP do GLPI Agent. */
+    #[Route('/agents/{deviceId}/status', name: 'agent_status', methods: ['GET'])]
+    public function agentStatus(string $deviceId): JsonResponse
+    {
+        $agent = $this->em->getRepository(Agent::class)->findOneBy(['deviceId' => $deviceId]);
+        if (null === $agent) {
+            return $this->json(['error' => 'Agente não encontrado'], Response::HTTP_NOT_FOUND);
+        }
+
+        return $this->json($this->wakeup->status($agent));
+    }
+
+    #[Route('/settings', name: 'settings', methods: ['GET'])]
+    public function settings(): JsonResponse
+    {
+        return $this->json(['items' => $this->settings->all()]);
+    }
+
+    #[Route('/settings', name: 'settings_update', methods: ['PUT', 'PATCH'])]
+    public function updateSettings(Request $request): JsonResponse
+    {
+        try {
+            $values = json_decode($request->getContent(), true, 8, \JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return $this->json(['error' => 'JSON inválido'], Response::HTTP_BAD_REQUEST);
+        }
+        if (!\is_array($values)) {
+            return $this->json(['error' => 'Envie um objeto {"chave": valor}'], Response::HTTP_BAD_REQUEST);
+        }
+        $errors = $this->settings->update($values);
+        if ([] !== $errors) {
+            return $this->json(['error' => 'Valores inválidos', 'errors' => $errors], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return $this->json(['items' => $this->settings->all()]);
     }
 
     #[Route('/inventories', name: 'inventories', methods: ['GET'])]

@@ -2,7 +2,9 @@
 import { computed, ref } from 'vue'
 import AppIcon, { type IconName } from '../components/AppIcon.vue'
 import LoadState from '../components/LoadState.vue'
+import OutcomePill from '../components/OutcomePill.vue'
 import StatusPill from '../components/StatusPill.vue'
+import { forceInventory, waking } from '../lib/wakeup'
 import { api } from '../lib/api'
 import { bytes, dateTime, fieldLabel, kindLabel, mib, num, relative } from '../lib/format'
 import type { Component } from '../lib/types'
@@ -98,6 +100,11 @@ async function showPayload(id: number): Promise<void> {
   const json = await api.payload(id)
   payload.value = { id, text: JSON.stringify(json, null, 2) }
 }
+
+/** Aciona o agente e recarrega a tela ~15 s depois (tempo do agente coletar e enviar). */
+async function force(deviceId: string, label: string): Promise<void> {
+  if (await forceInventory(deviceId, label)) window.setTimeout(() => void reload(), 15_000)
+}
 </script>
 
 <template>
@@ -107,6 +114,7 @@ async function showPayload(id: number): Promise<void> {
     <LoadState :loading="loading" :error="error" :rows="8" @retry="reload">
       <template v-if="a">
         <header class="hero panel">
+          <div class="hero-top">
           <div class="hero-main">
             <div class="title-row">
               <h1>{{ a.name }}</h1>
@@ -118,6 +126,16 @@ async function showPayload(id: number): Promise<void> {
               {{ [a.manufacturer, a.model].filter(Boolean).join(' · ') || 'Fabricante não informado' }}
               · {{ a.organization }}<template v-if="a.location"> · {{ a.location }}</template>
             </p>
+          </div>
+          <button
+            v-if="a.agents[0]"
+            class="btn btn-primary"
+            type="button"
+            :disabled="waking.has(a.agents[0].device_id)"
+            @click="force(a.agents[0].device_id, a.name)"
+          >
+            <AppIcon name="bolt" :size="16" /> {{ waking.has(a.agents[0].device_id) ? 'Acionando…' : 'Forçar inventário' }}
+          </button>
           </div>
           <dl class="facts">
             <div><dt>Sistema operacional</dt><dd>{{ a.os_full_name ?? a.os_name ?? '—' }} <span class="muted">{{ a.os_version }}</span></dd></div>
@@ -273,7 +291,7 @@ async function showPayload(id: number): Promise<void> {
           <div class="panel-head"><h2>Inventários recebidos</h2></div>
           <div class="table-wrap">
             <table class="table">
-              <thead><tr><th>#</th><th>Recebido</th><th>Tipo</th><th>Tamanho</th><th>Processamento</th><th>Status</th><th><span class="sr-only">Ações</span></th></tr></thead>
+              <thead><tr><th>#</th><th>Recebido</th><th>Tipo</th><th>Tamanho</th><th>Processamento</th><th>Status</th><th>Resultado</th><th><span class="sr-only">Ações</span></th></tr></thead>
               <tbody>
                 <tr v-for="r in a.inventories" :key="r.id">
                   <td class="mono muted">{{ r.id }}</td>
@@ -282,6 +300,7 @@ async function showPayload(id: number): Promise<void> {
                   <td class="num muted">{{ bytes(r.size_bytes) }}</td>
                   <td class="num muted">{{ r.duration_ms !== null ? `${num(r.duration_ms)} ms` : '—' }}</td>
                   <td><StatusPill :status="r.status" /><div v-if="r.error" class="small err">{{ r.error }}</div></td>
+                  <td><OutcomePill :outcome="r.outcome" :changes="r.changes" /></td>
                   <td><button class="btn" type="button" @click="showPayload(r.id)"><AppIcon name="code" :size="14" /> JSON</button></td>
                 </tr>
               </tbody>
@@ -304,6 +323,8 @@ async function showPayload(id: number): Promise<void> {
 .page { display: flex; flex-direction: column; gap: 16px; max-width: 1480px; }
 .back { display: inline-flex; align-items: center; gap: 4px; color: var(--text-3); font-size: 13px; width: fit-content; }
 .hero { padding: 22px 24px; display: flex; flex-direction: column; gap: 18px; }
+.hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.hero-top .btn-primary:disabled { opacity: 0.6; cursor: progress; }
 .title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hero-main p { margin: 6px 0 0; }
 .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px; margin: 0; }

@@ -7,6 +7,7 @@ PostgreSQL 17 · extensões `ltree`, `pg_trgm` · migrations em [`migrations/`](
 | `Version20261126000000` | extensões |
 | `Version20261126000100` | tabelas, PKs, FKs, índices (compatível com o mapeamento Doctrine) |
 | `Version20261126000200` | triggers ltree, índices GiST/GIN, seeds (`root`, tipos de ativo) |
+| `Version20261126160000` | `raw_inventory.outcome/changes` (+ backfill), tabela `app_setting` |
 
 ## Diagrama ER
 
@@ -89,7 +90,8 @@ erDiagram
 | Tabela | Descrição | Pontos de atenção |
 |---|---|---|
 | `agent` | GLPI Agent que contatou | `device_id` único; `last_contact_at` indexado |
-| `raw_inventory` | payload recebido (JSONB) | `status` received/processing/processed/failed/rejected; `duration_ms` |
+| `raw_inventory` | payload recebido (JSONB) | `status` received/processing/processed/failed/rejected; `outcome` created/updated/unchanged + `changes`; `duration_ms` |
+| `app_setting` | configurações editáveis no painel (chave → JSONB) | ver `App\Settings\Service\Settings::DEFINITIONS` |
 | `messenger_messages` | fila "failed" do Messenger | criada por `messenger:setup-transports`; fora do schema diff |
 
 ## Objetos fora do ORM

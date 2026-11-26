@@ -11,8 +11,9 @@ Interface web do GLPI Bianchi — Vue 3 + Vite + TypeScript (strict). Servida pe
 | `/app/` | visão geral: KPIs, inventários/hora (24 h), SOs, últimos ativos — atualiza a cada 30 s | `GET /api/ui/overview` |
 | `/app/assets` | busca (nome, serial, patrimônio, UUID, **MAC**, **IP**), filtros, ordenação, paginação (estado na URL) | `GET /api/ui/assets` |
 | `/app/assets/:uuid` | detalhe: hardware, software, rede (oculta adaptadores virtuais), histórico, inventários + payload JSON | `GET /api/ui/assets/{uuid}` |
-| `/app/agents` | agentes, versão, IP de origem, tarefas, último contato | `GET /api/ui/agents` |
-| `/app/inventories` | payloads recebidos, status, erros, JSON bruto | `GET /api/ui/inventories` |
+| `/app/agents` | agentes, versão, IP de origem, tarefas, último contato, **forçar inventário** | `GET /api/ui/agents`, `POST …/wakeup` |
+| `/app/inventories` | payloads recebidos, status, **resultado** (novo/atualizado/sem alteração), erros, JSON bruto | `GET /api/ui/inventories` |
+| `/app/settings` | frequência de inventário, porta do agente | `GET/PUT /api/ui/settings` |
 
 ## Desenvolvimento
 

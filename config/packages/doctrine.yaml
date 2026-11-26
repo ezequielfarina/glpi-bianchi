@@ -50,6 +50,11 @@ doctrine:
                 is_bundle: false
                 dir: '%kernel.project_dir%/src/Inventory/Entity'
                 prefix: 'App\Inventory\Entity'
+            Settings:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Settings/Entity'
+                prefix: 'App\Settings\Entity'
         controller_resolver:
             auto_mapping: false
 

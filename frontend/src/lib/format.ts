@@ -95,3 +95,9 @@ export const STATUS_PILL: Record<string, { label: string; cls: string }> = {
   failed: { label: 'Falhou', cls: 'pill-warn' },
   rejected: { label: 'Rejeitado', cls: 'pill-muted' },
 }
+
+export const OUTCOME_PILL: Record<string, { label: string; cls: string; hint: string }> = {
+  created: { label: 'Novo ativo', cls: 'pill-ok', hint: 'Item não estava cadastrado — ativo criado por este inventário.' },
+  updated: { label: 'Atualizado', cls: 'pill-accent', hint: 'Item já cadastrado — houve alterações (ver histórico do ativo).' },
+  unchanged: { label: 'Sem alterações', cls: 'pill-muted', hint: 'Item já cadastrado — nada mudou desde o último inventário.' },
+}

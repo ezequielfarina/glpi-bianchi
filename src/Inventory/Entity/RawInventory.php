@@ -78,6 +78,17 @@ class RawInventory
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $processedAt = null;
 
+    /**
+     * Resultado da importação: created (ativo novo) | updated (houve alterações) | unchanged.
+     * Responde "este item já estava cadastrado?" na tela de inventários recebidos.
+     */
+    #[ORM\Column(length: 16, nullable: true)]
+    private ?string $outcome = null;
+
+    /** Quantidade de alterações registradas no histórico por esta importação. */
+    #[ORM\Column(nullable: true)]
+    private ?int $changes = null;
+
     /** Duração do processamento em ms (métrica para o painel do Grafana). */
     #[ORM\Column(nullable: true)]
     private ?int $durationMs = null;
@@ -110,10 +121,16 @@ class RawInventory
         $this->error = null;
     }
 
-    public function markProcessed(Asset $asset, int $durationMs): void
+    public const string OUTCOME_CREATED = 'created';
+    public const string OUTCOME_UPDATED = 'updated';
+    public const string OUTCOME_UNCHANGED = 'unchanged';
+
+    public function markProcessed(Asset $asset, int $durationMs, bool $created = false, int $changes = 0): void
     {
         $this->status = RawInventoryStatus::Processed;
         $this->asset = $asset;
+        $this->outcome = $created ? self::OUTCOME_CREATED : ($changes > 0 ? self::OUTCOME_UPDATED : self::OUTCOME_UNCHANGED);
+        $this->changes = $changes;
         $this->processedAt = new \DateTimeImmutable();
         $this->durationMs = $durationMs;
     }
@@ -196,6 +213,16 @@ class RawInventory
     public function getProcessedAt(): ?\DateTimeImmutable
     {
         return $this->processedAt;
+    }
+
+    public function getOutcome(): ?string
+    {
+        return $this->outcome;
+    }
+
+    public function getChanges(): ?int
+    {
+        return $this->changes;
     }
 
     public function getDurationMs(): ?int

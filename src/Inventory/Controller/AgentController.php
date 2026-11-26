@@ -13,6 +13,7 @@ use App\Inventory\Protocol\PayloadFormat;
 use App\Inventory\Protocol\ProtocolException;
 use App\Inventory\Service\AgentRegistry;
 use App\Inventory\Service\InventoryReceiver;
+use App\Settings\Service\Settings;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -47,7 +48,7 @@ final readonly class AgentController
         private AgentRequestDecoder $decoder,
         private AgentRegistry $agents,
         private InventoryReceiver $receiver,
-        private int $inventoryFrequencyHours,
+        private Settings $settings,
         #[Autowire(service: 'monolog.logger.inventory')]
         private LoggerInterface $logger,
     ) {
@@ -105,15 +106,15 @@ final readonly class AgentController
     private function prolog(AgentRequest $r): AgentResponse
     {
         if ($r->isModernAgent()) {
-            return new AgentResponse(['expiration' => $this->inventoryFrequencyHours, 'status' => 'ok'], PayloadFormat::Json, $r->compression);
+            return new AgentResponse(['expiration' => $this->settings->inventoryFrequencyHours(), 'status' => 'ok'], PayloadFormat::Json, $r->compression);
         }
 
-        return new AgentResponse(['PROLOG_FREQ' => $this->inventoryFrequencyHours, 'RESPONSE' => 'SEND'], $r->format, $r->compression);
+        return new AgentResponse(['PROLOG_FREQ' => $this->settings->inventoryFrequencyHours(), 'RESPONSE' => 'SEND'], $r->format, $r->compression);
     }
 
     private function contact(AgentRequest $r): AgentResponse
     {
-        $payload = ['expiration' => $this->inventoryFrequencyHours, 'status' => 'ok'];
+        $payload = ['expiration' => $this->settings->inventoryFrequencyHours(), 'status' => 'ok'];
 
         $enabled = $r->enabledTasks();
         if ([] !== array_intersect($enabled, self::TASKS_NEEDING_INVENTORY) && !\in_array('inventory', $enabled, true)) {
@@ -153,14 +154,14 @@ final readonly class AgentController
 
     private function ok(AgentRequest $r): AgentResponse
     {
-        return new AgentResponse(['expiration' => $this->inventoryFrequencyHours, 'status' => 'ok'], PayloadFormat::Json, $r->compression);
+        return new AgentResponse(['expiration' => $this->settings->inventoryFrequencyHours(), 'status' => 'ok'], PayloadFormat::Json, $r->compression);
     }
 
     private function error(string $message, int $status, PayloadFormat $format, Compression $compression): AgentResponse
     {
         $payload = PayloadFormat::Xml === $format
             ? ['ERROR' => $message]
-            : ['status' => 'error', 'message' => $message, 'expiration' => $this->inventoryFrequencyHours];
+            : ['status' => 'error', 'message' => $message, 'expiration' => $this->settings->inventoryFrequencyHours()];
 
         return new AgentResponse($payload, $format, $compression, $status);
     }

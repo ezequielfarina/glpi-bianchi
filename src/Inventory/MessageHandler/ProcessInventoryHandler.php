@@ -58,7 +58,7 @@ final readonly class ProcessInventoryHandler
                     default => throw new \LogicException('Unsupported itemtype '.$raw->getItemtype()),
                 };
 
-                $raw->markProcessed($result->asset, (int) ((hrtime(true) - $started) / 1_000_000));
+                $raw->markProcessed($result->asset, (int) ((hrtime(true) - $started) / 1_000_000), $result->created, $result->changes);
 
                 return $result;
             });

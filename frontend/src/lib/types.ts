@@ -104,11 +104,15 @@ export interface HistoryEntry {
   created_at: string
 }
 
+export type Outcome = 'created' | 'updated' | 'unchanged'
+
 export interface InventoryRow {
   id: number
   device_id?: string
   itemtype?: string
   status: string
+  outcome: Outcome | null
+  changes: number | null
   partial: boolean
   source_format: string
   size_bytes: number
@@ -132,6 +136,7 @@ export interface AgentRow {
   asset_uuid: string | null
   asset_name: string | null
   last_status: string | null
+  last_outcome?: Outcome | null
   last_inventory_at: string | null
 }
 
@@ -173,3 +178,24 @@ export interface AssetDetail {
 
 export interface AgentsResponse { items: AgentRow[] }
 export interface InventoriesResponse { items: InventoryRow[] }
+
+export interface SettingItem {
+  value: number
+  default: number
+  label: string
+  help: string
+  type: 'int'
+  min: number
+  max: number
+  unit?: string
+  updatedAt: string | null
+}
+export interface SettingsResponse { items: Record<string, SettingItem> }
+
+export interface WakeupResult {
+  result: 'ok' | 'forbidden' | 'unreachable' | 'no_address'
+  message: string
+  address: string | null
+  tried: string[]
+  answer: string | null
+}

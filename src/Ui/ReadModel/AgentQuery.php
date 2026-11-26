@@ -19,10 +19,10 @@ final readonly class AgentQuery
         return $this->db->fetchAllAssociative(<<<'SQL'
             SELECT ag.device_id, ag.name, ag.version, ag.remote_ip, ag.tag, ag.last_contact_at, ag.created_at,
                    ag.enabled_tasks, a.uuid AS asset_uuid, a.name AS asset_name,
-                   r.status AS last_status, r.received_at AS last_inventory_at
+                   r.status AS last_status, r.outcome AS last_outcome, r.received_at AS last_inventory_at
             FROM agent ag
             LEFT JOIN asset a ON a.id = ag.asset_id
-            LEFT JOIN LATERAL (SELECT status, received_at FROM raw_inventory WHERE agent_id = ag.id ORDER BY id DESC LIMIT 1) r ON true
+            LEFT JOIN LATERAL (SELECT status, outcome, received_at FROM raw_inventory WHERE agent_id = ag.id ORDER BY id DESC LIMIT 1) r ON true
             ORDER BY ag.last_contact_at DESC
             LIMIT 1000
             SQL);
@@ -33,7 +33,7 @@ final readonly class AgentQuery
     {
         $sql = <<<'SQL'
             SELECT r.id, r.device_id, r.itemtype, r.source_format, r.partial, r.size_bytes, r.status,
-                   left(r.error, 500) AS error, r.received_at, r.processed_at, r.duration_ms,
+                   left(r.error, 500) AS error, r.received_at, r.processed_at, r.duration_ms, r.outcome, r.changes,
                    a.uuid AS asset_uuid, a.name AS asset_name
             FROM raw_inventory r LEFT JOIN asset a ON a.id = r.asset_id
             SQL;

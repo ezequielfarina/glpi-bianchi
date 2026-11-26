@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import LoadState from '../components/LoadState.vue'
+import OutcomePill from '../components/OutcomePill.vue'
 import StatusPill from '../components/StatusPill.vue'
 import { api } from '../lib/api'
 import { bytes, dateTime, num } from '../lib/format'
@@ -36,7 +37,7 @@ void load()
     <header class="page-head">
       <div>
         <h1>Inventários recebidos</h1>
-        <p class="muted">Payload bruto enviado pelos agentes — últimos 200. Reprocessar: <code class="mono">bin/console app:inventory:reprocess &lt;id&gt;</code></p>
+        <p class="muted">Payload bruto enviado pelos agentes — últimos 200. <strong>Resultado</strong> indica se o item já estava cadastrado (novo ativo × atualizado × sem alterações). Reprocessar: <code class="mono">bin/console app:inventory:reprocess &lt;id&gt;</code></p>
       </div>
       <button class="btn" type="button" @click="load"><AppIcon name="refresh" :size="16" /> Atualizar</button>
     </header>
@@ -56,7 +57,7 @@ void load()
         <div v-if="!items.length" class="empty">Nenhum inventário com esse filtro.</div>
         <div v-else class="table-wrap">
           <table class="table">
-            <thead><tr><th>#</th><th>Dispositivo</th><th>Recebido</th><th>Tipo</th><th>Tamanho</th><th>Tempo</th><th>Status</th><th>Ativo</th><th><span class="sr-only">Ações</span></th></tr></thead>
+            <thead><tr><th>#</th><th>Dispositivo</th><th>Recebido</th><th>Tipo</th><th>Tamanho</th><th>Tempo</th><th>Status</th><th>Resultado</th><th>Ativo</th><th><span class="sr-only">Ações</span></th></tr></thead>
             <tbody>
               <tr v-for="r in items" :key="r.id">
                 <td class="mono muted">{{ r.id }}</td>
@@ -66,6 +67,7 @@ void load()
                 <td class="num muted">{{ bytes(r.size_bytes) }}</td>
                 <td class="num muted">{{ r.duration_ms !== null ? `${num(r.duration_ms)} ms` : '—' }}</td>
                 <td><StatusPill :status="r.status" /><div v-if="r.error" class="err small">{{ r.error }}</div></td>
+                <td><OutcomePill :outcome="r.outcome" :changes="r.changes" /></td>
                 <td>
                   <RouterLink v-if="r.asset_uuid" :to="`/assets/${r.asset_uuid}`">{{ r.asset_name }}</RouterLink>
                   <span v-else class="muted">—</span>

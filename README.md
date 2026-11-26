@@ -99,6 +99,7 @@ Rotas aceitas: `/`, `/front/inventory.php` (legado), `/inventory`. Detalhes do p
 │   ├── Software/              #   catálogo de software, versões, instalações
 │   ├── Network/               #   portas, IPs, VLANs
 │   ├── Inventory/             #   protocolo do agente, recepção, fila, importador por seção
+│   ├── Settings/              #   configurações editáveis no painel (app_setting)
 │   ├── Ui/                    #   read models SQL + endpoints /api/ui/* da interface web
 │   └── Shared/                #   tipos Doctrine, segurança, traits
 ├── migrations/                # banco — migrations Doctrine (SQL explícito)
@@ -154,6 +155,7 @@ descritas em [`CLAUDE.md`](CLAUDE.md): **banco** (`migrations/`, `docs/database/
 | [docs/adr/](docs/adr/) | decisões de arquitetura (por que reescrever, stack, modelo de dados...) |
 | [docs/database/README.md](docs/database/README.md) | modelo de dados, ER, índices, triggers, manutenção |
 | [docs/inventory/protocolo-agente.md](docs/inventory/protocolo-agente.md) | protocolo do GLPI Agent implementado |
+| [docs/inventory/forcar-inventario.md](docs/inventory/forcar-inventario.md) | forçar inventário remoto, frequência, firewall e `httpd-trust` |
 | [docs/inventory/importacao.md](docs/inventory/importacao.md) | como o inventário vira ativo (matching, seções, travas) |
 | [docs/deploy/proxmox-ct.md](docs/deploy/proxmox-ct.md) | CT Proxmox: criação, install.sh, TLS, operação, troubleshooting |
 | [docs/api/README.md](docs/api/README.md) | API REST: autenticação, recursos, filtros, exemplos |

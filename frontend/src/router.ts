@@ -10,6 +10,7 @@ export const router = createRouter({
     { path: '/assets/:uuid', name: 'asset', component: () => import('./views/AssetDetailView.vue'), props: true, meta: { title: 'Ativo' } },
     { path: '/agents', name: 'agents', component: () => import('./views/AgentsView.vue'), meta: { title: 'Agentes' } },
     { path: '/inventories', name: 'inventories', component: () => import('./views/InventoriesView.vue'), meta: { title: 'Inventários' } },
+    { path: '/settings', name: 'settings', component: () => import('./views/SettingsView.vue'), meta: { title: 'Configurações' } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),

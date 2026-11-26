@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import LoadState from '../components/LoadState.vue'
+import AppIcon from '../components/AppIcon.vue'
+import OutcomePill from '../components/OutcomePill.vue'
 import StatusPill from '../components/StatusPill.vue'
+import { forceInventory, waking } from '../lib/wakeup'
 import { api } from '../lib/api'
 import { ageDays, dateTime, num, relative } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
@@ -18,6 +21,11 @@ const silent = computed(() => (data.value?.items ?? []).filter((a) => ageDays(a.
 
 function tasks(json: string): string[] {
   try { const t = JSON.parse(json) as unknown; return Array.isArray(t) ? t.map(String) : [] } catch { return [] }
+}
+
+/** Aciona o agente e recarrega a tela ~15 s depois (tempo do agente coletar e enviar). */
+async function force(deviceId: string, label: string): Promise<void> {
+  if (await forceInventory(deviceId, label)) window.setTimeout(() => void reload(), 15_000)
 }
 </script>
 
@@ -42,7 +50,7 @@ function tasks(json: string): string[] {
         <div v-if="!items.length" class="empty">Nenhum agente. Instale o GLPI Agent apontando para este servidor.</div>
         <div v-else class="table-wrap">
           <table class="table">
-            <thead><tr><th>Agente</th><th>Versão</th><th>IP de origem</th><th>Tarefas</th><th>Ativo</th><th>Último inventário</th><th>Último contato</th></tr></thead>
+            <thead><tr><th>Agente</th><th>Versão</th><th>IP de origem</th><th>Tarefas</th><th>Ativo</th><th>Último inventário</th><th>Último contato</th><th><span class="sr-only">Ações</span></th></tr></thead>
             <tbody>
               <tr v-for="a in items" :key="a.device_id">
                 <td><strong>{{ a.name }}</strong><div class="mono muted small">{{ a.device_id }}</div><span v-if="a.tag" class="tag">{{ a.tag }}</span></td>
@@ -53,9 +61,23 @@ function tasks(json: string): string[] {
                   <RouterLink v-if="a.asset_uuid" :to="`/assets/${a.asset_uuid}`">{{ a.asset_name }}</RouterLink>
                   <span v-else class="muted">—</span>
                 </td>
-                <td><StatusPill v-if="a.last_status" :status="a.last_status" /><span v-else class="muted">—</span></td>
+                <td>
+                  <StatusPill v-if="a.last_status" :status="a.last_status" /><span v-else class="muted">—</span>
+                  <div v-if="a.last_outcome" style="margin-top: 4px"><OutcomePill :outcome="a.last_outcome" /></div>
+                </td>
                 <td :title="dateTime(a.last_contact_at)">
                   <span class="pill" :class="ageDays(a.last_contact_at) > 2 ? 'pill-warn' : 'pill-ok'">{{ relative(a.last_contact_at) }}</span>
+                </td>
+                <td>
+                  <button
+                    class="btn"
+                    type="button"
+                    :disabled="waking.has(a.device_id)"
+                    :aria-label="`Forçar inventário de ${a.name}`"
+                    @click="force(a.device_id, a.name)"
+                  >
+                    <AppIcon name="bolt" :size="14" /> {{ waking.has(a.device_id) ? 'Acionando…' : 'Forçar' }}
+                  </button>
                 </td>
               </tr>
             </tbody>

@@ -160,12 +160,12 @@ final readonly class AssetQuery
             SQL, ['id' => $id]);
 
         $agents = $this->db->fetchAllAssociative(<<<'SQL'
-            SELECT device_id, name, version, remote_ip, tag, last_contact_at, enabled_tasks
+            SELECT device_id, name, version, remote_ip, tag, last_contact_at, enabled_tasks, NULL AS asset_uuid, NULL AS asset_name, NULL AS last_status, NULL AS last_inventory_at
             FROM agent WHERE asset_id = :id ORDER BY last_contact_at DESC
             SQL, ['id' => $id]);
 
         $inventories = $this->db->fetchAllAssociative(<<<'SQL'
-            SELECT id, status, partial, source_format, size_bytes, duration_ms, received_at, left(error, 500) AS error
+            SELECT id, status, outcome, changes, partial, source_format, size_bytes, duration_ms, received_at, left(error, 500) AS error
             FROM raw_inventory WHERE asset_id = :id ORDER BY id DESC LIMIT 20
             SQL, ['id' => $id]);
 
