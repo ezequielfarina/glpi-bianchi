@@ -1,0 +1,6 @@
+# Rotas declaradas por atributo #[Route] nos controllers de cada módulo.
+controllers:
+    resource:
+        path: ../src/
+        namespace: App
+    type: attribute

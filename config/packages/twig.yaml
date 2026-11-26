@@ -1,0 +1,7 @@
+# Necessário apenas para a UI do Swagger (/api/docs) e o profiler.
+twig:
+    file_name_pattern: '*.twig'
+
+when@test:
+    twig:
+        strict_variables: true

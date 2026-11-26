@@ -1,0 +1,31 @@
+# Fase 1 (MVP):
+#   - /api/*           → Bearer token estático (API_TOKEN), stateless
+#   - /front/inventory.php, /inventory → público, como no GLPI (o agente não autentica por padrão)
+# Fase 2: LDAP/AD (symfony/ldap), OIDC (Entra ID / Keycloak) e TOTP.
+security:
+    providers:
+        api_users:
+            memory:
+                users:
+                    api: { roles: ['ROLE_API'] }
+
+    firewalls:
+        dev:
+            pattern: ^/(_profiler|_wdt|_error)
+            security: false
+        agent:
+            # "/" incluso: o GLPI Agent configurado com `server = https://host/` faz POST na raiz
+            pattern: ^/($|front/inventory\.php|[Ii]nventory$)
+            security: false
+        api_docs:
+            pattern: ^/api/docs
+            security: false
+        api:
+            pattern: ^/api
+            stateless: true
+            provider: api_users
+            access_token:
+                token_handler: App\Shared\Security\StaticApiTokenHandler
+
+    access_control:
+        - { path: ^/api, roles: ROLE_API }

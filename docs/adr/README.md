@@ -1,0 +1,13 @@
+# Architecture Decision Records
+
+Registro das decisões de arquitetura, no formato de [Michael Nygard](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions).
+Para uma nova decisão, copie [`0000-template.md`](0000-template.md) usando o próximo número.
+
+| # | Decisão | Status |
+|---|---|---|
+| [0001](0001-reescrita-em-vez-de-fork.md) | Reescrever em vez de fazer fork e poda do GLPI | aceito |
+| [0002](0002-stack-symfony-postgresql.md) | Stack: PHP/Symfony + API Platform + PostgreSQL + Valkey | aceito |
+| [0003](0003-modelo-de-ativos.md) | Tabela única de ativos com atributos em JSONB | aceito |
+| [0004](0004-hierarquias-ltree.md) | Hierarquias com `ltree` mantido por trigger | aceito |
+| [0005](0005-ingestao-assincrona.md) | Ingestão assíncrona com payload bruto persistido | aceito |
+| [0006](0006-deploy-ct-lxc.md) | Deploy em CT LXC (Proxmox) com systemd, sem Docker | aceito |

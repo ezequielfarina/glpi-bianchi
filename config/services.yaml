@@ -1,0 +1,34 @@
+# Parâmetros e wiring de serviços.
+# Convenção: autowire + autoconfigure em todo src/, exceto entidades e DTOs.
+
+parameters:
+    app.inventory.frequency_hours: '%env(int:INVENTORY_FREQUENCY_HOURS)%'
+    app.inventory.default_organization: '%env(INVENTORY_DEFAULT_ORGANIZATION)%'
+    app.inventory.max_payload_bytes: '%env(int:INVENTORY_MAX_PAYLOAD_BYTES)%'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        bind:
+            int $inventoryFrequencyHours: '%app.inventory.frequency_hours%'
+            string $defaultOrganizationCode: '%app.inventory.default_organization%'
+            int $maxPayloadBytes: '%app.inventory.max_payload_bytes%'
+            string $apiToken: '%env(API_TOKEN)%'
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+            - '../src/**/Entity/'
+            - '../src/**/Enum/'
+            - '../src/**/Message/'
+            - '../src/Inventory/Protocol/AgentRequest.php'
+            - '../src/Inventory/Protocol/AgentResponse.php'
+            - '../src/Inventory/Protocol/Compression.php'
+            - '../src/Inventory/Protocol/PayloadFormat.php'
+            - '../src/Inventory/Protocol/ProtocolException.php'
+            - '../src/Inventory/Import/ImportContext.php'
+
+    # Conversor/validador oficial do formato de inventário (MIT, glpi-project/inventory_format)
+    Glpi\Inventory\Converter: ~

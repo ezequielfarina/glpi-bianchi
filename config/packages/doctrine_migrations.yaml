@@ -1,0 +1,7 @@
+doctrine_migrations:
+    migrations_paths:
+        'DoctrineMigrations': '%kernel.project_dir%/migrations'
+    enable_profiler: false
+    # Cada migration roda na própria transação (DDL transacional do PostgreSQL)
+    transactional: true
+    all_or_nothing: true

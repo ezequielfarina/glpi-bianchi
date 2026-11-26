@@ -1,0 +1,17 @@
+parameters:
+    level: max
+    paths:
+        - src
+        - tests
+        - migrations
+    tmpDir: var/cache/phpstan
+    symfony:
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+    doctrine:
+        objectManagerLoader: tests/object-manager.php
+    treatPhpDocTypesAsCertain: false
+    ignoreErrors:
+        # Payload do agente é array<string, mixed> por natureza; a validação é feita
+        # pelo JSON Schema oficial antes do import, e Value::* normaliza cada campo.
+        - identifier: offsetAccess.nonOffsetAccessible
+          path: src/Inventory/*

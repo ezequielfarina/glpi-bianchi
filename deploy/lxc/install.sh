@@ -1,0 +1,214 @@
+#!/usr/bin/env bash
+# =============================================================================
+# GLPI Bianchi — provisionamento de CT LXC (Proxmox) com Debian 13 "trixie"
+#
+# Instala e configura, tudo nativo (sem Docker):
+#   PostgreSQL 17 · Valkey 8 · PHP 8.4-FPM · nginx · workers systemd do Messenger
+#
+# Uso (como root, dentro do CT):
+#   bash deploy/lxc/install.sh              # produção (APP_ENV=prod, sem deps de dev)
+#   bash deploy/lxc/install.sh --env=dev    # laboratório (deps de dev, roda testes)
+#   bash deploy/lxc/install.sh --workers=4  # quantidade de workers (padrão 2)
+#
+# Idempotente: pode ser executado de novo após `git pull` (atualiza código,
+# deps, migrations e reinicia serviços). Segredos gerados na 1ª execução são
+# preservados em $APP_DIR/.env.local.
+# =============================================================================
+set -Eeuo pipefail
+
+APP_ENV="prod"
+WORKERS=2
+for arg in "$@"; do
+    case "$arg" in
+        --env=*)     APP_ENV="${arg#*=}" ;;
+        --workers=*) WORKERS="${arg#*=}" ;;
+        -h|--help)   sed -n '2,20p' "$0"; exit 0 ;;
+        *) echo "Argumento desconhecido: $arg" >&2; exit 2 ;;
+    esac
+done
+[[ "$APP_ENV" =~ ^(prod|dev)$ ]] || { echo "--env deve ser prod ou dev" >&2; exit 2; }
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+APP_USER="bianchi"
+DB_NAME="bianchi"
+DB_USER="bianchi"
+PHP_VER="8.4"
+PG_VER="17"
+
+log()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
+warn() { printf '\033[1;33m[!] %s\033[0m\n' "$*" >&2; }
+die()  { printf '\033[1;31m[x] %s\033[0m\n' "$*" >&2; exit 1; }
+trap 'die "Falhou na linha $LINENO: $BASH_COMMAND"' ERR
+
+# ----------------------------------------------------------------------------
+log "0/9 Pré-checagens"
+[[ $EUID -eq 0 ]] || die "Execute como root."
+. /etc/os-release
+[[ "${VERSION_CODENAME:-}" == "trixie" ]] || die "Requer Debian 13 (trixie); encontrado: ${PRETTY_NAME:-?}"
+if [[ -r /proc/1/environ ]] && grep -qa 'container=lxc' /proc/1/environ; then
+    systemctl is-system-running --quiet 2>/dev/null || warn "systemd degradado — confirme 'features: nesting=1' no CT."
+fi
+echo "APP_DIR=$APP_DIR  APP_ENV=$APP_ENV  WORKERS=$WORKERS"
+
+# ----------------------------------------------------------------------------
+log "1/9 Pacotes"
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -q
+apt-get install -y -q --no-install-recommends \
+    ca-certificates curl git unzip openssl locales tzdata acl \
+    nginx \
+    "postgresql-${PG_VER}" postgresql-contrib \
+    valkey-server \
+    "php${PHP_VER}-fpm" "php${PHP_VER}-cli" "php${PHP_VER}-pgsql" "php${PHP_VER}-intl" \
+    "php${PHP_VER}-mbstring" "php${PHP_VER}-xml" "php${PHP_VER}-zip" "php${PHP_VER}-curl" \
+    "php${PHP_VER}-opcache" "php${PHP_VER}-redis" "php${PHP_VER}-apcu" \
+    composer
+
+timedatectl set-timezone America/Sao_Paulo 2>/dev/null || ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
+
+# ----------------------------------------------------------------------------
+log "2/9 Usuário de sistema '$APP_USER'"
+if ! id "$APP_USER" &>/dev/null; then
+    useradd --system --home-dir "$APP_DIR" --shell /usr/sbin/nologin "$APP_USER"
+fi
+chown -R "$APP_USER:$APP_USER" "$APP_DIR"
+# git como root no diretório do app (git pull no deploy)
+git config --system --add safe.directory "$APP_DIR" 2>/dev/null || true
+install -d -o "$APP_USER" -g "$APP_USER" -m 0750 "$APP_DIR/var"
+
+# ----------------------------------------------------------------------------
+log "3/9 Segredos (.env.local)"
+ENV_LOCAL="$APP_DIR/.env.local"
+if [[ ! -f "$ENV_LOCAL" ]]; then
+    DB_PASS="$(openssl rand -hex 24)"
+    cat > "$ENV_LOCAL" <<EOF
+# Gerado por deploy/lxc/install.sh em $(date -Iseconds). NÃO versionar.
+APP_ENV=${APP_ENV}
+APP_DEBUG=$([[ $APP_ENV == dev ]] && echo 1 || echo 0)
+APP_SECRET=$(openssl rand -hex 32)
+DATABASE_URL="postgresql://${DB_USER}:${DB_PASS}@127.0.0.1:5432/${DB_NAME}?serverVersion=${PG_VER}&charset=utf8"
+MESSENGER_TRANSPORT_DSN=redis://127.0.0.1:6379/inventory
+API_TOKEN=$(openssl rand -hex 32)
+EOF
+    echo "Criado $ENV_LOCAL"
+else
+    echo "Mantido $ENV_LOCAL existente"
+    sed -i "s/^APP_ENV=.*/APP_ENV=${APP_ENV}/" "$ENV_LOCAL"
+fi
+chown "$APP_USER:$APP_USER" "$ENV_LOCAL"
+chmod 0640 "$ENV_LOCAL"
+DB_PASS="$(sed -nE 's#^DATABASE_URL="postgresql://[^:]+:([^@]+)@.*#\1#p' "$ENV_LOCAL")"
+[[ -n "$DB_PASS" ]] || die "Não consegui ler a senha do banco em $ENV_LOCAL"
+
+# ----------------------------------------------------------------------------
+log "4/9 PostgreSQL ${PG_VER}"
+install -m 0644 "$SCRIPT_DIR/postgresql/bianchi.conf" "/etc/postgresql/${PG_VER}/main/conf.d/bianchi.conf"
+systemctl enable --now "postgresql@${PG_VER}-main"
+systemctl restart "postgresql@${PG_VER}-main"
+
+sudo_pg() { runuser -u postgres -- psql -v ON_ERROR_STOP=1 -qAt "$@"; }
+if [[ -z "$(sudo_pg -c "SELECT 1 FROM pg_roles WHERE rolname='${DB_USER}'")" ]]; then
+    sudo_pg -c "CREATE ROLE ${DB_USER} LOGIN PASSWORD '${DB_PASS}'"
+else
+    sudo_pg -c "ALTER ROLE ${DB_USER} PASSWORD '${DB_PASS}'"
+fi
+for db in "$DB_NAME" "${DB_NAME}_test"; do
+    if [[ -z "$(sudo_pg -c "SELECT 1 FROM pg_database WHERE datname='${db}'")" ]]; then
+        sudo_pg -c "CREATE DATABASE ${db} OWNER ${DB_USER} ENCODING 'UTF8' TEMPLATE template0"
+    fi
+    sudo_pg -d "$db" -c "CREATE EXTENSION IF NOT EXISTS ltree; CREATE EXTENSION IF NOT EXISTS pg_trgm;"
+done
+[[ "$APP_ENV" == "dev" ]] || sudo_pg -c "DROP DATABASE IF EXISTS ${DB_NAME}_test"
+
+# ----------------------------------------------------------------------------
+log "5/9 Valkey"
+VALKEY_CONF=/etc/valkey/valkey.conf
+sed -i -E 's/^#?\s*bind .*/bind 127.0.0.1 -::1/' "$VALKEY_CONF"
+sed -i -E 's/^#?\s*appendonly .*/appendonly yes/' "$VALKEY_CONF"
+# Fila não pode perder mensagens por eviction
+if grep -qE '^#?\s*maxmemory-policy' "$VALKEY_CONF"; then
+    sed -i -E 's/^#?\s*maxmemory-policy .*/maxmemory-policy noeviction/' "$VALKEY_CONF"
+else
+    echo 'maxmemory-policy noeviction' >> "$VALKEY_CONF"
+fi
+systemctl enable --now valkey-server
+systemctl restart valkey-server
+
+# ----------------------------------------------------------------------------
+log "6/9 PHP ${PHP_VER}-FPM"
+install -m 0644 "$SCRIPT_DIR/php/99-bianchi.ini" "/etc/php/${PHP_VER}/fpm/conf.d/99-bianchi.ini"
+install -m 0644 "$SCRIPT_DIR/php/99-bianchi.ini" "/etc/php/${PHP_VER}/cli/conf.d/99-bianchi.ini"
+if [[ "$APP_ENV" == "prod" ]]; then
+    install -m 0644 "$SCRIPT_DIR/php/99-bianchi-prod.ini" "/etc/php/${PHP_VER}/fpm/conf.d/99-bianchi-prod.ini"
+else
+    rm -f "/etc/php/${PHP_VER}/fpm/conf.d/99-bianchi-prod.ini"
+fi
+sed "s#@APP_DIR@#${APP_DIR}#g; s#@APP_USER@#${APP_USER}#g" "$SCRIPT_DIR/php/pool.conf" \
+    > "/etc/php/${PHP_VER}/fpm/pool.d/bianchi.conf"
+rm -f "/etc/php/${PHP_VER}/fpm/pool.d/www.conf"
+php-fpm${PHP_VER} -t
+systemctl enable --now "php${PHP_VER}-fpm"
+
+# ----------------------------------------------------------------------------
+log "7/9 Aplicação (composer, migrations, cache)"
+as_app() { runuser -u "$APP_USER" -- env HOME="$APP_DIR/var" COMPOSER_HOME="$APP_DIR/var/composer" "$@"; }
+cd "$APP_DIR"
+if [[ "$APP_ENV" == "prod" ]]; then
+    as_app composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --classmap-authoritative
+else
+    as_app composer install --no-interaction --prefer-dist
+fi
+as_app php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+if [[ "$APP_ENV" == "dev" ]]; then
+    as_app php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test
+fi
+as_app php bin/console cache:clear
+as_app php bin/console messenger:setup-transports
+systemctl reload "php${PHP_VER}-fpm"
+
+# ----------------------------------------------------------------------------
+log "8/9 nginx"
+sed "s#@APP_DIR@#${APP_DIR}#g" "$SCRIPT_DIR/nginx/glpi-bianchi.conf" > /etc/nginx/sites-available/glpi-bianchi.conf
+ln -sf /etc/nginx/sites-available/glpi-bianchi.conf /etc/nginx/sites-enabled/glpi-bianchi.conf
+rm -f /etc/nginx/sites-enabled/default
+nginx -t
+systemctl enable --now nginx
+systemctl reload nginx
+
+# ----------------------------------------------------------------------------
+log "9/9 Workers systemd (${WORKERS}x)"
+sed "s#@APP_DIR@#${APP_DIR}#g; s#@APP_USER@#${APP_USER}#g; s#@PHP_VER@#${PHP_VER}#g" \
+    "$SCRIPT_DIR/systemd/bianchi-worker@.service" > /etc/systemd/system/bianchi-worker@.service
+systemctl daemon-reload
+# desabilita instâncias acima do número pedido
+for unit in $(systemctl list-units --plain --no-legend 'bianchi-worker@*' | awk '{print $1}'); do
+    n="${unit#bianchi-worker@}"; n="${n%.service}"
+    if (( n > WORKERS )); then systemctl disable --now "$unit"; fi
+done
+for i in $(seq 1 "$WORKERS"); do
+    systemctl enable "bianchi-worker@${i}"
+    systemctl restart "bianchi-worker@${i}"
+done
+
+# ----------------------------------------------------------------------------
+IP="$(hostname -I | awk '{print $1}')"
+API_TOKEN="$(sed -n 's/^API_TOKEN=//p' "$ENV_LOCAL")"
+cat <<EOF
+
+$(printf '\033[1;32m')Instalação concluída.$(printf '\033[0m')
+
+  Endpoint do GLPI Agent : http://${IP}/
+  API REST / OpenAPI     : http://${IP}/api/docs
+  Token da API           : ${API_TOKEN}
+                           (guardado em ${ENV_LOCAL})
+
+  Teste rápido:
+    cd ${APP_DIR} && make agent-sample HTTP_URL=http://127.0.0.1/
+    curl -s -H "Authorization: Bearer ${API_TOKEN}" http://127.0.0.1/api/assets | head
+
+  Agente (em uma máquina de teste):
+    glpi-agent --server http://${IP}/ --force --debug
+
+  Operação: make status | make logs | make update
+EOF

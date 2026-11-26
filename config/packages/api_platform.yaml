@@ -1,0 +1,32 @@
+api_platform:
+    title: 'GLPI Bianchi — Inventário'
+    description: 'API REST de inventário de ativos de TI. Especificação OpenAPI em /api/docs.json'
+    version: '0.1.0'
+    show_webby: false
+    formats:
+        jsonld: ['application/ld+json']
+        json: ['application/json']
+    docs_formats:
+        jsonld: ['application/ld+json']
+        jsonopenapi: ['application/vnd.openapi+json']
+        html: ['text/html']
+    mapping:
+        paths:
+            - '%kernel.project_dir%/src/Organization/Entity'
+            - '%kernel.project_dir%/src/Identity/Entity'
+            - '%kernel.project_dir%/src/Asset/Entity'
+            - '%kernel.project_dir%/src/Software/Entity'
+            - '%kernel.project_dir%/src/Network/Entity'
+            - '%kernel.project_dir%/src/Inventory/Entity'
+    defaults:
+        stateless: true
+        pagination_items_per_page: 50
+        pagination_maximum_items_per_page: 500
+        pagination_client_items_per_page: true
+        cache_headers:
+            vary: ['Content-Type', 'Authorization', 'Origin']
+    swagger:
+        api_keys:
+            bearer:
+                name: Authorization
+                type: header

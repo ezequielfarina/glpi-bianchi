@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint + PHPStan + Rector
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: intl, pdo_pgsql, zlib, apcu, redis
+          tools: composer:v2
+          coverage: none
+      - uses: ramsey/composer-install@v3
+      - name: Aquecer container (PHPStan/Rector leem o XML do container)
+        run: php bin/console cache:warmup --env=dev
+        env:
+          DATABASE_URL: postgresql://bianchi:bianchi@127.0.0.1:5432/bianchi?serverVersion=17&charset=utf8
+      - run: vendor/bin/php-cs-fixer fix --dry-run --diff
+      - run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+      - run: vendor/bin/rector process --dry-run --no-progress-bar
+
+  tests:
+    name: PHPUnit (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4']
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: bianchi
+          POSTGRES_PASSWORD: bianchi
+          POSTGRES_DB: bianchi_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U bianchi" --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgresql://bianchi:bianchi@127.0.0.1:5432/bianchi?serverVersion=17&charset=utf8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: intl, pdo_pgsql, zlib, apcu
+          tools: composer:v2
+          coverage: none
+      - uses: ramsey/composer-install@v3
+      - name: Migrations (banco de teste)
+        run: php bin/console doctrine:migrations:migrate --no-interaction --env=test
+      - name: Mapeamento ORM x schema
+        run: php bin/console doctrine:schema:validate --env=test
+      - name: Migrations reversíveis (down + up)
+        run: |
+          php bin/console doctrine:migrations:migrate first --no-interaction --env=test
+          php bin/console doctrine:migrations:migrate --no-interaction --env=test
+      - run: vendor/bin/phpunit --testdox
+
+  shell:
+    name: ShellCheck (deploy/tools)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck -S warning deploy/lxc/install.sh tools/*.sh

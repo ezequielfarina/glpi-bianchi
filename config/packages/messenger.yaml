@@ -1,0 +1,24 @@
+framework:
+    messenger:
+        failure_transport: failed
+
+        transports:
+            # Ingestão assíncrona de inventário. Consumidor: `bin/console messenger:consume inventory`
+            inventory:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                retry_strategy:
+                    max_retries: 3
+                    delay: 5000
+                    multiplier: 3
+                    max_delay: 300000
+            failed: '%env(MESSENGER_FAILED_DSN)%'
+
+        routing:
+            App\Inventory\Message\ProcessInventory: inventory
+
+        buses:
+            messenger.bus.default:
+                middleware:
+                    # O handler controla a própria transação (advisory lock por device)
+                    - doctrine_ping_connection
+                    - doctrine_close_connection

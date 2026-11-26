@@ -1,0 +1,145 @@
+# Modelo de dados
+
+PostgreSQL 17 · extensões `ltree`, `pg_trgm` · migrations em [`migrations/`](../../migrations/)
+
+| Migration | Conteúdo |
+|---|---|
+| `Version20261126000000` | extensões |
+| `Version20261126000100` | tabelas, PKs, FKs, índices (compatível com o mapeamento Doctrine) |
+| `Version20261126000200` | triggers ltree, índices GiST/GIN, seeds (`root`, tipos de ativo) |
+
+## Diagrama ER
+
+```mermaid
+erDiagram
+    organization ||--o{ organization : parent
+    organization ||--o{ location : ""
+    location ||--o{ location : parent
+    organization ||--o{ asset : ""
+    organization ||--o{ app_group : ""
+    organization ||--o{ vlan : ""
+    app_user }o--o{ app_group : user_group
+    asset_type ||--o{ asset : ""
+    asset_type ||--o{ asset_model : ""
+    manufacturer ||--o{ asset_model : ""
+    manufacturer ||--o{ asset : ""
+    manufacturer ||--o{ component : ""
+    manufacturer ||--o{ software : publisher
+    asset_model ||--o{ asset : ""
+    location ||--o{ asset : ""
+    app_user ||--o{ asset : "user"
+    app_group ||--o{ asset : "tech_group"
+    asset ||--o{ component : ""
+    asset ||--o{ network_port : ""
+    network_port ||--o{ ip_address : ""
+    network_port }o--o{ vlan : network_port_vlan
+    software ||--o{ software_version : ""
+    software_version ||--o{ software_installation : ""
+    asset ||--o{ software_installation : ""
+    asset ||--o{ asset_history : ""
+    asset ||--o{ locked_field : ""
+    agent }o--|| asset : ""
+    agent ||--o{ raw_inventory : ""
+    raw_inventory }o--|| asset : ""
+```
+
+## Dicionário
+
+### Organização e identidade
+
+| Tabela | Descrição | Pontos de atenção |
+|---|---|---|
+| `organization` | unidade organizacional (a "Entidade" do GLPI) | `code` único e estável; `path` ltree via trigger |
+| `location` | localização física hierárquica | `UNIQUE (organization_id, parent_id, name)`; `path` ltree |
+| `app_user` | pessoas (usuário do ativo, responsável) | `username` minúsculo e único; `auth_source` local/ldap/oidc |
+| `app_group` | grupos responsáveis | `UNIQUE (organization_id, name)` |
+| `user_group` | N:N usuário ↔ grupo | PK composta |
+
+### Ativos
+
+| Tabela | Descrição | Pontos de atenção |
+|---|---|---|
+| `asset_type` | tipos (computer, network_equipment, printer...) | seed na migration; `inventoriable` = recebe agente |
+| `manufacturer` | fabricantes e editores | dedup por `normalized_name` |
+| `asset_model` | modelo comercial | `UNIQUE (asset_type_id, manufacturer_id, name)` |
+| `asset` | **o ativo** (tabela única, ver ADR-0003) | `uuid` público (v7); `hardware_uuid`/`serial_number` = chaves de matching; `attributes` JSONB+GIN; `deleted_at` = lixeira; `os_*` = SO embutido |
+| `component` | CPU, RAM, disco, GPU... | `kind` enum; `capacity_mib`/`frequency_mhz`; `dynamic` = veio do agente |
+| `locked_field` | campos que o inventário não sobrescreve | `asset_id NULL` = trava global |
+| `asset_history` | auditoria por campo (append-only) | maior crescimento; ver Manutenção |
+
+### Software
+
+| Tabela | Descrição | Pontos de atenção |
+|---|---|---|
+| `software` | catálogo | dedup por `normalized_key` = nome + editor |
+| `software_version` | versão + arquitetura | `''` em vez de NULL, para a UNIQUE funcionar |
+| `software_installation` | software instalado no ativo | `UNIQUE (asset_id, software_version_id)`; ~300–1500 linhas por estação Windows |
+
+### Rede
+
+| Tabela | Descrição | Pontos de atenção |
+|---|---|---|
+| `network_port` | NIC / porta de switch | MAC normalizado `aa:bb:..`; `if_index` p/ SNMP (fase 2) |
+| `ip_address` | IPs da porta | texto canônico (`inet_ntop`) + `prefix_length`; fase 2: tipo `inet` |
+| `vlan` | VLAN 802.1Q | `UNIQUE (organization_id, tag)` |
+| `network_port_vlan` | N:N porta ↔ VLAN | |
+
+### Inventário
+
+| Tabela | Descrição | Pontos de atenção |
+|---|---|---|
+| `agent` | GLPI Agent que contatou | `device_id` único; `last_contact_at` indexado |
+| `raw_inventory` | payload recebido (JSONB) | `status` received/processing/processed/failed/rejected; `duration_ms` |
+| `messenger_messages` | fila "failed" do Messenger | criada por `messenger:setup-transports`; fora do schema diff |
+
+## Objetos fora do ORM
+
+| Objeto | Onde | Por quê |
+|---|---|---|
+| `app_tree_path()` + `trg_*_path` | 000200 | calcula `path` a partir de `parent_id` e bloqueia ciclos |
+| `app_tree_path_cascade()` + `trg_*_path_cascade` | 000200 | reescreve a subárvore ao mudar de pai |
+| `gist_organization_path`, `gist_location_path` | 000200 | operadores `<@`, `@>`, `~` |
+| `gin_asset_attributes` (`jsonb_path_ops`) | 000200 | filtros `attributes @> '{...}'` |
+| `gin_asset_name_trgm`, `gin_software_name_trgm` | 000200 | `ILIKE '%termo%'` indexado (busca da UI/API) |
+
+Esses índices são registrados em `src/Shared/Doctrine/SchemaExtrasListener.php`; sem isso, o `make diff` tentaria removê-los.
+
+## Consultas úteis
+
+```sql
+-- Subárvore de uma organização
+SELECT o.code, o.path FROM organization o
+WHERE o.path <@ (SELECT path FROM organization WHERE code = 'filial-sp');
+
+-- De quem é este MAC?
+SELECT a.name, a.serial_number, p.name AS iface
+FROM network_port p JOIN asset a ON a.id = p.asset_id
+WHERE p.mac_address = 'b0:26:28:aa:bb:01';
+
+-- Ativos sem inventário há mais de 30 dias
+SELECT name, last_inventory_at FROM asset
+WHERE dynamic AND deleted_at IS NULL AND last_inventory_at < now() - interval '30 days'
+ORDER BY last_inventory_at;
+
+-- Versões de um software instaladas no parque
+SELECT sv.version, count(*) FROM software s
+JOIN software_version sv ON sv.software_id = s.id
+JOIN software_installation si ON si.software_version_id = sv.id
+WHERE s.name ILIKE '%openssh%' GROUP BY 1 ORDER BY 2 DESC;
+
+-- Saúde da ingestão (painel Grafana)
+SELECT date_trunc('hour', received_at) h, status, count(*), avg(duration_ms)::int ms
+FROM raw_inventory WHERE received_at > now() - interval '24 hours'
+GROUP BY 1, 2 ORDER BY 1;
+```
+
+## Manutenção
+
+- **Backup:** `pg_dump -Fc bianchi` diário + backup do CT no PBS. Teste o restore mensalmente.
+- **`asset_history`:** acima de ~50M linhas, particionar por `RANGE (created_at)` mensal
+  (migration dedicada + `pg_partman` exige ADR).
+- **`raw_inventory`:** o payload ocupa espaço (TOAST com `lz4`). Fase 2: limpeza mantendo os N
+  últimos por `device_id`. Paliativo:
+  `DELETE FROM raw_inventory WHERE status='processed' AND received_at < now()-interval '30 days';`
+- **Autovacuum:** as tabelas `software_installation` e `component` têm muito churn. Monitore
+  `pg_stat_user_tables.n_dead_tup` pelo Zabbix (template PostgreSQL by Zabbix agent 2).
