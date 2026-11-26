@@ -10,16 +10,24 @@ const token = ref('')
 const error = ref<string | null>(null)
 const busy = ref(false)
 
+/** Aceita o valor puro ou a linha copiada do .env.local ("API_TOKEN=..."), com ou sem aspas. */
+function normalize(raw: string): string {
+  return raw.trim().replace(/^API_TOKEN\s*=\s*/i, '').replace(/^["']|["']$/g, '').replace(/\s+/g, '')
+}
+
 async function submit(): Promise<void> {
   error.value = null
   busy.value = true
+  const value = normalize(token.value)
   try {
-    await api.check(token.value.trim())
-    auth.set(token.value.trim())
+    await api.check(value)
+    auth.set(value)
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
     await router.replace(redirect)
   } catch (e) {
-    error.value = e instanceof ApiError && e.status === 401 ? 'Token inválido.' : 'Não foi possível contatar o servidor.'
+    error.value = e instanceof ApiError && e.status === 401
+      ? `Token inválido (${value.length} caracteres recebidos; o esperado são 64).`
+      : 'Não foi possível contatar o servidor.'
   } finally {
     busy.value = false
   }
@@ -43,7 +51,10 @@ async function submit(): Promise<void> {
         v-model="token"
         class="input mono"
         type="password"
-        autocomplete="current-password"
+        autocomplete="off"
+        spellcheck="false"
+        data-1p-ignore
+        data-lpignore="true"
         required
         placeholder="cole o API_TOKEN"
         :aria-invalid="!!error"

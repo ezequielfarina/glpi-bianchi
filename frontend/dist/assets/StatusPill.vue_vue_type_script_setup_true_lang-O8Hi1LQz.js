@@ -1,1 +1,0 @@
-import{S as l}from"./format-BCLHUVKt.js";import{d as e,o,c as n,n as p,t as c,C as r}from"./index-Ca8unQUP.js";const S=e({__name:"StatusPill",props:{status:{}},setup(a){const s=a,t=r(()=>l[s.status??""]??{label:s.status??"—",cls:"pill-muted"});return(i,m)=>(o(),n("span",{class:p(["pill",t.value.cls])},c(t.value.label),3))}});export{S as _};
