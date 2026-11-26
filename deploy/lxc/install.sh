@@ -172,6 +172,15 @@ systemctl enable --now "php${PHP_VER}-fpm"
 log "7/9 Aplicação (composer, migrations, cache)"
 as_app() { runuser -u "$APP_USER" -- env HOME="$APP_DIR/var" COMPOSER_HOME="$APP_DIR/var/composer" "$@"; }
 cd "$APP_DIR"
+# composer.lock fora de sincronia com composer.json (dependência nova adicionada):
+# em dev resolve sozinho com `composer update`; em prod exige o lock versionado correto.
+if [[ -f composer.lock ]] && ! as_app composer validate --no-check-publish --no-check-all --quiet >/dev/null 2>&1; then
+    if [[ "$APP_ENV" == "prod" ]]; then
+        die "composer.lock desatualizado em relação ao composer.json — gere o lock em dev e versione antes do deploy"
+    fi
+    warn "composer.lock desatualizado — executando composer update (dev)"
+    as_app composer update --no-interaction --prefer-dist
+fi
 if [[ "$APP_ENV" == "prod" ]]; then
     as_app composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --classmap-authoritative
 else
