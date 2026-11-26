@@ -215,6 +215,8 @@ for unit in $(systemctl list-units --plain --no-legend 'bianchi-worker@*' | awk 
 done
 for i in $(seq 1 "$WORKERS"); do
     systemctl enable "bianchi-worker@${i}"
+    # zera o StartLimitBurst de falhas anteriores (ex.: deploy quebrado antes deste)
+    systemctl reset-failed "bianchi-worker@${i}" 2>/dev/null || true
     systemctl restart "bianchi-worker@${i}"
 done
 
