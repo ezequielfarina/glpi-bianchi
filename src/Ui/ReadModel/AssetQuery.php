@@ -68,6 +68,7 @@ final readonly class AssetQuery
                    t.code AS type, t.label AS type_label, m.name AS manufacturer, mo.name AS model,
                    l.name AS location, a.last_inventory_at, a.dynamic,
                    (a.attributes->>'memory_mib')::int AS memory_mib,
+                   (SELECT uuid FROM attachment WHERE owner_type = 'asset' AND owner_id = a.id AND kind = 'photo' ORDER BY created_at DESC LIMIT 1) AS photo_uuid,
                    (SELECT i.address FROM network_port p JOIN ip_address i ON i.network_port_id = p.id
                      WHERE p.asset_id = a.id AND i.version = 4 AND NOT p.virtual AND i.address NOT LIKE '169.254.%'
                      ORDER BY p.id, i.id LIMIT 1) AS ip
@@ -92,7 +93,7 @@ final readonly class AssetQuery
         }
 
         $asset = $this->db->fetchAssociative(<<<'SQL'
-            SELECT a.id, a.uuid, a.name, a.status, a.serial_number, a.inventory_number, a.hardware_uuid,
+            SELECT a.id, a.uuid, a.name, a.status, a.serial_number, a.inventory_number, a.hardware_uuid, a.deleted_at,
                    a.os_name, a.os_full_name, a.os_version, a.os_service_pack, a.os_architecture,
                    a.os_kernel_version, a.os_installed_at, a.attributes, a.dynamic, a.comment,
                    a.last_inventory_at, a.created_at, a.updated_at,
@@ -164,6 +165,25 @@ final readonly class AssetQuery
             FROM agent WHERE asset_id = :id ORDER BY last_contact_at DESC
             SQL, ['id' => $id]);
 
+        $attachments = $this->db->fetchAllAssociative(
+            "SELECT uuid, kind, filename, mime_type, size_bytes, description, created_by, created_at FROM attachment WHERE owner_type = 'asset' AND owner_id = ? ORDER BY kind DESC, created_at DESC",
+            [$id],
+        );
+
+        $licenses = $this->db->fetchAllAssociative(<<<'SQL'
+            SELECT la.id AS assignment_id, l.id, l.name, l.expires_at, t.name AS license_type
+            FROM license_assignment la JOIN license l ON l.id = la.license_id JOIN license_type t ON t.id = l.license_type_id
+            WHERE la.asset_id = :id ORDER BY l.name
+            SQL, ['id' => $id]);
+
+        $contracts = $this->db->fetchAllAssociative(<<<'SQL'
+            SELECT c.id, c.title, c.number, c.end_date, s.name AS supplier
+            FROM contract_asset ca JOIN contract c ON c.id = ca.contract_id LEFT JOIN supplier s ON s.id = c.supplier_id
+            WHERE ca.asset_id = :id ORDER BY c.end_date NULLS LAST
+            SQL, ['id' => $id]);
+
+        $locks = $this->db->fetchFirstColumn('SELECT field FROM locked_field WHERE asset_id = :id ORDER BY field', ['id' => $id]);
+
         $inventories = $this->db->fetchAllAssociative(<<<'SQL'
             SELECT id, status, outcome, changes, partial, source_format, size_bytes, duration_ms, received_at, left(error, 500) AS error
             FROM raw_inventory WHERE asset_id = :id ORDER BY id DESC LIMIT 20
@@ -176,6 +196,11 @@ final readonly class AssetQuery
             'history' => $history,
             'agents' => $agents,
             'inventories' => $inventories,
+            'attachments' => $attachments,
+            'photo_uuid' => array_values(array_filter($attachments, static fn (array $f): bool => 'photo' === $f['kind']))[0]['uuid'] ?? null,
+            'licenses' => $licenses,
+            'contracts' => $contracts,
+            'locked_fields' => $locks,
         ];
     }
 }

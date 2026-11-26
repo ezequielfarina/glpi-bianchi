@@ -18,9 +18,10 @@ final class Settings
 {
     public const string INVENTORY_FREQUENCY_HOURS = 'inventory.frequency_hours';
     public const string AGENT_HTTP_PORT = 'agent.http_port';
+    public const string ASSET_INVENTORY_PREFIX = 'asset.inventory_prefix';
 
     /**
-     * @var array<string, array{label: string, help: string, type: 'int', min: int, max: int, unit?: string}>
+     * @var array<string, array{label: string, help: string, type: 'int'|'string', min: int, max: int, unit?: string, pattern?: string}>
      */
     public const array DEFINITIONS = [
         self::INVENTORY_FREQUENCY_HOURS => [
@@ -30,6 +31,14 @@ final class Settings
             'min' => 1,
             'max' => 168,
             'unit' => 'horas',
+        ],
+        self::ASSET_INVENTORY_PREFIX => [
+            'label' => 'Prefixo do patrimônio',
+            'help' => 'Prefixo dos números de patrimônio gerados automaticamente (ex.: BIA- → BIA-000123). Não altera números já emitidos.',
+            'type' => 'string',
+            'min' => 0,
+            'max' => 16,
+            'pattern' => '/^[A-Za-z0-9._\/-]*$/',
         ],
         self::AGENT_HTTP_PORT => [
             'label' => 'Porta HTTP do agente',
@@ -98,11 +107,21 @@ final class Settings
     public function update(array $values): array
     {
         $errors = [];
+        /** @var array<string, int|string> $clean */
         $clean = [];
         foreach ($values as $name => $value) {
             $def = self::DEFINITIONS[$name] ?? null;
             if (null === $def) {
                 $errors[$name] = 'Configuração desconhecida.';
+                continue;
+            }
+            if ('string' === $def['type']) {
+                $str = \is_scalar($value) ? trim((string) $value) : '';
+                if (mb_strlen($str) > $def['max'] || 1 !== preg_match($def['pattern'] ?? '/.*/', $str)) {
+                    $errors[$name] = \sprintf('Até %d caracteres: letras, números, ponto, hífen, barra ou sublinhado.', $def['max']);
+                    continue;
+                }
+                $clean[$name] = $str;
                 continue;
             }
             if (!\is_int($value) && !(\is_string($value) && ctype_digit($value))) {
@@ -136,11 +155,12 @@ final class Settings
         return [];
     }
 
-    private function defaultFor(string $name): int
+    private function defaultFor(string $name): int|string
     {
         return match ($name) {
             self::INVENTORY_FREQUENCY_HOURS => $this->inventoryFrequencyHours,
             self::AGENT_HTTP_PORT => 62354,
+            self::ASSET_INVENTORY_PREFIX => 'BIA-',
             default => 0,
         };
     }

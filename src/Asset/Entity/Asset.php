@@ -42,6 +42,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity(repositoryClass: AssetRepository::class)]
 #[ORM\Table(name: 'asset')]
 #[ORM\UniqueConstraint(name: 'uniq_asset_uuid', columns: ['uuid'])]
+#[ORM\UniqueConstraint(name: 'uniq_asset_inventory_number', columns: ['inventory_number'])]
 #[ORM\Index(name: 'idx_asset_hardware_uuid', columns: ['hardware_uuid'])]
 #[ORM\Index(name: 'idx_asset_serial', columns: ['serial_number'])]
 #[ORM\Index(name: 'idx_asset_name', columns: ['name'])]
@@ -116,7 +117,7 @@ class Asset
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $serialNumber = null;
 
-    /** Patrimônio / etiqueta interna ("otherserial" no GLPI). */
+    /** Patrimônio / etiqueta interna ("otherserial" no GLPI). Gerado automaticamente (InventoryNumberGenerator), editável, único. */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $inventoryNumber = null;
 

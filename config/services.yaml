@@ -15,6 +15,8 @@ services:
             string $defaultOrganizationCode: '%app.inventory.default_organization%'
             int $maxPayloadBytes: '%app.inventory.max_payload_bytes%'
             string $apiToken: '%env(API_TOKEN)%'
+            string $dataEncryptionKey: '%env(DATA_ENCRYPTION_KEY)%'
+            string $attachmentsDir: '%env(resolve:ATTACHMENTS_DIR)%'
 
     App\:
         resource: '../src/'
@@ -29,6 +31,9 @@ services:
             - '../src/Inventory/Protocol/PayloadFormat.php'
             - '../src/Inventory/Protocol/ProtocolException.php'
             - '../src/Inventory/Import/ImportContext.php'
+            - '../src/Ui/Write/Payload.php'
+            - '../src/Ui/Write/ValidationException.php'
+            - '../src/Ui/Write/NotFoundException.php'
 
     # Conversor/validador oficial do formato de inventário (MIT, glpi-project/inventory_format)
     Glpi\Inventory\Converter: ~

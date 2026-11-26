@@ -13,3 +13,4 @@ Para uma nova decisão, copie [`0000-template.md`](0000-template.md) usando o pr
 | [0006](0006-deploy-ct-lxc.md) | Deploy em CT LXC (Proxmox) com systemd, sem Docker | aceito |
 | [0007](0007-frontend-build-versionado.md) | Frontend Vue 3 com build estático versionado | aceito |
 | [0008](0008-acionamento-remoto-do-agente.md) | Acionamento remoto do agente (/now) e frequência no painel | aceito |
+| [0009](0009-gestao-fornecedores-contratos-licencas.md) | Gestão: fornecedores, contratos, licenças, anexos, patrimônio | aceito |

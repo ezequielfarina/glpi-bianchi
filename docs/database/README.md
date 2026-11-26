@@ -8,6 +8,7 @@ PostgreSQL 17 · extensões `ltree`, `pg_trgm` · migrations em [`migrations/`](
 | `Version20261126000100` | tabelas, PKs, FKs, índices (compatível com o mapeamento Doctrine) |
 | `Version20261126000200` | triggers ltree, índices GiST/GIN, seeds (`root`, tipos de ativo) |
 | `Version20261126160000` | `raw_inventory.outcome/changes` (+ backfill), tabela `app_setting` |
+| `Version20261126170000` | fornecedores, contatos, contratos, licenças, anexos, patrimônio sequencial (ADR-0009) |
 
 ## Diagrama ER
 
@@ -84,6 +85,19 @@ erDiagram
 | `ip_address` | IPs da porta | texto canônico (`inet_ntop`) + `prefix_length`; fase 2: tipo `inet` |
 | `vlan` | VLAN 802.1Q | `UNIQUE (organization_id, tag)` |
 | `network_port_vlan` | N:N porta ↔ VLAN | |
+
+### Gestão (ADR-0009)
+
+| Tabela | Descrição | Pontos de atenção |
+|---|---|---|
+| `supplier` / `contact` | fornecedor (CNPJ único) e pessoas de contato | contato some com o fornecedor (CASCADE) |
+| `contract_type` / `contract` | tipo editável; vigência, renovação, aviso, periodicidade, valor `NUMERIC(14,2)` | status calculado: `open`/`active`/`expiring`/`expired` |
+| `contract_asset` | N:N contrato ↔ ativo | |
+| `license_type` / `license_category` | cadastros editáveis; tipo define o modelo padrão (`device`/`user`/`volume`) | tipo em uso não pode ser excluído (RESTRICT) |
+| `license` | assentos, valor unitário, vencimento, `software_match`, `license_key` **cifrada** | CHECK de modelo e assentos ≥ 0 |
+| `license_assignment` | assento consumido por ativo **ou** usuário | CHECK `chk_license_assignment_target`; UNIQUE por (licença, alvo) |
+| `attachment` | fotos/documentos de ativo, contrato, fornecedor, licença | binário em `ATTACHMENTS_DIR`; `sha256` para integridade |
+| `asset_inventory_seq` | sequência do patrimônio automático | fora do schema diff (`schema_filter`) |
 
 ### Inventário
 

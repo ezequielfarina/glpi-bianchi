@@ -10,6 +10,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- **Gestão (ADR-0009):** fornecedores e contatos; contratos (vigência, renovação, valor, ativos);
+  licenças (tipos/categorias editáveis, por máquina/usuário/volume, chave cifrada, conformidade
+  com software detectado); anexos (fotos e documentos); patrimônio sequencial automático.
+- Cadastro e edição manual de ativos (impressoras, monitores, coletores de dados, tablets, telefones…),
+  com histórico e trava automática de campos editados em ativos do agente.
 - Resultado de cada inventário (novo ativo / atualizado + nº de alterações / sem alterações).
 - Forçar inventário pelo painel (agente e ativo) via `/now` do GLPI Agent, com diagnóstico (ADR-0008).
 - Tela Configurações: frequência de inventário (`expiration`) e porta HTTP do agente.

@@ -96,6 +96,12 @@ else
     echo "Mantido $ENV_LOCAL existente"
     sed -i "s/^APP_ENV=.*/APP_ENV=${APP_ENV}/" "$ENV_LOCAL"
 fi
+# Variáveis adicionadas em versões posteriores: acrescenta só se faltarem (não sobrescreve)
+FILES_DIR=/var/lib/glpi-bianchi/files
+grep -q '^ATTACHMENTS_DIR=' "$ENV_LOCAL" || echo "ATTACHMENTS_DIR=${FILES_DIR}" >> "$ENV_LOCAL"
+# Chave que cifra as chaves de licença no banco. NUNCA é regenerada se já existir.
+grep -q '^DATA_ENCRYPTION_KEY=.\+' "$ENV_LOCAL" || { sed -i '/^DATA_ENCRYPTION_KEY=$/d' "$ENV_LOCAL"; echo "DATA_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$ENV_LOCAL"; }
+install -d -o "$APP_USER" -g "$APP_USER" -m 0750 /var/lib/glpi-bianchi "$FILES_DIR"
 chown "$APP_USER:$APP_USER" "$ENV_LOCAL"
 chmod 0640 "$ENV_LOCAL"
 DB_PASS="$(sed -nE 's#^DATABASE_URL="postgresql://[^:]+:([^@]+)@.*#\1#p' "$ENV_LOCAL")"
@@ -221,6 +227,9 @@ $(printf '\033[1;32m')Instalação concluída.$(printf '\033[0m')
 
   Agente (em uma máquina de teste):
     glpi-agent --server http://${IP}/ --force --debug
+
+  Anexos (fotos, contratos): /var/lib/glpi-bianchi/files
+  IMPORTANTE: faça backup do .env.local — DATA_ENCRYPTION_KEY decifra as chaves de licença.
 
   Operação: make status | make logs | make update
 EOF

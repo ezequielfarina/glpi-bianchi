@@ -7,6 +7,7 @@ namespace App\Inventory\Import;
 use App\Asset\Entity\Asset;
 use App\Asset\Entity\AssetType;
 use App\Asset\Repository\AssetTypeRepository;
+use App\Asset\Service\InventoryNumberGenerator;
 use App\Inventory\Entity\RawInventory;
 use App\Inventory\Import\Section\SectionImporter;
 use App\Organization\Repository\OrganizationRepository;
@@ -29,6 +30,7 @@ final readonly class ComputerImporter
         private AssetMatcher $matcher,
         private AssetTypeRepository $assetTypes,
         private OrganizationRepository $organizations,
+        private InventoryNumberGenerator $inventoryNumbers,
         #[AutowireIterator('app.inventory.section', defaultPriorityMethod: 'priority')]
         private iterable $sections,
         private string $defaultOrganizationCode,
@@ -48,6 +50,7 @@ final readonly class ComputerImporter
             $name = Value::str($content['hardware']['name'] ?? null) ?? $raw->getDeviceId();
             $organization = $agent?->getOrganization() ?? $this->organizations->getByCode($this->defaultOrganizationCode);
             $asset = new Asset($organization, $type, $name);
+            $asset->setInventoryNumber($this->inventoryNumbers->next());
             $this->em->persist($asset);
         }
 

@@ -8,7 +8,7 @@ doctrine:
         mapping_types:
             ltree: ltree
         # Tabelas fora do ORM (transporte "failed" do Messenger) ficam fora do schema diff
-        schema_filter: ~^(?!messenger_messages)~
+        schema_filter: ~^(?!(messenger_messages|asset_inventory_seq)$)~
     orm:
         auto_generate_proxy_classes: true
         enable_lazy_ghost_objects: true
@@ -50,6 +50,26 @@ doctrine:
                 is_bundle: false
                 dir: '%kernel.project_dir%/src/Inventory/Entity'
                 prefix: 'App\Inventory\Entity'
+            Attachment:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Attachment/Entity'
+                prefix: 'App\Attachment\Entity'
+            Supplier:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Supplier/Entity'
+                prefix: 'App\Supplier\Entity'
+            Contract:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Contract/Entity'
+                prefix: 'App\Contract\Entity'
+            License:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/License/Entity'
+                prefix: 'App\License\Entity'
             Settings:
                 type: attribute
                 is_bundle: false
