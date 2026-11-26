@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DoctrineMigrations;
 
+use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
@@ -101,7 +102,7 @@ final class Version20261126000200 extends AbstractMigration
             $this->addSql(
                 'INSERT INTO asset_type (code, label, icon, inventoriable) VALUES (?, ?, ?, ?)',
                 [$code, $label, $icon, $inventoriable],
-                [\PDO::PARAM_STR, \PDO::PARAM_STR, \PDO::PARAM_STR, \PDO::PARAM_BOOL],
+                [ParameterType::STRING, ParameterType::STRING, ParameterType::STRING, ParameterType::BOOLEAN],
             );
         }
     }
