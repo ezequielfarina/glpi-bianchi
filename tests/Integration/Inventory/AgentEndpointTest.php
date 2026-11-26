@@ -135,6 +135,12 @@ final class AgentEndpointTest extends WebTestCase
         self::assertSame('ezequiel.farina', $asset->getAttribute('last_logged_user'), 'campo ausente no parcial → mantém');
     }
 
+    public function testBrowserOnRootIsRedirectedToWebInterface(): void
+    {
+        $this->client->request('GET', '/');
+        self::assertResponseRedirects('/app/', 302);
+    }
+
     public function testInvalidJsonReturns400(): void
     {
         $this->client->request('POST', '/', server: ['CONTENT_TYPE' => 'application/json'], content: '{nope');

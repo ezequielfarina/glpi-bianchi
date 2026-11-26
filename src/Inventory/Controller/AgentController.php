@@ -15,6 +15,7 @@ use App\Inventory\Service\AgentRegistry;
 use App\Inventory\Service\InventoryReceiver;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpFoundation\Response;
@@ -52,14 +53,19 @@ final readonly class AgentController
     ) {
     }
 
-    #[Route('/', name: 'agent_root', methods: ['POST'])]
+    #[Route('/', name: 'agent_root', methods: ['GET', 'POST'])]
     #[Route('/front/inventory.php', name: 'agent_legacy', methods: ['GET', 'POST'])]
     #[Route('/inventory', name: 'agent_inventory', methods: ['GET', 'POST'])]
     #[Route('/Inventory', name: 'agent_inventory_glpi', methods: ['GET', 'POST'])]
     public function __invoke(Request $request): Response
     {
         if ($request->isMethod('GET')) {
-            // GLPI devolve 400 para GET sem payload; útil como health-check do vhost
+            // Navegador na raiz → interface web (o nginx já faz isso; aqui é o fallback).
+            if ('/' === $request->getPathInfo()) {
+                return new RedirectResponse('/app/', Response::HTTP_FOUND);
+            }
+
+            // GET nas rotas do agente: health-check do vhost
             return new Response('glpi-bianchi inventory endpoint', Response::HTTP_OK, ['Content-Type' => 'text/plain']);
         }
 
