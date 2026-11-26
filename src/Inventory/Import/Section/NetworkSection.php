@@ -40,7 +40,8 @@ final readonly class NetworkSection implements SectionImporter
             if ('loopback' === $type || 'lo' === $name) {
                 continue;
             }
-            $mac = NetworkPort::normalizeMac(Value::str($n['macaddr'] ?? null, 32));
+            // JSON (inventory_format) usa "mac"; "macaddr" aparece em conversões antigas do XML
+            $mac = NetworkPort::normalizeMac(Value::str($n['mac'] ?? $n['macaddr'] ?? null, 32));
             $key = ($mac ?? '').'|'.mb_strtolower($name);
 
             $groups[$key] ??= [

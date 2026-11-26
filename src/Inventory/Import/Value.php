@@ -10,10 +10,10 @@ namespace App\Inventory\Import;
  */
 final class Value
 {
+    /** Placeholders genéricos. Seriais/UUIDs/modelos inválidos: ver Blacklist. */
     private const array JUNK = [
         '', 'n/a', 'na', 'none', 'null', 'unknown', 'not specified', 'not available',
-        'to be filled by o.e.m.', 'default string', 'system serial number', 'system product name',
-        '0', '00000000', '0000000000', '123456789', 'xxxxxxxxxx', '03000200-0400-0500-0006-000700080009',
+        'to be filled by o.e.m.', 'default string',
     ];
 
     public static function str(mixed $value, int $maxLength = 255): ?string

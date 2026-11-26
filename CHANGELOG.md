@@ -4,6 +4,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Unreleased]
 
+### Corrigido
+- MAC das interfaces lido de `mac` (formato JSON), não `macaddr`.
+- Inventário parcial não apaga mais atributos ausentes do payload (ex.: `last_logged_user`).
+- Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
+
 ### Adicionado
 - Estrutura inicial do projeto (Symfony 7.3, API Platform 4, Doctrine ORM 3, PostgreSQL 17).
 - Endpoint compatível com o GLPI Agent: `/`, `/front/inventory.php`, `/inventory`
@@ -16,4 +21,6 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Hierarquias de organização e localização em `ltree`, mantidas por trigger (com bloqueio de ciclos).
 - API REST com OpenAPI em `/api/docs`, autenticação por token Bearer.
 - Provisionamento de CT LXC Proxmox (Debian 13) via `deploy/lxc/install.sh`, workers em systemd.
+- `Blacklist` de seriais/UUIDs/modelos/fabricantes placeholder (portada do GLPI).
+- Comando `app:inventory:reprocess` (id, `--latest`, `--failed`, `--device`).
 - Documentação: ADRs 0001–0006, modelo de dados, protocolo do agente, importação, deploy e API.

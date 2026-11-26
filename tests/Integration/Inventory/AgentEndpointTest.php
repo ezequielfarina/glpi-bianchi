@@ -83,6 +83,7 @@ final class AgentEndpointTest extends WebTestCase
 
         self::assertCount(1, $asset->getNetworkPorts(), 'loopback descartado; IPv4+IPv6 agrupados na mesma porta');
         self::assertCount(2, $asset->getNetworkPorts()->first()->getIpAddresses());
+        self::assertSame('b0:26:28:aa:bb:01', $asset->getNetworkPorts()->first()->getMacAddress(), 'campo JSON "mac"');
 
         $raw = $this->em()->getRepository(RawInventory::class)->findOneBy(['deviceId' => 'srv-lab01-2026-11-26-10-00-00']);
         self::assertSame(RawInventoryStatus::Processed, $raw?->getStatus());
@@ -119,9 +120,11 @@ final class AgentEndpointTest extends WebTestCase
 
         $partial = $this->fixture();
         $partial['partial'] = true;
+        $hardware = $partial['content']['hardware'];
+        unset($hardware['lastloggeduser']); // agente rodando como SYSTEM, sem sessão
         $partial['content'] = [
             'versionclient' => $partial['content']['versionclient'], // obrigatório no schema
-            'hardware' => $partial['content']['hardware'],
+            'hardware' => $hardware,
             'softwares' => [],
         ];
         $this->post($partial);
@@ -129,6 +132,7 @@ final class AgentEndpointTest extends WebTestCase
         $asset = $this->asset();
         self::assertSame(1, $this->countComponents($asset, ComponentKind::Processor), 'cpus ausente em parcial → mantém');
         self::assertCount(0, $asset->getSoftwareInstallations(), 'softwares presente e vazio → remove dinâmicos');
+        self::assertSame('ezequiel.farina', $asset->getAttribute('last_logged_user'), 'campo ausente no parcial → mantém');
     }
 
     public function testInvalidJsonReturns400(): void

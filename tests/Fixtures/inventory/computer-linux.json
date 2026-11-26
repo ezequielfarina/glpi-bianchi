@@ -11,7 +11,8 @@
             "memory": 16384,
             "swap": 4096,
             "chassis_type": "Rack Mount Chassis",
-            "workgroup": "lab.local"
+            "workgroup": "lab.local",
+            "lastloggeduser": "ezequiel.farina"
         },
         "bios": {
             "ssn": "BX5Q2J2",
@@ -54,8 +55,8 @@
             {"name": "openssh-server", "version": "1:10.0p1-7", "publisher": "Debian", "arch": "amd64"}
         ],
         "networks": [
-            {"description": "eno1", "macaddr": "B0:26:28:AA:BB:01", "ipaddress": "192.168.10.50", "ipmask": "255.255.255.0", "ipgateway": "192.168.10.1", "type": "ethernet", "speed": "1000", "status": "up", "virtualdev": false},
-            {"description": "eno1", "macaddr": "B0:26:28:AA:BB:01", "ipaddress6": "fe80::b226:28ff:feaa:bb01", "ipmask6": "64", "type": "ethernet", "speed": "1000", "status": "up", "virtualdev": false},
+            {"description": "eno1", "mac": "B0:26:28:AA:BB:01", "ipaddress": "192.168.10.50", "ipmask": "255.255.255.0", "ipgateway": "192.168.10.1", "type": "ethernet", "speed": "1000", "status": "up", "virtualdev": false},
+            {"description": "eno1", "mac": "B0:26:28:AA:BB:01", "ipaddress6": "fe80::b226:28ff:feaa:bb01", "ipmask6": "64", "type": "ethernet", "speed": "1000", "status": "up", "virtualdev": false},
             {"description": "lo", "ipaddress": "127.0.0.1", "type": "loopback", "virtualdev": true}
         ]
     }

@@ -14,7 +14,7 @@ use App\Inventory\Entity\Agent;
  * das "regras de importação e vinculação" do GLPI (RuleImportAsset), com ordem fixa:
  *
  *   1. hardware.uuid (SMBIOS)        — mais forte, sobrevive a troca de nome e reinstalação
- *   2. bios.ssn + tipo               — ignora seriais "lixo" (ver Value::JUNK)
+ *   2. bios.ssn + tipo               — ignora seriais placeholder (ver Blacklist)
  *   3. ativo já vinculado ao agente  — mesmo deviceid, ex.: VM sem UUID estável
  *   4. hardware.name + tipo          — último recurso
  *
@@ -32,12 +32,12 @@ final readonly class AssetMatcher
         $hw = \is_array($content['hardware'] ?? null) ? $content['hardware'] : [];
         $bios = \is_array($content['bios'] ?? null) ? $content['bios'] : [];
 
-        if (null !== ($uuid = Value::str($hw['uuid'] ?? null, 64))
+        if (null !== ($uuid = Blacklist::uuid(Value::str($hw['uuid'] ?? null, 64)))
             && null !== ($asset = $this->assets->findOneByHardwareUuid($uuid))) {
             return $asset;
         }
 
-        $serial = Value::str($bios['ssn'] ?? null) ?? Value::str($bios['msn'] ?? null);
+        $serial = Blacklist::serial(Value::str($bios['ssn'] ?? null)) ?? Blacklist::serial(Value::str($bios['msn'] ?? null));
         if (null !== $serial && null !== ($asset = $this->assets->findOneBySerial($serial, $type))) {
             return $asset;
         }

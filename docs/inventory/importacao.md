@@ -24,8 +24,8 @@ sequenceDiagram
 
 | Ordem | Critério | Observação |
 |---|---|---|
-| 1 | `hardware.uuid` | UUID SMBIOS: sobrevive a renomear e a reinstalar o SO |
-| 2 | `bios.ssn` (ou `msn`) + tipo | seriais placeholder são descartados (`Value::JUNK`) |
+| 1 | `hardware.uuid` | UUID SMBIOS: sobrevive a renomear e a reinstalar o SO; UUIDs placeholder são descartados (`Blacklist`) |
+| 2 | `bios.ssn` (ou `msn`) + tipo | seriais placeholder são descartados (`Blacklist`, portada de `src/Blacklist.php` do GLPI) |
 | 3 | ativo vinculado ao agente | mesmo `deviceid`; cobre VMs sem UUID estável |
 | 4 | `hardware.name` + tipo | último recurso |
 
@@ -53,6 +53,8 @@ Para componentes, use `ComponentSynchronizer::sync()`. Adicione uma fixture e um
   inventário. Itens **manuais** nunca são removidos pelo inventário.
 - **Inventário parcial** (`partial: true`): seção ausente = ignorada. Seção presente e vazia = remove os dinâmicos.
 - **Inventário completo:** seção ausente = vazia (remove os dinâmicos).
+- **Campos ausentes:** em `hardware`/`bios`, campo ausente ou vazio **não apaga** o valor anterior
+  (o agente omite, p.ex., `lastloggeduser` quando roda como SYSTEM sem sessão aberta).
 - **Campos travados:** `locked_field (asset_id, field)` impede a sobrescrita; o valor recusado fica em
   `last_rejected_value` para diagnóstico. `asset_id NULL` = trava global.
 - **Histórico:** cada campo alterado e cada componente, software ou porta adicionado/removido gera
@@ -64,7 +66,12 @@ Para componentes, use `ComponentSynchronizer::sync()`. Adicione uma fixture e um
 # Falhas recentes
 psql bianchi -c "SELECT id, device_id, error, received_at FROM raw_inventory WHERE status='failed' ORDER BY id DESC LIMIT 10"
 
-# Reprocessar um inventário (após correção)
+# Reprocessar a partir do payload guardado (após corrigir o importador)
+php bin/console app:inventory:reprocess 42          # um raw_inventory
+php bin/console app:inventory:reprocess --latest    # último completo de cada dispositivo
+php bin/console app:inventory:reprocess --failed    # todos que falharam
+
+# Mensagens que esgotaram o retry do Messenger
 php bin/console messenger:failed:show
 php bin/console messenger:failed:retry <id>
 
