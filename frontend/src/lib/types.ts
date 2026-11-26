@@ -49,6 +49,9 @@ export interface AssetRow {
   manufacturer: string | null
   model: string | null
   location: string | null
+  branch_id: number | null
+  branch: string | null
+  branch_code: string | null
   last_inventory_at: string | null
   dynamic: boolean
   memory_mib: number | null
@@ -167,6 +170,9 @@ export interface AssetDetail {
   model: string | null
   organization: string
   location: string | null
+  branch_id: number | null
+  branch: string | null
+  branch_code: string | null
   user: string | null
   tech_group: string | null
   components: Component[]
@@ -228,6 +234,7 @@ export interface Lookups {
   suppliers: { id: number; name: string }[]
   contracts: { id: number; title: string; number: string | null }[]
   locations: { id: number; name: string }[]
+  branches: { id: number; name: string; code: string | null; kind: BranchKind }[]
   manufacturers: { id: number; name: string }[]
 }
 
@@ -277,5 +284,40 @@ export interface LicenseDetail extends LicenseRow {
   notes: string | null; created_at: string; updated_at: string
   assignments: { id: number; assigned_at: string; notes: string | null; asset_uuid: string | null; asset_name: string | null; inventory_number: string | null; user: string | null; user_name: string | null }[]
   unassigned_detected: { uuid: string; name: string; inventory_number: string | null; software: string; version: string }[]
+  attachments: Attachment[]
+}
+
+export type BranchKind = 'headquarters' | 'branch'
+
+export interface BranchRow {
+  id: number
+  name: string
+  code: string | null
+  kind: BranchKind
+  tax_id: string | null
+  phone: string | null
+  email: string | null
+  zip_code: string | null
+  street: string | null
+  number: string | null
+  complement: string | null
+  district: string | null
+  city: string | null
+  state: string | null
+  latitude: number | null
+  longitude: number | null
+  networks: string[]
+  notes: string | null
+  active: boolean
+  created_at: string
+  updated_at: string
+  assets: number
+  computers: number
+  stale: number
+}
+
+export interface BranchDetail extends BranchRow {
+  by_type: { type: string; type_label: string; total: number }[]
+  unassigned_assets: number
   attachments: Attachment[]
 }

@@ -108,7 +108,7 @@ async function remove(): Promise<void> {
 
         <SupplierFormModal v-if="editing" :supplier="s" @close="editing = false" @saved="editing = false; reload()" />
         <ContactFormModal v-if="contactEdit" :supplier-id="s.id" :contact="contactEdit === 'new' ? null : contactEdit" @close="contactEdit = null" @saved="contactEdit = null; reload()" />
-        <ContractFormModal v-if="newContract && lookups" :lookups="lookups" :supplier-id="s.id" @close="newContract = false" @saved="(id) => router.push(`/contracts/${id}`)" />
+        <ContractFormModal v-if="newContract && lookups" :lookups="lookups" @lookups-changed="(v) => (lookups = v)" :supplier-id="s.id" @close="newContract = false" @saved="(id) => router.push(`/contracts/${id}`)" />
       </template>
     </LoadState>
   </div>

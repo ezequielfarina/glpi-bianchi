@@ -6,8 +6,8 @@ import { ASSIGNMENT_LABEL } from '../lib/format'
 import { notify } from '../lib/toast'
 
 // Lista editável de um cadastro auxiliar (tipos/categorias de licença, tipos de contrato).
-const props = defineProps<{ kind: 'license_types' | 'license_categories' | 'contract_types'; title: string; items: { id: number; name: string; in_use: number; assignment?: string }[] }>()
-const emit = defineEmits<{ changed: [] }>()
+const props = defineProps<{ kind: 'license_types' | 'license_categories' | 'contract_types'; title: string; items: { id: number; name: string; in_use: number; assignment?: string }[]; bare?: boolean }>()
+const emit = defineEmits<{ changed: []; added: [id: number] }>()
 const name = ref('')
 const assignment = ref('device')
 const editId = ref<number | null>(null)
@@ -16,9 +16,10 @@ const editAssignment = ref('device')
 
 async function add(): Promise<void> {
   try {
-    await api.saveLookup(props.kind, null, { name: name.value, ...(props.kind === 'license_types' ? { assignment: assignment.value } : {}) })
+    const r = await api.saveLookup(props.kind, null, { name: name.value, ...(props.kind === 'license_types' ? { assignment: assignment.value } : {}) })
     name.value = ''
     emit('changed')
+    emit('added', r.id)
   } catch (e) { notify('warn', 'Não foi possível adicionar', e instanceof Error ? e.message : String(e)) }
 }
 function startEdit(i: { id: number; name: string; assignment?: string }): void {
@@ -34,16 +35,17 @@ async function saveEdit(): Promise<void> {
     emit('changed')
   } catch (e) { notify('warn', 'Não foi possível salvar', e instanceof Error ? e.message : String(e)) }
 }
-async function remove(i: { id: number; name: string }): Promise<void> {
-  if (!window.confirm(`Excluir "${i.name}"?`)) return
+async function remove(i: { id: number; name: string; in_use: number }): Promise<void> {
+  const usage = i.in_use ? `\n\n${i.in_use} registro(s) usam este item e ficarão sem ele.` : ''
+  if (!window.confirm(`Excluir "${i.name}"?${usage}`)) return
   try { await api.deleteLookup(props.kind, i.id); emit('changed') }
   catch (e) { notify('warn', 'Não foi possível excluir', e instanceof ApiError ? e.message : String(e)) }
 }
 </script>
 
 <template>
-  <section class="panel">
-    <div class="panel-head"><h2>{{ title }}</h2></div>
+  <section :class="bare ? 'bare' : 'panel'">
+    <div v-if="!bare" class="panel-head"><h2>{{ title }}</h2></div>
     <ul class="items">
       <li v-for="i in items" :key="i.id">
         <template v-if="editId === i.id">
@@ -59,7 +61,7 @@ async function remove(i: { id: number; name: string }): Promise<void> {
           <span v-if="i.assignment" class="tag">{{ ASSIGNMENT_LABEL[i.assignment] }}</span>
           <span class="muted small">{{ i.in_use }} em uso</span>
           <button class="btn btn-icon" type="button" :aria-label="`Editar ${i.name}`" @click="startEdit(i)"><AppIcon name="edit" :size="14" /></button>
-          <button class="btn btn-icon" type="button" :aria-label="`Excluir ${i.name}`" :disabled="i.in_use > 0 && kind === 'license_types'" @click="remove(i)"><AppIcon name="trash" :size="14" /></button>
+          <button class="btn btn-icon" type="button" :aria-label="`Excluir ${i.name}`" :disabled="i.in_use > 0 && kind === 'license_types'" :title="i.in_use > 0 && kind === 'license_types' ? 'Em uso por licenças — altere-as antes de excluir' : undefined" @click="remove(i)"><AppIcon name="trash" :size="14" /></button>
         </template>
       </li>
     </ul>
@@ -76,6 +78,8 @@ async function remove(i: { id: number; name: string }): Promise<void> {
 
 <style scoped>
 .items { list-style: none; margin: 0; padding: 0 20px; }
+.bare .items { padding: 0; }
+.bare .add { padding: 14px 0 0; }
 .items li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-soft); flex-wrap: wrap; }
 .items .input { flex: 1; min-width: 140px; }
 .name { flex: 1; min-width: 0; }

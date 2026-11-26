@@ -18,6 +18,7 @@ use App\Asset\Repository\AssetRepository;
 use App\Identity\Entity\Group;
 use App\Identity\Entity\User;
 use App\Network\Entity\NetworkPort;
+use App\Organization\Entity\Branch;
 use App\Organization\Entity\Location;
 use App\Organization\Entity\Organization;
 use App\Shared\Entity\TimestampableTrait;
@@ -102,6 +103,11 @@ class Asset
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?Location $location = null;
+
+    /** Matriz/filial onde o ativo está (manual ou pela rede do IP — ADR-0010). */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?Branch $branch = null;
 
     /** Usuário que utiliza o ativo. */
     #[ORM\ManyToOne]
@@ -247,6 +253,16 @@ class Asset
     public function setLocation(?Location $location): void
     {
         $this->location = $location;
+    }
+
+    public function getBranch(): ?Branch
+    {
+        return $this->branch;
+    }
+
+    public function setBranch(?Branch $branch): void
+    {
+        $this->branch = $branch;
     }
 
     public function getUser(): ?User

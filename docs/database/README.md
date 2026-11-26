@@ -29,6 +29,7 @@ erDiagram
     manufacturer ||--o{ software : publisher
     asset_model ||--o{ asset : ""
     location ||--o{ asset : ""
+    branch ||--o{ asset : ""
     app_user ||--o{ asset : "user"
     app_group ||--o{ asset : "tech_group"
     asset ||--o{ component : ""
@@ -52,7 +53,8 @@ erDiagram
 | Tabela | Descrição | Pontos de atenção |
 |---|---|---|
 | `organization` | unidade organizacional (a "Entidade" do GLPI) | `code` único e estável; `path` ltree via trigger |
-| `location` | localização física hierárquica | `UNIQUE (organization_id, parent_id, name)`; `path` ltree |
+| `location` | localização física hierárquica (setor/sala; texto livre no formulário) | `UNIQUE (organization_id, parent_id, name)`; `path` ltree |
+| `branch` | **matriz e filiais** (ADR-0010): CNPJ, endereço estruturado, `latitude`/`longitude` `NUMERIC(9,6)`, `networks` JSONB (CIDRs) | nome e sigla únicos; no máximo uma `headquarters` (regra no `BranchWriter`); CHECKs de `kind`, UF, par de coordenadas e `networks` array |
 | `app_user` | pessoas (usuário do ativo, responsável) | `username` minúsculo e único; `auth_source` local/ldap/oidc |
 | `app_group` | grupos responsáveis | `UNIQUE (organization_id, name)` |
 | `user_group` | N:N usuário ↔ grupo | PK composta |
@@ -64,7 +66,7 @@ erDiagram
 | `asset_type` | tipos (computer, network_equipment, printer...) | seed na migration; `inventoriable` = recebe agente |
 | `manufacturer` | fabricantes e editores | dedup por `normalized_name` |
 | `asset_model` | modelo comercial | `UNIQUE (asset_type_id, manufacturer_id, name)` |
-| `asset` | **o ativo** (tabela única, ver ADR-0003) | `uuid` público (v7); `hardware_uuid`/`serial_number` = chaves de matching; `attributes` JSONB+GIN; `deleted_at` = lixeira; `os_*` = SO embutido |
+| `asset` | **o ativo** (tabela única, ver ADR-0003) | `uuid` público (v7); `hardware_uuid`/`serial_number` = chaves de matching; `attributes` JSONB+GIN; `deleted_at` = lixeira (o agente voltando a reportar **restaura** o mesmo ativo); `branch_id` = filial (SET NULL; preenchida pela rede quando vazia); `os_*` = SO embutido |
 | `component` | CPU, RAM, disco, GPU... | `kind` enum; `capacity_mib`/`frequency_mhz`; `dynamic` = veio do agente |
 | `locked_field` | campos que o inventário não sobrescreve | `asset_id NULL` = trava global |
 | `asset_history` | auditoria por campo (append-only) | maior crescimento; ver Manutenção |
@@ -117,6 +119,7 @@ erDiagram
 | `gist_organization_path`, `gist_location_path` | 000200 | operadores `<@`, `@>`, `~` |
 | `gin_asset_attributes` (`jsonb_path_ops`) | 000200 | filtros `attributes @> '{...}'` |
 | `gin_asset_name_trgm`, `gin_software_name_trgm` | 000200 | `ILIKE '%termo%'` indexado (busca da UI/API) |
+| `chk_branch_*` | 180000 | `kind`, UF `^[A-Z]{2}$`, coordenadas em par e na faixa, `networks` é array |
 
 Esses índices são registrados em `src/Shared/Doctrine/SchemaExtrasListener.php`; sem isso, o `make diff` tentaria removê-los.
 
@@ -142,6 +145,15 @@ SELECT sv.version, count(*) FROM software s
 JOIN software_version sv ON sv.software_id = s.id
 JOIN software_installation si ON si.software_version_id = sv.id
 WHERE s.name ILIKE '%openssh%' GROUP BY 1 ORDER BY 2 DESC;
+
+-- Ativos por filial e tipo (painel Grafana)
+SELECT coalesce(b.name, '(sem filial)') AS filial, t.label AS tipo, count(*)
+FROM asset a JOIN asset_type t ON t.id = a.asset_type_id LEFT JOIN branch b ON b.id = a.branch_id
+WHERE a.deleted_at IS NULL GROUP BY 1, 2 ORDER BY 1, 3 DESC;
+
+-- Em qual filial cai este IP? (mesma regra do BranchResolver)
+SELECT b.name, n.cidr FROM branch b, jsonb_array_elements_text(b.networks) n(cidr)
+WHERE b.active AND '10.20.5.33'::inet <<= n.cidr::cidr ORDER BY masklen(n.cidr::cidr) DESC LIMIT 1;
 
 -- Saúde da ingestão (painel Grafana)
 SELECT date_trunc('hour', received_at) h, status, count(*), avg(duration_ms)::int ms

@@ -57,14 +57,14 @@ final readonly class AssetWriter
 
             $id = (int) $this->db->fetchOne(<<<'SQL'
                 INSERT INTO asset (uuid, organization_id, asset_type_id, name, status, manufacturer_id, model_id, location_id, user_id,
-                                   serial_number, inventory_number, attributes, comment, dynamic, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, false, ?, ?) RETURNING id
+                                   serial_number, inventory_number, attributes, comment, branch_id, dynamic, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, false, ?, ?) RETURNING id
                 SQL, [
                 $uuid, $this->refs->rootOrganizationId(), $typeId, $name, $fields['status'] ?? AssetStatus::InUse->value,
                 $manufacturerId, $this->refs->modelId((int) $typeId, $manufacturerId, $fields['model']),
                 $this->refs->locationId($fields['location']), $this->refs->userId($fields['user']),
                 $fields['serial_number'], $inventoryNumber, json_encode((object) ($fields['attributes'] ?? []), \JSON_UNESCAPED_UNICODE),
-                $fields['comment'], $now, $now,
+                $fields['comment'], $fields['branch_id'], $now, $now,
             ]);
             $this->history($id, 'asset.created', null, $name, $actor);
 
@@ -85,8 +85,10 @@ final readonly class AssetWriter
             $old = $this->db->fetchAssociative(<<<'SQL'
                 SELECT a.name, a.status, a.manufacturer_id, m.name AS manufacturer, a.model_id, mo.name AS model,
                        a.location_id, l.name AS location, a.user_id, u.username AS "user",
-                       a.serial_number, a.inventory_number, a.comment, a.attributes
+                       a.serial_number, a.inventory_number, a.comment, a.attributes,
+                       a.branch_id, b.name AS branch
                 FROM asset a
+                LEFT JOIN branch b ON b.id = a.branch_id
                 LEFT JOIN manufacturer m ON m.id = a.manufacturer_id LEFT JOIN asset_model mo ON mo.id = a.model_id
                 LEFT JOIN location l ON l.id = a.location_id LEFT JOIN app_user u ON u.id = a.user_id
                 WHERE a.id = ?
@@ -118,6 +120,10 @@ final readonly class AssetWriter
             if ($p->has('location')) {
                 $set['location_id'] = $this->refs->locationId($fields['location']);
                 $labels['location_id'] = [$old['location'] ?? null, $fields['location']];
+            }
+            if ($p->has('branch_id')) {
+                $set['branch_id'] = $fields['branch_id'];
+                $labels['branch_id'] = [$old['branch'] ?? null, $fields['branch_name']];
             }
             if ($p->has('user')) {
                 $set['user_id'] = $this->refs->userId($fields['user']);
@@ -192,7 +198,25 @@ final readonly class AssetWriter
             'user' => $p->string('user', 255),
             'comment' => $p->string('comment', 5000),
             'attributes' => $p->attributes('attributes'),
+            ...$this->readBranch($p),
         ];
+    }
+
+    /** @return array{branch_id: int|null, branch_name: string|null} */
+    private function readBranch(Payload $p): array
+    {
+        $id = $p->int('branch_id', 1);
+        if (null === $id) {
+            return ['branch_id' => null, 'branch_name' => null];
+        }
+        $name = $this->db->fetchOne('SELECT name FROM branch WHERE id = ?', [$id]);
+        if (false === $name) {
+            $p->error('branch_id', 'Filial não encontrada.');
+
+            return ['branch_id' => null, 'branch_name' => null];
+        }
+
+        return ['branch_id' => $id, 'branch_name' => (string) $name];
     }
 
 
@@ -220,6 +244,7 @@ final readonly class AssetWriter
             'manufacturer_id' => 'manufacturer',
             'model_id' => 'model',
             'location_id' => 'location',
+            'branch_id' => 'branch',
             'user_id' => 'user',
             default => $col,
         };

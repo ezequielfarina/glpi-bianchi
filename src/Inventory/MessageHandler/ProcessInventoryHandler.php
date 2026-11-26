@@ -8,6 +8,7 @@ use App\Inventory\Entity\RawInventory;
 use App\Inventory\Enum\RawInventoryStatus;
 use App\Inventory\Import\ComputerImporter;
 use App\Inventory\Message\ProcessInventory;
+use App\Organization\Service\BranchResolver;
 use App\Software\Repository\SoftwareCatalog;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
@@ -33,6 +34,7 @@ final readonly class ProcessInventoryHandler
         private ManagerRegistry $registry,
         private ComputerImporter $computerImporter,
         private SoftwareCatalog $catalog,
+        private BranchResolver $branches,
         #[Autowire(service: 'monolog.logger.inventory')]
         private LoggerInterface $logger,
     ) {
@@ -69,6 +71,15 @@ final readonly class ProcessInventoryHandler
             $this->em->clear();
         }
 
+        // Filial pela rede do IP (só ativos sem filial). Fora da transação do import:
+        // precisa das portas/IPs já gravadas; falha aqui não invalida o inventário.
+        $branchAssigned = false;
+        try {
+            $branchAssigned = [] !== $this->branches->assignMissing((int) $result->asset->getId());
+        } catch (\Throwable $e) {
+            $this->logger->warning('Branch resolution failed', ['raw_inventory_id' => $message->rawInventoryId, 'error' => $e->getMessage()]);
+        }
+
         $durationMs = (int) ((hrtime(true) - $started) / 1_000_000);
 
         $this->logger->info('Inventory processed', [
@@ -77,6 +88,7 @@ final readonly class ProcessInventoryHandler
             'asset_uuid' => (string) $result->asset->getUuid(),
             'created' => $result->created,
             'changes' => $result->changes,
+            'branch_assigned' => $branchAssigned,
             'duration_ms' => $durationMs,
         ]);
     }

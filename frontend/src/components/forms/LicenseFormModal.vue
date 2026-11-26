@@ -1,15 +1,31 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive, ref, watch } from 'vue'
+import AppIcon from '../AppIcon.vue'
 import AppModal from '../AppModal.vue'
+import LookupManagerModal from './LookupManagerModal.vue'
 import { api } from '../../lib/api'
 import { ASSIGNMENT_LABEL } from '../../lib/format'
 import type { LicenseDetail, Lookups } from '../../lib/types'
 import { clean, useForm } from './useForm'
 
 const props = defineProps<{ lookups: Lookups; license?: LicenseDetail | null }>()
-const emit = defineEmits<{ close: []; saved: [id: number] }>()
+const emit = defineEmits<{ close: []; saved: [id: number]; 'lookups-changed': [lookups: Lookups] }>()
 const { saving, errors, submit } = useForm()
 const l = props.license
+// cópia local: tipos/categorias podem ser criados/editados sem sair do formulário
+const lk = ref<Lookups>(props.lookups)
+const managing = ref<'license_types' | 'license_categories' | null>(null)
+function onLookups(v: Lookups): void {
+  lk.value = v
+  emit('lookups-changed', v)
+  // item selecionado foi excluído → limpa a seleção
+  if (f.license_type_id !== '' && !v.license_types.some((t) => t.id === f.license_type_id)) f.license_type_id = ''
+  if (f.license_category_id !== '' && !v.license_categories.some((c) => c.id === f.license_category_id)) f.license_category_id = ''
+}
+function onAdded(id: number): void {
+  if (managing.value === 'license_types') f.license_type_id = id
+  else if (managing.value === 'license_categories') f.license_category_id = id
+}
 const f = reactive({
   name: l?.name ?? '', license_type_id: l?.license_type_id ?? ('' as number | ''), license_category_id: l?.license_category_id ?? ('' as number | ''),
   assignment: l?.assignment ?? 'device', seats: l?.seats ?? 1, unit_price: l?.unit_price ?? '', purchase_date: l?.purchase_date ?? '',
@@ -18,7 +34,7 @@ const f = reactive({
 })
 // ao trocar o tipo, sugere o modelo de atribuição dele
 watch(() => f.license_type_id, (id) => {
-  const t = props.lookups.license_types.find((x) => x.id === id)
+  const t = lk.value.license_types.find((x) => x.id === id)
   if (t && !l) f.assignment = t.assignment
 })
 
@@ -39,18 +55,18 @@ async function save(): Promise<void> {
         <span v-if="errors.name" class="err">{{ errors.name }}</span>
       </div>
       <div class="field">
-        <label for="l-type">Tipo de licença *</label>
+        <div class="label-row"><label for="l-type">Tipo de licença *</label><button class="link-btn" type="button" @click="managing = 'license_types'"><AppIcon name="gear" :size="13" /> Gerenciar</button></div>
         <select id="l-type" v-model="f.license_type_id" class="input" :aria-invalid="!!errors.license_type_id">
           <option value="">Selecione…</option>
-          <option v-for="t in lookups.license_types" :key="t.id" :value="t.id">{{ t.name }}</option>
+          <option v-for="t in lk.license_types" :key="t.id" :value="t.id">{{ t.name }}</option>
         </select>
         <span v-if="errors.license_type_id" class="err">{{ errors.license_type_id }}</span>
       </div>
       <div class="field">
-        <label for="l-cat">Categoria</label>
+        <div class="label-row"><label for="l-cat">Categoria</label><button class="link-btn" type="button" @click="managing = 'license_categories'"><AppIcon name="gear" :size="13" /> Gerenciar</button></div>
         <select id="l-cat" v-model="f.license_category_id" class="input">
           <option value="">—</option>
-          <option v-for="c in lookups.license_categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+          <option v-for="c in lk.license_categories" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
       </div>
       <div class="field">
@@ -58,7 +74,7 @@ async function save(): Promise<void> {
         <select id="l-assign" v-model="f.assignment" class="input">
           <option v-for="(label, code) in ASSIGNMENT_LABEL" :key="code" :value="code">{{ label }}</option>
         </select>
-        <span class="hint">Por usuário = 365/assinaturas; por máquina = OEM/Retail; volume = MAK/KMS.</span>
+        <span class="hint">Define como a licença é consumida: <strong>por usuário</strong> (365/assinaturas), <strong>por máquina</strong> (OEM/Retail) ou <strong>volume</strong> (MAK/KMS). Vem do tipo escolhido — o padrão de cada tipo se altera em "Gerenciar".</span>
       </div>
       <div class="field">
         <label for="l-seats">Quantidade (assentos / ativações)</label>
@@ -81,14 +97,14 @@ async function save(): Promise<void> {
         <label for="l-sup">Fornecedor</label>
         <select id="l-sup" v-model="f.supplier_id" class="input">
           <option value="">—</option>
-          <option v-for="s in lookups.suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
+          <option v-for="s in lk.suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
         </select>
       </div>
       <div class="field">
         <label for="l-ct">Contrato</label>
         <select id="l-ct" v-model="f.contract_id" class="input">
           <option value="">—</option>
-          <option v-for="c in lookups.contracts" :key="c.id" :value="c.id">{{ c.title }}</option>
+          <option v-for="c in lk.contracts" :key="c.id" :value="c.id">{{ c.title }}</option>
         </select>
       </div>
       <div class="field">
@@ -111,5 +127,6 @@ async function save(): Promise<void> {
         <button class="btn btn-primary" type="submit" :disabled="saving || !f.name.trim() || f.license_type_id === ''">{{ saving ? 'Salvando…' : 'Salvar' }}</button>
       </div>
     </form>
+    <LookupManagerModal v-if="managing" :kind="managing" :lookups="lk" @close="managing = null" @changed="onLookups" @added="onAdded" />
   </AppModal>
 </template>

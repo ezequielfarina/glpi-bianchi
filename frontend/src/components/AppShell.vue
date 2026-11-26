@@ -13,6 +13,7 @@ const search = ref('')
 const nav: { to: string; label: string; icon: IconName; group?: string }[] = [
   { to: '/', label: 'Visão geral', icon: 'home' },
   { to: '/assets', label: 'Ativos', icon: 'assets' },
+  { to: '/branches', label: 'Matriz e filiais', icon: 'building' },
   { to: '/licenses', label: 'Licenças', icon: 'key', group: 'Gestão' },
   { to: '/contracts', label: 'Contratos', icon: 'contract' },
   { to: '/suppliers', label: 'Fornecedores', icon: 'truck' },

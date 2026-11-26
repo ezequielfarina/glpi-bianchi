@@ -52,8 +52,9 @@ final readonly class UiApiController
         #[MapQueryParameter] int $perPage = 50,
         #[MapQueryParameter] string $sort = 'name',
         #[MapQueryParameter] string $dir = 'asc',
+        #[MapQueryParameter] ?string $branch = null,
     ): JsonResponse {
-        return $this->json($this->assets->search($q, $type, $stale, $page, $perPage, $sort, $dir));
+        return $this->json($this->assets->search($q, $type, $stale, $page, $perPage, $sort, $dir, $branch));
     }
 
     #[Route('/assets/{uuid}', name: 'asset', methods: ['GET'])]

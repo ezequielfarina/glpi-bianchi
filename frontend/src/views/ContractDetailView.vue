@@ -89,7 +89,7 @@ async function remove(): Promise<void> {
         </section>
 
         <AttachmentsPanel owner-type="contract" :owner="c.id" :items="c.attachments" title="Contrato assinado, aditivos e notas" @changed="reload" />
-        <ContractFormModal v-if="editing && lookups" :lookups="lookups" :contract="c" @close="editing = false" @saved="editing = false; reload()" />
+        <ContractFormModal v-if="editing && lookups" :lookups="lookups" @lookups-changed="(v) => (lookups = v)" :contract="c" @close="editing = false" @saved="editing = false; reload()" />
       </template>
     </LoadState>
   </div>

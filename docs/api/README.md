@@ -31,6 +31,16 @@ Token vazio = API desabilitada. Fase 2: OIDC (JWT) com RBAC por organização.
 
 Paginação: `?page=2&itemsPerPage=100` (máximo 500).
 
+### Matriz e filiais (`/api/ui`, mesmo token)
+
+| Método | Rota | Uso |
+|---|---|---|
+| GET | `/api/ui/branches` · `/api/ui/branches/{id}` | lista (com contagens) / detalhe (ativos por tipo, anexos) |
+| POST · PUT | `/api/ui/branches` · `/api/ui/branches/{id}` | `name`, `code`, `kind` (`headquarters`/`branch`), `tax_id`, endereço, `latitude`/`longitude`, `networks` (lista ou texto, CIDR). Resposta: `{id, assigned}` (`assigned` = ativos vinculados pela rede) |
+| DELETE | `/api/ui/branches/{id}` | ativos ficam sem filial |
+| POST | `/api/ui/branches/{id}/assets` | `{"assets": [uuid, …]}` move em lote; `{id}` = `0` remove o vínculo |
+| GET | `/api/ui/assets?branch={id}` · `?branch=none` | ativos da filial / sem filial |
+
 ## Exemplos
 
 ```bash

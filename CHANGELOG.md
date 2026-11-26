@@ -5,6 +5,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 ## [Unreleased]
 
 ### Corrigido
+- Ativo excluído com o GLPI Agent ainda instalado voltava **duplicado** (novo patrimônio, sem
+  histórico): agora o mesmo ativo é restaurado da lixeira (por UUID de hardware, serial ou vínculo do agente).
+- F5 no detalhe do ativo dava 404 do nginx: o build do Vite usava `/app/assets/`, a mesma rota da tela.
+  Arquivos do build agora em `/app/_static/`.
+- Após "Forçar inventário" a tela recarrega em 15/30/60/90/120 s (antes: uma vez, aos 15 s) e sem piscar.
 - MAC das interfaces lido de `mac` (formato JSON), não `macaddr`.
 - Inventário parcial não apaga mais atributos ausentes do payload (ex.: `last_logged_user`).
 - `install.sh`: `composer update` automático em dev com lock dessincronizado; `reset-failed` dos workers.
@@ -12,6 +17,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- **Matriz e filiais (ADR-0010):** cadastro com CNPJ, endereço (busca por CEP), localização no mapa
+  (OpenStreetMap: clicar/arrastar, localizar pelo endereço ou colar link do Google Maps) e redes CIDR;
+  filial no ativo (formulário, detalhe, filtro e coluna na lista, mover em lote); computadores do
+  agente sem filial são vinculados pela rede do IP (prefixo mais específico vence; manual nunca é sobrescrito).
+- Tipos/categorias de licença e tipos de contrato editáveis **dentro dos formulários** ("Gerenciar"),
+  com o item novo já selecionado; diálogos empilháveis (ESC fecha só o do topo).
 - `composer.lock`/`symfony.lock` versionados (deploy reprodutível) e configs geradas pelo Flex.
 - **Gestão (ADR-0009):** fornecedores e contatos; contratos (vigência, renovação, valor, ativos);
   licenças (tipos/categorias editáveis, por máquina/usuário/volume, chave cifrada, conformidade

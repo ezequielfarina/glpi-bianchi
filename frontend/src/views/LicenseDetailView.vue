@@ -138,7 +138,7 @@ async function copyKey(): Promise<void> {
         </div>
 
         <AttachmentsPanel owner-type="license" :owner="l.id" :items="l.attachments" title="Notas fiscais e comprovantes" @changed="reload" />
-        <LicenseFormModal v-if="editing && lookups" :lookups="lookups" :license="l" @close="editing = false" @saved="editing = false; reload()" />
+        <LicenseFormModal v-if="editing && lookups" :lookups="lookups" @lookups-changed="(v) => (lookups = v)" :license="l" @close="editing = false" @saved="editing = false; reload()" />
       </template>
     </LoadState>
   </div>

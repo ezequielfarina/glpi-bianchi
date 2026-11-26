@@ -30,7 +30,7 @@ const fieldErrors = ref<Record<string, string>>({})
 
 const form = reactive({
   type: '', name: '', status: 'in_use', manufacturer: '', model: '', serial_number: '', inventory_number: '',
-  location: '', user: '', comment: '',
+  location: '', user: '', comment: '', branch_id: '' as number | '',
 })
 const attrs = ref<{ key: string; value: string }[]>([])
 const originalKeys = ref<string[]>([])
@@ -49,7 +49,7 @@ async function load(): Promise<void> {
       Object.assign(form, {
         type: a.type, name: a.name, status: a.status, manufacturer: a.manufacturer ?? '', model: a.model ?? '',
         serial_number: a.serial_number ?? '', inventory_number: a.inventory_number ?? '', location: a.location ?? '',
-        user: a.user ?? '', comment: a.comment ?? '',
+        user: a.user ?? '', comment: a.comment ?? '', branch_id: a.branch_id ?? '',
       })
       // atributos manuais editáveis (os do agente — memória, BIOS... — ficam só leitura no detalhe)
       attrs.value = Object.entries(a.attributes)
@@ -59,6 +59,9 @@ async function load(): Promise<void> {
     } else {
       const fromQuery = new URLSearchParams(location.search).get('type')
       form.type = fromQuery && l.asset_types.some((t) => t.code === fromQuery) ? fromQuery : ''
+      const qBranch = Number(new URLSearchParams(location.search).get('branch'))
+      if (l.branches.some((b) => b.id === qBranch)) form.branch_id = qBranch
+      else if (l.branches.length === 1) form.branch_id = l.branches[0]!.id
     }
     ensureTypeFields()
   } catch (e) {
@@ -104,7 +107,7 @@ async function save(): Promise<void> {
   for (const k of originalKeys.value) {
     if (!Object.keys(attributes).some((x) => Payload.key(x) === k)) attributes[k] = ''
   }
-  const body: Record<string, unknown> = { ...form, attributes }
+  const body: Record<string, unknown> = { ...form, branch_id: form.branch_id === '' ? null : form.branch_id, attributes }
   if (!editing.value && !form.inventory_number.trim()) delete body.inventory_number
   if (editing.value) delete body.type
   try {
@@ -180,7 +183,16 @@ void load()
                 <input id="f-serial" v-model="form.serial_number" class="input mono" maxlength="255" />
               </div>
               <div class="field">
-                <label for="f-loc">Localização</label>
+                <label for="f-branch">Filial</label>
+                <select id="f-branch" v-model="form.branch_id" class="input" :aria-invalid="!!fieldErrors.branch_id">
+                  <option value="">— sem filial —</option>
+                  <option v-for="b in lookups.branches" :key="b.id" :value="b.id">{{ b.name }}{{ b.kind === 'headquarters' ? ' (matriz)' : '' }}</option>
+                </select>
+                <span v-if="fieldErrors.branch_id" class="err">{{ fieldErrors.branch_id }}</span>
+                <span v-else-if="!lookups.branches.length" class="hint"><RouterLink to="/branches">Cadastre a matriz e as filiais</RouterLink></span>
+              </div>
+              <div class="field">
+                <label for="f-loc">Local (setor / sala)</label>
                 <input id="f-loc" v-model="form.location" class="input" list="dl-loc" maxlength="255" placeholder="ex.: RH - 2º andar" />
                 <datalist id="dl-loc"><option v-for="l in lookups.locations" :key="l.id" :value="l.name" /></datalist>
               </div>

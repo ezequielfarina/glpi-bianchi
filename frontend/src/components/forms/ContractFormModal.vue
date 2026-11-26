@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
+import AppIcon from '../AppIcon.vue'
 import AppModal from '../AppModal.vue'
+import LookupManagerModal from './LookupManagerModal.vue'
 import { api } from '../../lib/api'
 import { BILLING_LABEL, RENEWAL_LABEL } from '../../lib/format'
 import type { ContractDetail, Lookups } from '../../lib/types'
 import { clean, useForm } from './useForm'
 
 const props = defineProps<{ lookups: Lookups; contract?: ContractDetail | null; supplierId?: number }>()
-const emit = defineEmits<{ close: []; saved: [id: number] }>()
+const emit = defineEmits<{ close: []; saved: [id: number]; 'lookups-changed': [lookups: Lookups] }>()
 const { saving, errors, submit } = useForm()
 const c = props.contract
 const f = reactive({
@@ -16,6 +18,13 @@ const f = reactive({
   renewal: c?.renewal ?? 'manual', notice_days: c?.notice_days ?? 30, billing_period: c?.billing_period ?? 'monthly',
   value: c?.value ?? '', description: c?.description ?? '',
 })
+const lk = ref<Lookups>(props.lookups)
+const managing = ref(false)
+function onLookups(v: Lookups): void {
+  lk.value = v
+  emit('lookups-changed', v)
+  if (f.contract_type_id !== '' && !v.contract_types.some((t) => t.id === f.contract_type_id)) f.contract_type_id = ''
+}
 async function save(): Promise<void> {
   const r = await submit(() => api.saveContract(c?.id ?? null, clean({ ...f })), c ? 'Contrato atualizado' : 'Contrato cadastrado')
   if (r) emit('saved', r.id)
@@ -29,12 +38,12 @@ async function save(): Promise<void> {
       <div class="field"><label for="k-num">Número do contrato</label><input id="k-num" v-model="f.number" class="input mono" /></div>
       <div class="field">
         <label for="k-sup">Fornecedor</label>
-        <select id="k-sup" v-model="f.supplier_id" class="input"><option value="">—</option><option v-for="s in lookups.suppliers" :key="s.id" :value="s.id">{{ s.name }}</option></select>
+        <select id="k-sup" v-model="f.supplier_id" class="input"><option value="">—</option><option v-for="s in lk.suppliers" :key="s.id" :value="s.id">{{ s.name }}</option></select>
         <span v-if="errors.supplier_id" class="err">{{ errors.supplier_id }}</span>
       </div>
       <div class="field">
-        <label for="k-type">Tipo de contrato</label>
-        <select id="k-type" v-model="f.contract_type_id" class="input"><option value="">—</option><option v-for="t in lookups.contract_types" :key="t.id" :value="t.id">{{ t.name }}</option></select>
+        <div class="label-row"><label for="k-type">Tipo de contrato</label><button class="link-btn" type="button" @click="managing = true"><AppIcon name="gear" :size="13" /> Gerenciar</button></div>
+        <select id="k-type" v-model="f.contract_type_id" class="input"><option value="">—</option><option v-for="t in lk.contract_types" :key="t.id" :value="t.id">{{ t.name }}</option></select>
       </div>
       <div class="field"><label for="k-start">Início da vigência</label><input id="k-start" v-model="f.start_date" class="input" type="date" /></div>
       <div class="field"><label for="k-end">Término</label><input id="k-end" v-model="f.end_date" class="input" type="date" :aria-invalid="!!errors.end_date" /><span v-if="errors.end_date" class="err">{{ errors.end_date }}</span></div>
@@ -54,5 +63,6 @@ async function save(): Promise<void> {
         <button class="btn btn-primary" type="submit" :disabled="saving || !f.title.trim()">{{ saving ? 'Salvando…' : 'Salvar' }}</button>
       </div>
     </form>
+    <LookupManagerModal v-if="managing" kind="contract_types" :lookups="lk" @close="managing = false" @changed="onLookups" @added="(id) => (f.contract_type_id = id)" />
   </AppModal>
 </template>

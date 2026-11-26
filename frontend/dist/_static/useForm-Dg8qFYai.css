@@ -1,0 +1,1 @@
+.backdrop[data-v-07df192d]{position:fixed;inset:0;z-index:40;background:#02060c99;display:grid;place-items:center;padding:20px;overflow-y:auto}.modal[data-v-07df192d]{width:min(560px,100%);max-height:calc(100vh - 40px);display:flex;flex-direction:column}.modal.wide[data-v-07df192d]{width:min(880px,100%)}.modal-body[data-v-07df192d]{padding:0 20px 20px;overflow-y:auto}

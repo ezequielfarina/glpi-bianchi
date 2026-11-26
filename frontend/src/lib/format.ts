@@ -80,6 +80,14 @@ const FIELD_LABELS: Record<string, string> = {
   'software.removed': 'Software removido',
   'network_port.added': 'Interface adicionada',
   'network_port.removed': 'Interface removida',
+  branch: 'Filial',
+  location: 'Local',
+  user: 'Usuário',
+  status: 'Situação',
+  inventoryNumber: 'Patrimônio',
+  'asset.created': 'Ativo cadastrado',
+  'asset.deleted': 'Enviado para a lixeira',
+  'asset.restored': 'Restaurado da lixeira',
 }
 export function fieldLabel(field: string): string {
   if (FIELD_LABELS[field]) return FIELD_LABELS[field]

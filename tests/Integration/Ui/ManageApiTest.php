@@ -81,6 +81,31 @@ final class ManageApiTest extends WebTestCase
         self::assertSame(1, $this->call('GET', '/api/ui/alerts')['licenses_over']);
     }
 
+    public function testBranchesCrudAndAssetLink(): void
+    {
+        $hq = $this->call('POST', '/api/ui/branches', ['name' => 'Matriz', 'code' => 'MTZ', 'kind' => 'headquarters', 'zip_code' => '01310-100', 'state' => 'sp', 'latitude' => '-23.56', 'longitude' => '-46.65'], 201)['id'];
+        $this->call('POST', '/api/ui/branches', ['name' => 'Outra matriz', 'kind' => 'headquarters'], 422);
+        $this->call('POST', '/api/ui/branches', ['name' => 'Sem par', 'latitude' => '-10'], 422);
+        $this->call('POST', '/api/ui/branches', ['name' => 'Rede ruim', 'networks' => '10.0.0.0/99'], 422);
+        $fil = $this->call('POST', '/api/ui/branches', ['name' => 'Filial Campinas', 'code' => 'CPS', 'networks' => ['10.20.5.7/24']], 201)['id'];
+
+        $b = $this->call('GET', "/api/ui/branches/$fil");
+        self::assertSame(['10.20.5.0/24'], $b['networks']);
+        self::assertSame('headquarters', $this->call('GET', '/api/ui/branches')['items'][0]['kind']);
+        self::assertSame('SP', $this->call('GET', "/api/ui/branches/$hq")['state']);
+
+        $uuid = $this->call('POST', '/api/ui/assets', ['type' => 'monitor', 'name' => 'MON-01', 'branch_id' => $fil], 201)['uuid'];
+        self::assertSame('Filial Campinas', $this->call('GET', '/api/ui/assets/'.$uuid)['branch']);
+        $this->call('PATCH', '/api/ui/assets/'.$uuid, ['branch_id' => $hq]);
+        self::assertSame(1, $this->call('GET', '/api/ui/assets?branch='.$hq)['total']);
+        self::assertSame(1, $this->call('POST', "/api/ui/branches/$fil/assets", ['assets' => [$uuid]])['updated']);
+        self::assertSame(1, $this->call('GET', "/api/ui/branches/$fil")['assets']);
+
+        $this->call('DELETE', "/api/ui/branches/$fil");
+        self::assertNull($this->call('GET', '/api/ui/assets/'.$uuid)['branch']);
+        $this->call('GET', "/api/ui/branches/$fil", null, 404);
+    }
+
     /** @param array<string, mixed>|null $body @return array<string, mixed> */
     private function call(string $method, string $uri, ?array $body = null, int $expect = 200): array
     {

@@ -14,3 +14,4 @@ Para uma nova decisão, copie [`0000-template.md`](0000-template.md) usando o pr
 | [0007](0007-frontend-build-versionado.md) | Frontend Vue 3 com build estático versionado | aceito |
 | [0008](0008-acionamento-remoto-do-agente.md) | Acionamento remoto do agente (/now) e frequência no painel | aceito |
 | [0009](0009-gestao-fornecedores-contratos-licencas.md) | Gestão: fornecedores, contratos, licenças, anexos, patrimônio | aceito |
+| [0010](0010-matriz-e-filiais.md) | Matriz e filiais com mapa e vínculo automático por rede | aceito |

@@ -9,11 +9,12 @@ Interface web do GLPI Bianchi — Vue 3 + Vite + TypeScript (strict). Servida pe
 |---|---|---|
 | `/app/login` | token de acesso | `GET /api/ui/me` |
 | `/app/` | visão geral: KPIs, inventários/hora (24 h), SOs, últimos ativos — atualiza a cada 30 s | `GET /api/ui/overview` |
-| `/app/assets` | busca (nome, serial, patrimônio, UUID, **MAC**, **IP**), filtros, ordenação, paginação (estado na URL) | `GET /api/ui/assets` |
+| `/app/assets` | busca (nome, serial, patrimônio, UUID, **MAC**, **IP**), filtros (tipo, **filial**/sem filial), ordenação, paginação (estado na URL), **mover em lote para filial** | `GET /api/ui/assets`, `POST /api/ui/branches/{id}/assets` |
 | `/app/assets/:uuid` | detalhe: hardware, software, rede (oculta adaptadores virtuais), histórico, inventários + payload JSON | `GET /api/ui/assets/{uuid}` |
 | `/app/agents` | agentes, versão, IP de origem, tarefas, último contato, **forçar inventário** | `GET /api/ui/agents`, `POST …/wakeup` |
 | `/app/inventories` | payloads recebidos, status, **resultado** (novo/atualizado/sem alteração), erros, JSON bruto | `GET /api/ui/inventories` |
 | `/app/assets/new`, `/app/assets/:uuid/edit` | cadastro/edição manual (tipo, patrimônio automático, foto pela câmera, características por tipo) | `POST/PATCH /api/ui/assets`, `POST /api/ui/attachments` |
+| `/app/branches`, `/app/branches/:id` | matriz e filiais: mapa (Leaflet/OSM), ativos por tipo, redes, anexos; formulário com CEP (ViaCEP), geocodificação (Nominatim), link do Google Maps e clique no mapa | `/api/ui/branches…` |
 | `/app/licenses`, `/app/licenses/:id` | licenças, conformidade (usados × comprados × detectados), chave, atribuições, anexos | `/api/ui/licenses…` |
 | `/app/contracts`, `/app/contracts/:id` | contratos, vigência/vencimento, custo anual, ativos cobertos, anexos | `/api/ui/contracts…` |
 | `/app/suppliers`, `/app/suppliers/:id` | fornecedores, contatos, contratos, documentos | `/api/ui/suppliers…`, `/api/ui/contacts…` |
@@ -50,3 +51,9 @@ src/
 - Acessibilidade: navegação por teclado, `aria-sort` nas colunas, `role=tablist` nas abas,
   "pular para o conteúdo", alvos de toque ≥ 40 px.
 - Novos campos na tela → primeiro no read model (`src/Ui/ReadModel`), depois em `lib/types.ts`.
+
+### Notas
+
+- **Build em `/app/_static/`** (`build.assetsDir`): não usar `assets`, que colide com a rota `/app/assets/:uuid` (F5 no detalhe dava 404 do nginx).
+- **Mapa:** `components/BranchMap.vue` carrega Leaflet só nas telas de filiais (chunk separado). Tiles, CEP e geocodificação são consultados **pelo navegador**. Libere `tile.openstreetmap.org`, `nominatim.openstreetmap.org` e `viacep.com.br` no proxy ou filtro web.
+- **Diálogos empilháveis:** `AppModal` usa Teleport para o `<body>` e uma pilha. Só o diálogo do topo reage a ESC e Tab. Exemplo de uso: "Gerenciar" tipos e categorias dentro do formulário de licença.

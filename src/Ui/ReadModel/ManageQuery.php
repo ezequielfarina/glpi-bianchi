@@ -42,6 +42,7 @@ final readonly class ManageQuery
             'suppliers' => $this->db->fetchAllAssociative('SELECT id, name FROM supplier WHERE active ORDER BY name'),
             'contracts' => $this->db->fetchAllAssociative('SELECT id, title, number FROM contract ORDER BY title'),
             'locations' => $this->db->fetchAllAssociative('SELECT id, name FROM location ORDER BY name'),
+            'branches' => $this->db->fetchAllAssociative("SELECT id, name, code, kind FROM branch WHERE active ORDER BY kind = 'headquarters' DESC, name"),
             'manufacturers' => $this->db->fetchAllAssociative('SELECT id, name FROM manufacturer ORDER BY name LIMIT 500'),
         ];
     }
@@ -228,6 +229,67 @@ final readonly class ManageQuery
             'SELECT uuid, kind, filename, mime_type, size_bytes, description, created_by, created_at FROM attachment WHERE owner_type = ? AND owner_id = ? ORDER BY kind DESC, created_at DESC',
             [$ownerType, $ownerId],
         );
+    }
+
+    // ------------------------------------------------------------------ matriz e filiais
+
+    private const string BRANCH_COLUMNS = <<<'SQL'
+        b.id, b.name, b.code, b.kind, b.tax_id, b.phone, b.email, b.zip_code, b.street, b.number, b.complement,
+        b.district, b.city, b.state, b.latitude::float8 AS latitude, b.longitude::float8 AS longitude,
+        b.networks, b.notes, b.active, b.created_at, b.updated_at,
+        (SELECT count(*) FROM asset a WHERE a.branch_id = b.id AND a.deleted_at IS NULL) AS assets,
+        (SELECT count(*) FROM asset a JOIN asset_type t ON t.id = a.asset_type_id
+          WHERE a.branch_id = b.id AND a.deleted_at IS NULL AND t.code = 'computer') AS computers,
+        (SELECT count(*) FROM asset a WHERE a.branch_id = b.id AND a.deleted_at IS NULL
+          AND a.dynamic AND a.last_inventory_at < now() - interval '7 days') AS stale
+        SQL;
+
+    /** @return list<array<string, mixed>> */
+    public function branches(): array
+    {
+        $rows = $this->db->fetchAllAssociative(
+            'SELECT '.self::BRANCH_COLUMNS." FROM branch b ORDER BY b.active DESC, b.kind = 'headquarters' DESC, b.name",
+        );
+
+        return array_map(self::decodeBranch(...), $rows);
+    }
+
+    /** @return array<string, mixed>|null */
+    public function branch(int $id): ?array
+    {
+        $b = $this->db->fetchAssociative('SELECT '.self::BRANCH_COLUMNS.' FROM branch b WHERE b.id = ?', [$id]);
+        if (false === $b) {
+            return null;
+        }
+
+        return self::decodeBranch($b) + [
+            'by_type' => $this->db->fetchAllAssociative(<<<'SQL'
+                SELECT t.code AS type, t.label AS type_label, count(*) AS total
+                FROM asset a JOIN asset_type t ON t.id = a.asset_type_id
+                WHERE a.branch_id = ? AND a.deleted_at IS NULL
+                GROUP BY t.code, t.label ORDER BY total DESC, t.label
+                SQL, [$id]),
+            'unassigned_assets' => (int) $this->db->fetchOne('SELECT count(*) FROM asset WHERE branch_id IS NULL AND deleted_at IS NULL'),
+            'attachments' => $this->attachments('branch', $id),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     *
+     * @return array<string, mixed>
+     */
+    private static function decodeBranch(array $row): array
+    {
+        $row['networks'] = json_decode((string) $row['networks'], true) ?: [];
+        foreach (['assets', 'computers', 'stale'] as $k) {
+            $row[$k] = (int) $row[$k];
+        }
+        foreach (['latitude', 'longitude'] as $k) {
+            $row[$k] = null === $row[$k] ? null : (float) $row[$k];
+        }
+
+        return $row;
     }
 
     /** Resumo para a visão geral: contratos vencendo, licenças em risco. @return array<string, int|string|null> */

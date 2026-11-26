@@ -135,6 +135,37 @@ final class AgentEndpointTest extends WebTestCase
         self::assertSame('ezequiel.farina', $asset->getAttribute('last_logged_user'), 'campo ausente no parcial → mantém');
     }
 
+    public function testDeletedAssetIsRestoredWhenAgentReportsAgain(): void
+    {
+        $this->post($this->fixture());
+        $asset = $this->asset();
+        $uuid = (string) $asset->getUuid();
+        $number = $asset->getInventoryNumber();
+
+        $this->client->request('DELETE', '/api/ui/assets/'.$uuid, server: ['HTTP_AUTHORIZATION' => 'Bearer test-token', 'HTTP_ACCEPT' => 'application/json']);
+        self::assertResponseIsSuccessful();
+
+        $this->post($this->fixture());
+        $this->em()->clear();
+        $all = $this->em()->getRepository(Asset::class)->findAll();
+        self::assertCount(1, $all, 'sem duplicar: o mesmo ativo volta da lixeira');
+        self::assertSame($uuid, (string) $all[0]->getUuid());
+        self::assertFalse($all[0]->isDeleted());
+        self::assertSame($number, $all[0]->getInventoryNumber(), 'mantém o patrimônio');
+        $events = array_map(static fn (AssetHistory $h): string => $h->getField(), $this->em()->getRepository(AssetHistory::class)->findBy(['asset' => $all[0]]));
+        self::assertContains('asset.restored', $events);
+    }
+
+    public function testAgentAssetGetsBranchByNetwork(): void
+    {
+        $this->client->request('POST', '/api/ui/branches', server: ['HTTP_AUTHORIZATION' => 'Bearer test-token', 'HTTP_ACCEPT' => 'application/json', 'CONTENT_TYPE' => 'application/json'],
+            content: json_encode(['name' => 'Filial Teste', 'networks' => '192.168.10.0/24'], \JSON_THROW_ON_ERROR));
+        self::assertResponseStatusCodeSame(201);
+
+        $this->post($this->fixture()); // eno1 = 192.168.10.50
+        self::assertSame('Filial Teste', $this->asset()->getBranch()?->getName());
+    }
+
     public function testBrowserOnRootIsRedirectedToWebInterface(): void
     {
         $this->client->request('GET', '/');

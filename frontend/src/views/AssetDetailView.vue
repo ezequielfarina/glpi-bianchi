@@ -118,7 +118,11 @@ async function changePhoto(files: FileList | null): Promise<void> {
   }
 }
 async function removeAsset(): Promise<void> {
-  if (!a.value || !window.confirm(`Enviar "${a.value.name}" para a lixeira? O histórico e os anexos são mantidos.`)) return
+  if (!a.value) return
+  const agentNote = a.value.dynamic
+    ? '\n\nEste ativo é atualizado pelo GLPI Agent: se o agente continuar instalado e enviar inventário, o ativo volta automaticamente (mesmo patrimônio e histórico). Para não voltar, desinstale o agente da máquina.'
+    : ''
+  if (!window.confirm(`Enviar "${a.value.name}" para a lixeira? O histórico e os anexos são mantidos.${agentNote}`)) return
   await api.deleteAsset(a.value.uuid)
   notify('ok', 'Ativo enviado para a lixeira')
   await router.push('/assets')
@@ -201,7 +205,7 @@ async function force(deviceId: string, label: string): Promise<void> {
             </div>
             <p class="muted">
               {{ [a.manufacturer, a.model].filter(Boolean).join(' · ') || 'Fabricante não informado' }}
-              · {{ ASSET_STATUS[a.status] ?? a.status }}<template v-if="a.location"> · {{ a.location }}</template><template v-if="a.user"> · {{ a.user }}</template>
+              · {{ ASSET_STATUS[a.status] ?? a.status }}<template v-if="a.branch"> · <RouterLink :to="`/branches/${a.branch_id}`" class="branch-link"><AppIcon name="pin" :size="12" /> {{ a.branch }}</RouterLink></template><template v-if="a.location"> · {{ a.location }}</template><template v-if="a.user"> · {{ a.user }}</template>
             </p>
           </div>
           <div class="hero-actions">
@@ -226,7 +230,8 @@ async function force(deviceId: string, label: string): Promise<void> {
               <div><dt>Armazenamento</dt><dd class="num">{{ diskTotal ? mib(diskTotal) : '—' }}</dd></div>
             </template>
             <div v-else><dt>Tipo</dt><dd>{{ a.type_label }}</dd></div>
-            <div v-if="!isComputer"><dt>Localização</dt><dd>{{ a.location ?? '—' }}</dd></div>
+            <div><dt>Filial</dt><dd><RouterLink v-if="a.branch_id" :to="`/branches/${a.branch_id}`">{{ a.branch }}</RouterLink><RouterLink v-else :to="`/assets/${a.uuid}/edit`" class="muted">definir…</RouterLink></dd></div>
+            <div v-if="!isComputer"><dt>Local</dt><dd>{{ a.location ?? '—' }}</dd></div>
             <div v-if="!isComputer"><dt>Usuário</dt><dd>{{ a.user ?? '—' }}</dd></div>
             <div><dt>Número de série</dt><dd class="mono">{{ a.serial_number ?? '—' }}</dd></div>
             <div><dt>Patrimônio</dt><dd class="mono">{{ a.inventory_number ?? '—' }}</dd></div>
@@ -531,4 +536,5 @@ async function force(deviceId: string, label: string): Promise<void> {
 
 @media (max-width: 1100px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hw { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .facts { grid-template-columns: 1fr; } }
+.branch-link { display: inline-flex; align-items: center; gap: 3px; color: var(--accent-text); }
 </style>

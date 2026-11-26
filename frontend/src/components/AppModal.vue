@@ -1,15 +1,25 @@
+<script lang="ts">
+/** pilha de diálogos abertos (topo = último) */
+const stack: symbol[] = []
+</script>
+
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import AppIcon from './AppIcon.vue'
 
 // Diálogo acessível: foco preso dentro, ESC fecha, devolve o foco ao fechar.
+// Empilhável (ex.: gerenciar categorias de dentro do formulário de licença):
+// só o diálogo do topo reage a teclado; renderizado no <body> via Teleport.
 defineProps<{ title: string; wide?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 const box = ref<HTMLElement | null>(null)
 let previous: HTMLElement | null = null
+const id = Symbol('modal')
+const depth = ref(0)
 
 function onKey(e: KeyboardEvent): void {
-  if (e.key === 'Escape') emit('close')
+  if (stack[stack.length - 1] !== id) return
+  if (e.key === 'Escape') { e.stopPropagation(); emit('close') }
   if (e.key !== 'Tab' || !box.value) return
   const f = box.value.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
   const first = f[0]
@@ -19,16 +29,24 @@ function onKey(e: KeyboardEvent): void {
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
 }
 onMounted(async () => {
+  stack.push(id)
+  depth.value = stack.length
   previous = document.activeElement as HTMLElement | null
   document.addEventListener('keydown', onKey)
   await nextTick()
   box.value?.querySelector<HTMLElement>('input, select, textarea, button')?.focus()
 })
-onBeforeUnmount(() => { document.removeEventListener('keydown', onKey); previous?.focus() })
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKey)
+  const i = stack.indexOf(id)
+  if (i >= 0) stack.splice(i, 1)
+  previous?.focus()
+})
 </script>
 
 <template>
-  <div class="backdrop" @mousedown.self="emit('close')">
+  <Teleport to="body">
+  <div class="backdrop" :style="{ zIndex: 40 + depth * 2 }" @mousedown.self="emit('close')">
     <div ref="box" class="modal panel" :class="{ wide }" role="dialog" aria-modal="true" :aria-label="title">
       <header class="panel-head">
         <h2>{{ title }}</h2>
@@ -37,6 +55,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', onKey); previous
       <div class="modal-body"><slot /></div>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <style scoped>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Ui\Controller;
 
 use App\Ui\ReadModel\ManageQuery;
+use App\Ui\Write\BranchWriter;
 use App\Ui\Write\ContractWriter;
 use App\Ui\Write\LicenseWriter;
 use App\Ui\Write\LookupWriter;
@@ -19,7 +20,7 @@ use Symfony\Component\HttpKernel\Attribute\MapQueryParameter;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Gestão: cadastros auxiliares, fornecedores/contatos, contratos e licenças.
+ * Gestão: cadastros auxiliares, matriz/filiais, fornecedores/contatos, contratos e licenças.
  * Leituras em ManageQuery; escritas nos *Writer (validação → 422 via UiExceptionListener).
  */
 #[AsController]
@@ -34,6 +35,7 @@ final readonly class UiManageController
         private ContractWriter $contracts,
         private LicenseWriter $licenses,
         private LookupWriter $lookups,
+        private BranchWriter $branches,
         private LoggerInterface $logger,
     ) {
     }
@@ -70,6 +72,49 @@ final readonly class UiManageController
     public function alerts(): JsonResponse
     {
         return $this->json($this->query->alerts());
+    }
+
+    // ------------------------------------------------------------------ matriz e filiais
+
+    #[Route('/branches', name: 'branches', methods: ['GET'])]
+    public function branches(): JsonResponse
+    {
+        return $this->json(['items' => $this->query->branches()]);
+    }
+
+    #[Route('/branches/{id}', name: 'branch', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function branch(int $id): JsonResponse
+    {
+        return $this->json($this->query->branch($id) ?? throw new NotFoundException('Filial não encontrada.'));
+    }
+
+    #[Route('/branches', name: 'branch_create', methods: ['POST'])]
+    public function branchCreate(Request $request): JsonResponse
+    {
+        return $this->json($this->branches->save(null, $this->body($request)), Response::HTTP_CREATED);
+    }
+
+    #[Route('/branches/{id}', name: 'branch_update', methods: ['PUT', 'PATCH'], requirements: ['id' => '\d+'])]
+    public function branchUpdate(int $id, Request $request): JsonResponse
+    {
+        return $this->json($this->branches->save($id, $this->body($request)));
+    }
+
+    #[Route('/branches/{id}', name: 'branch_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function branchDelete(int $id): JsonResponse
+    {
+        $this->branches->delete($id);
+
+        return $this->json(['deleted' => true]);
+    }
+
+    /** Move ativos em lote: {"assets": [uuid...]}; filial 0 = remover vínculo. */
+    #[Route('/branches/{id}/assets', name: 'branch_assets', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function branchAssets(int $id, Request $request): JsonResponse
+    {
+        $uuids = $this->body($request)['assets'] ?? [];
+
+        return $this->json(['updated' => $this->branches->assignAssets(0 === $id ? null : $id, \is_array($uuids) ? array_values($uuids) : [], self::ACTOR)]);
     }
 
     // ------------------------------------------------------------------ fornecedores

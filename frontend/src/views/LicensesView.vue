@@ -85,7 +85,7 @@ void load()
       </LoadState>
     </section>
 
-    <LicenseFormModal v-if="creating && lookups" :lookups="lookups" @close="creating = false" @saved="(id) => router.push(`/licenses/${id}`)" />
+    <LicenseFormModal v-if="creating && lookups" :lookups="lookups" @lookups-changed="(v) => (lookups = v)" @close="creating = false" @saved="(id) => router.push(`/licenses/${id}`)" />
   </div>
 </template>
 

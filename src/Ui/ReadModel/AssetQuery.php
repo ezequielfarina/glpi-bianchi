@@ -20,6 +20,7 @@ final readonly class AssetQuery
         'lastInventoryAt' => 'a.last_inventory_at',
         'os' => 'coalesce(a.os_full_name, a.os_name)',
         'createdAt' => 'a.created_at',
+        'branch' => 'b.name',
     ];
 
     public function __construct(private Connection $db)
@@ -29,7 +30,7 @@ final readonly class AssetQuery
     /**
      * @return array{items: list<array<string, mixed>>, total: int, page: int, perPage: int}
      */
-    public function search(?string $q, ?string $type, ?string $stale, int $page, int $perPage, string $sort, string $dir): array
+    public function search(?string $q, ?string $type, ?string $stale, int $page, int $perPage, string $sort, string $dir, ?string $branch = null): array
     {
         $where = ['a.deleted_at IS NULL'];
         $params = [];
@@ -51,6 +52,12 @@ final readonly class AssetQuery
             $where[] = 't.code = :type';
             $params['type'] = $type;
         }
+        if ('none' === $branch) {
+            $where[] = 'a.branch_id IS NULL';
+        } elseif (null !== $branch && ctype_digit($branch)) {
+            $where[] = 'a.branch_id = :branch';
+            $params['branch'] = (int) $branch;
+        }
         if ('1' === $stale) {
             $where[] = "a.dynamic AND a.last_inventory_at < now() - interval '7 days'";
         }
@@ -66,7 +73,7 @@ final readonly class AssetQuery
             SELECT a.uuid, a.name, a.status, a.serial_number, a.inventory_number,
                    coalesce(a.os_full_name, a.os_name) AS os, a.os_version, a.os_architecture,
                    t.code AS type, t.label AS type_label, m.name AS manufacturer, mo.name AS model,
-                   l.name AS location, a.last_inventory_at, a.dynamic,
+                   l.name AS location, a.branch_id, b.name AS branch, b.code AS branch_code, a.last_inventory_at, a.dynamic,
                    (a.attributes->>'memory_mib')::int AS memory_mib,
                    (SELECT uuid FROM attachment WHERE owner_type = 'asset' AND owner_id = a.id AND kind = 'photo' ORDER BY created_at DESC LIMIT 1) AS photo_uuid,
                    (SELECT i.address FROM network_port p JOIN ip_address i ON i.network_port_id = p.id
@@ -77,6 +84,7 @@ final readonly class AssetQuery
             LEFT JOIN manufacturer m ON m.id = a.manufacturer_id
             LEFT JOIN asset_model mo ON mo.id = a.model_id
             LEFT JOIN location l ON l.id = a.location_id
+            LEFT JOIN branch b ON b.id = a.branch_id
             WHERE $whereSql
             ORDER BY $orderBy, a.id
             LIMIT :limit OFFSET :offset
@@ -98,13 +106,15 @@ final readonly class AssetQuery
                    a.os_kernel_version, a.os_installed_at, a.attributes, a.dynamic, a.comment,
                    a.last_inventory_at, a.created_at, a.updated_at,
                    t.code AS type, t.label AS type_label, m.name AS manufacturer, mo.name AS model,
-                   o.name AS organization, l.name AS location, u.username AS user, g.name AS tech_group
+                   o.name AS organization, l.name AS location, u.username AS user, g.name AS tech_group,
+                   a.branch_id, b.name AS branch, b.code AS branch_code
             FROM asset a
             JOIN asset_type t ON t.id = a.asset_type_id
             JOIN organization o ON o.id = a.organization_id
             LEFT JOIN manufacturer m ON m.id = a.manufacturer_id
             LEFT JOIN asset_model mo ON mo.id = a.model_id
             LEFT JOIN location l ON l.id = a.location_id
+            LEFT JOIN branch b ON b.id = a.branch_id
             LEFT JOIN app_user u ON u.id = a.user_id
             LEFT JOIN app_group g ON g.id = a.tech_group_id
             WHERE a.uuid = :uuid

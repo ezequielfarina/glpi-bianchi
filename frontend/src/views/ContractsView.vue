@@ -69,7 +69,7 @@ void load()
         </div>
       </LoadState>
     </section>
-    <ContractFormModal v-if="creating && lookups" :lookups="lookups" @close="creating = false" @saved="(id) => router.push(`/contracts/${id}`)" />
+    <ContractFormModal v-if="creating && lookups" :lookups="lookups" @lookups-changed="(v) => (lookups = v)" @close="creating = false" @saved="(id) => router.push(`/contracts/${id}`)" />
   </div>
 </template>
 

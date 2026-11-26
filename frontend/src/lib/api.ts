@@ -1,7 +1,7 @@
 // Cliente HTTP da API (/api). Token Bearer guardado no navegador (MVP).
 // Fase 2: OIDC — o token deixa de ser estático e passa a vir do IdP.
 import type {
-  AgentsResponse, Alerts, AssetDetail, AssetsResponse, Attachment, ContractDetail, ContractRow, InventoriesResponse, LicenseDetail,
+  AgentsResponse, Alerts, AssetDetail, AssetsResponse, Attachment, BranchDetail, BranchRow, ContractDetail, ContractRow, InventoriesResponse, LicenseDetail,
   LicenseRow, Lookups, Overview, SettingsResponse, SupplierDetail, SupplierRow, WakeupResult,
 } from './types'
 
@@ -89,7 +89,7 @@ export const api = {
   /** Valida um token antes de salvá-lo (tela de login). */
   check: (token: string) => request<{ authenticated: boolean }>('/me', {}, token),
   overview: () => request<Overview>('/overview'),
-  assets: (p: { q?: string; type?: string; stale?: boolean; page?: number; perPage?: number; sort?: string; dir?: string }) =>
+  assets: (p: { q?: string; type?: string; stale?: boolean; page?: number; perPage?: number; sort?: string; dir?: string; branch?: string }) =>
     request<AssetsResponse>(`/assets${qs(p)}`),
   asset: (uuid: string) => request<AssetDetail>(`/assets/${encodeURIComponent(uuid)}`),
   agents: () => request<AgentsResponse>('/agents'),
@@ -121,6 +121,13 @@ export const api = {
   },
   deleteAttachment: (uuid: string) => send<unknown>('DELETE', `/attachments/${uuid}`),
 
+  branches: () => request<{ items: BranchRow[] }>('/branches'),
+  branch: (id: number) => request<BranchDetail>(`/branches/${id}`),
+  saveBranch: (id: number | null, body: Record<string, unknown>) =>
+    id ? send<{ id: number; assigned: number }>('PUT', `/branches/${id}`, body) : send<{ id: number; assigned: number }>('POST', '/branches', body),
+  deleteBranch: (id: number) => send<unknown>('DELETE', `/branches/${id}`),
+  /** Move ativos em lote para a filial; id 0 = remover vínculo. */
+  moveToBranch: (id: number, assets: string[]) => send<{ updated: number }>('POST', `/branches/${id}/assets`, { assets }),
   suppliers: (q?: string) => request<{ items: SupplierRow[] }>(`/suppliers${qs({ q })}`),
   supplier: (id: number) => request<SupplierDetail>(`/suppliers/${id}`),
   saveSupplier: (id: number | null, body: Record<string, unknown>) =>
