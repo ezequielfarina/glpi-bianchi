@@ -8,6 +8,7 @@ import BranchMap, { type MapPoint } from '../components/BranchMap.vue'
 import BranchFormModal from '../components/forms/BranchFormModal.vue'
 import LoadState from '../components/LoadState.vue'
 import { api } from '../lib/api'
+import { typeIcon, typeStyle } from '../lib/assetTypes'
 import { taxId } from '../lib/format'
 import { directionsUrl, formatAddress, googleMapsUrl } from '../lib/geo'
 import { notify } from '../lib/toast'
@@ -99,7 +100,7 @@ async function remove(): Promise<void> {
             <ul v-if="b.by_type.length" class="types">
               <li v-for="t in b.by_type" :key="t.type">
                 <RouterLink :to="{ path: '/assets', query: { branch: String(b.id), type: t.type } }">
-                  <span>{{ t.type_label }}</span><strong>{{ t.total }}</strong>
+                  <span class="t-label"><span class="type-badge sm" :style="typeStyle(t.type)"><AppIcon :name="typeIcon(t.type)" :size="14" /></span>{{ t.type_label }}</span><strong>{{ t.total }}</strong>
                 </RouterLink>
               </li>
             </ul>
@@ -150,6 +151,9 @@ async function remove(): Promise<void> {
 .types { list-style: none; margin: 0; padding: 0 20px 12px; }
 .types a { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border-soft); color: var(--text); }
 .types a:hover { color: var(--accent-text); }
+.t-label { display: inline-flex; align-items: center; gap: 10px; }
+.type-badge.sm { width: 26px; height: 26px; border-radius: 7px; }
+.types a { align-items: center; }
 .types strong { font-variant-numeric: tabular-nums; }
 .stale { margin: 0 20px 12px; display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .unassigned { display: block; margin: 0 20px 16px; font-size: 12.5px; color: var(--text-3); }

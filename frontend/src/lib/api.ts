@@ -2,7 +2,7 @@
 // Fase 2: OIDC — o token deixa de ser estático e passa a vir do IdP.
 import type {
   AgentsResponse, Alerts, AssetDetail, AssetsResponse, Attachment, BranchDetail, BranchRow, ContractDetail, ContractRow, InventoriesResponse, LicenseDetail,
-  LicenseRow, Lookups, Overview, SettingsResponse, SupplierDetail, SupplierRow, WakeupResult,
+  LicenseRow, Lookups, Overview, SettingsResponse, SupplierDetail, SupplierRow, TypeSummary, WakeupResult,
 } from './types'
 
 const TOKEN_KEY = 'bianchi.token'
@@ -91,6 +91,7 @@ export const api = {
   overview: () => request<Overview>('/overview'),
   assets: (p: { q?: string; type?: string; stale?: boolean; page?: number; perPage?: number; sort?: string; dir?: string; branch?: string }) =>
     request<AssetsResponse>(`/assets${qs(p)}`),
+  assetSummary: (branch?: string) => request<{ types: TypeSummary[] }>(`/assets/summary${qs({ branch })}`),
   asset: (uuid: string) => request<AssetDetail>(`/assets/${encodeURIComponent(uuid)}`),
   agents: () => request<AgentsResponse>('/agents'),
   inventories: (status?: string) => request<InventoriesResponse>(`/inventories${qs({ status })}`),

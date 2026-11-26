@@ -12,8 +12,10 @@ use Doctrine\DBAL\Connection;
  */
 final readonly class OverviewQuery
 {
-    public function __construct(private Connection $db)
-    {
+    public function __construct(
+        private Connection $db,
+        private AssetQuery $assets,
+    ) {
     }
 
     /** @return array<string, mixed> */
@@ -82,6 +84,8 @@ final readonly class OverviewQuery
             ], $hourly),
             'os' => array_map(static fn (array $r): array => ['name' => $r['name'], 'count' => (int) $r['count']], $os),
             'recent' => $recent,
+            'by_type' => $this->assets->typeSummary(),
+            'by_branch' => $this->assets->branchTypeMatrix(),
             'generatedAt' => (new \DateTimeImmutable())->format(\DATE_ATOM),
         ];
     }

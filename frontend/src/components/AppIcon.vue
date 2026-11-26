@@ -43,6 +43,7 @@ const paths = {
   tablet: 'M6 3h12v18H6zM11 18h2',
   barcode: 'M4 5v14M7 5v14M10 5v14M14 5v14M17 5v14M20 5v14',
   monitor: 'M3 4h18v12H3zM9 20h6M12 16v4',
+  pc: 'M2 5h12v9H2zM6 19h4M8 14v5M17 4h5v16h-5zM19.5 8h.01M19.5 11h.01',
   phone: 'M8 3h8v18H8zM11 18h2',
   box: 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',
   building: 'M4 21V4h10v17M14 9h6v12M2 21h20M7 8h2M7 12h2M7 16h2M10 8h1M10 12h1M10 16h1M17 13h1M17 17h1',

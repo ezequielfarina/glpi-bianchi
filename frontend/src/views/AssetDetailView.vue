@@ -7,6 +7,7 @@ import AuthImage from '../components/AuthImage.vue'
 import LoadState from '../components/LoadState.vue'
 import OutcomePill from '../components/OutcomePill.vue'
 import StatusPill from '../components/StatusPill.vue'
+import { typeIcon, typeStyle } from '../lib/assetTypes'
 import { forceInventory, useInventoryRefresh, waking } from '../lib/wakeup'
 import { api } from '../lib/api'
 import { ASSET_STATUS, attrLabel, bytes, dateOnly, dateTime, fieldLabel, kindLabel, mib, num, relative } from '../lib/format'
@@ -199,7 +200,7 @@ async function force(deviceId: string, label: string): Promise<void> {
             <div class="title-row">
               <h1>{{ a.name }}</h1>
               <span class="pill pill-accent mono">{{ a.inventory_number ?? 'sem patrimônio' }}</span>
-              <span class="tag">{{ a.type_label }}</span>
+              <span class="type-tag" :style="typeStyle(a.type)"><AppIcon :name="typeIcon(a.type)" :size="12" /> {{ a.type_label }}</span>
               <span v-if="a.dynamic" class="pill pill-accent">inventário automático</span>
               <span v-else class="pill pill-muted">cadastro manual</span>
             </div>

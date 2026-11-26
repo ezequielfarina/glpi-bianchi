@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import type { Alerts } from '../lib/types'
 import { ref } from 'vue'
 import { ageDays, money, num, relative } from '../lib/format'
+import { TYPE_FILTERS, typeIcon, typeStyle } from '../lib/assetTypes'
 import { useAsync } from '../lib/useAsync'
 
 const alerts = ref<Alerts | null>(null)
@@ -25,6 +26,31 @@ const k = computed(() => data.value?.kpi)
 const coverage = computed(() => (k.value && k.value.agents ? Math.round((k.value.agents_24h / k.value.agents) * 100) : 0))
 const maxHour = computed(() => Math.max(1, ...(data.value?.hourly ?? []).map((h) => h.processed + h.failed + h.other)))
 const maxOs = computed(() => Math.max(1, ...(data.value?.os ?? []).map((o) => o.count)))
+// Totais por tipo: os principais sempre aparecem (mesmo zerados), demais só se houver ativos
+const types = computed(() => {
+  const all = data.value?.by_type ?? []
+  const main = new Set(TYPE_FILTERS.map((t) => t.code))
+  const order = TYPE_FILTERS.map((t) => t.code)
+  return [
+    ...all.filter((t) => main.has(t.type)).sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type)),
+    ...all.filter((t) => !main.has(t.type) && t.total > 0),
+  ]
+})
+// Matriz filial × tipo (só colunas de tipos com ativos)
+const matrix = computed(() => {
+  const cells = data.value?.by_branch ?? []
+  const cols = types.value.filter((t) => t.total > 0).map((t) => t.type)
+  const rows = new Map<string, { id: number | null; name: string; code: string | null; hq: boolean; counts: Record<string, number>; total: number }>()
+  for (const c of cells) {
+    const key = String(c.branch_id ?? 'none')
+    const row = rows.get(key) ?? { id: c.branch_id, name: c.branch ?? 'Sem filial', code: c.branch_code, hq: c.kind === 'headquarters', counts: {}, total: 0 }
+    row.counts[c.type] = c.total
+    row.total += c.total
+    rows.set(key, row)
+  }
+  return { cols, rows: [...rows.values()], hasBranches: cells.some((c) => c.branch_id !== null) }
+})
+const labelOf = (code: string) => types.value.find((t) => t.type === code)?.label ?? code
 const hourlyTotal = computed(() => (data.value?.hourly ?? []).reduce((s, h) => s + h.processed + h.failed + h.other, 0))
 </script>
 
@@ -59,6 +85,62 @@ const hourlyTotal = computed(() => (data.value?.hourly ?? []).reduce((s, h) => s
             :tone="k.failed_24h ? 'warn' : 'ok'"
             :to="k.failed_24h ? '/inventories?status=failed' : undefined"
           />
+        </section>
+
+        <section class="panel by-type" aria-labelledby="by-type-title">
+          <div class="panel-head">
+            <h2 id="by-type-title">Inventário por tipo</h2>
+            <RouterLink to="/assets" class="muted small">ver todos os {{ num(k.assets) }} →</RouterLink>
+          </div>
+          <div class="type-grid">
+            <RouterLink
+              v-for="t in types" :key="t.type" :to="{ path: '/assets', query: { type: t.type } }"
+              class="type-card" :class="{ zero: !t.total }" :style="typeStyle(t.type)"
+              :aria-label="`${t.label}: ${t.total}`"
+            >
+              <span class="type-badge"><AppIcon :name="typeIcon(t.type)" :size="20" /></span>
+              <span class="tc-body">
+                <span class="tc-label">{{ TYPE_FILTERS.find((f) => f.code === t.type)?.label ?? t.label }}</span>
+                <span class="tc-total">{{ num(t.total) }}</span>
+                <span v-if="t.total" class="tc-split">
+                  <span title="Em uso">{{ num(t.in_use) }} em uso</span>
+                  <span v-if="t.in_stock" title="Em estoque">· {{ num(t.in_stock) }} estoque</span>
+                  <span v-if="t.in_repair" class="warn-text" title="Em manutenção">· {{ num(t.in_repair) }} manut.</span>
+                </span>
+                <span v-else class="tc-split">nenhum cadastrado</span>
+              </span>
+              <span v-if="t.total" class="tc-bar" aria-hidden="true"><i :style="{ width: `${Math.round((t.in_use / t.total) * 100)}%` }" /></span>
+            </RouterLink>
+          </div>
+        </section>
+
+        <section v-if="matrix.hasBranches && matrix.cols.length" class="panel" aria-labelledby="by-branch-title">
+          <div class="panel-head"><h2 id="by-branch-title">Itens por filial</h2><RouterLink to="/branches" class="muted small">matriz e filiais →</RouterLink></div>
+          <div class="table-wrap">
+            <table class="table matrix">
+              <thead>
+                <tr>
+                  <th>Unidade</th>
+                  <th v-for="c in matrix.cols" :key="c" class="num" :style="typeStyle(c)"><span class="th-type"><AppIcon :name="typeIcon(c)" :size="14" /> {{ labelOf(c) }}</span></th>
+                  <th class="num">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in matrix.rows" :key="String(r.id)">
+                  <td>
+                    <RouterLink v-if="r.id" :to="`/branches/${r.id}`" class="strong">{{ r.name }}</RouterLink>
+                    <RouterLink v-else :to="{ path: '/assets', query: { branch: 'none' } }" class="warn-text">Sem filial</RouterLink>
+                    <span v-if="r.hq" class="pill pill-warn" style="margin-left: 6px">matriz</span>
+                  </td>
+                  <td v-for="c in matrix.cols" :key="c" class="num">
+                    <RouterLink v-if="r.counts[c]" :to="{ path: '/assets', query: { type: c, branch: r.id ? String(r.id) : 'none' } }">{{ num(r.counts[c]) }}</RouterLink>
+                    <span v-else class="muted">–</span>
+                  </td>
+                  <td class="num strong">{{ num(r.total) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section v-if="alerts" class="alerts" aria-label="Alertas de gestão">
@@ -182,4 +264,22 @@ const hourlyTotal = computed(() => (data.value?.hourly ?? []).reduce((s, h) => s
 .small { font-size: 12px; }
 @media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .two, .alerts { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .kpis { grid-template-columns: 1fr; } }
+.by-type { padding-bottom: 18px; }
+.type-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; padding: 0 20px; }
+.type-card { --type-hue: 210; position: relative; display: flex; gap: 12px; align-items: flex-start; padding: 14px 14px 18px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); color: var(--text); text-decoration: none; overflow: hidden; transition: border-color .15s, background .15s; }
+.type-card:hover { border-color: hsl(var(--type-hue) 70% 55% / .7); background: hsl(var(--type-hue) 70% 50% / .06); }
+.type-card.zero { opacity: .55; }
+.type-card .type-badge { width: 42px; height: 42px; border-radius: 10px; }
+.tc-body { display: flex; flex-direction: column; min-width: 0; }
+.tc-label { font-size: 12.5px; color: var(--text-2); }
+.tc-total { font-size: 28px; font-weight: 650; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.tc-split { font-size: 11.5px; color: var(--text-3); display: flex; gap: 4px; flex-wrap: wrap; }
+.tc-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: hsl(var(--type-hue) 70% 50% / .15); }
+.tc-bar i { display: block; height: 100%; background: hsl(var(--type-hue) 75% 55%); }
+.matrix .th-type { display: inline-flex; align-items: center; gap: 5px; }
+.matrix .th-type :deep(svg) { color: hsl(var(--type-hue) 80% 62%); }
+.matrix td a { color: var(--text); }
+.matrix td a:hover { color: var(--accent-text); }
+.warn-text { color: var(--warn-text); }
 </style>

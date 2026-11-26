@@ -1,7 +1,30 @@
 // Contratos dos endpoints /api/ui/* (src/Ui/ReadModel/*.php).
 // Datas chegam como string do PostgreSQL ("2026-11-26 17:18:12+00").
 
+export interface TypeSummary {
+  type: string
+  label: string
+  total: number
+  in_use: number
+  in_stock: number
+  in_repair: number
+  other: number
+  stale: number
+  no_branch: number
+}
+
+export interface BranchTypeCell {
+  branch_id: number | null
+  branch: string | null
+  branch_code: string | null
+  kind: BranchKind | null
+  type: string
+  total: number
+}
+
 export interface Overview {
+  by_type: TypeSummary[]
+  by_branch: BranchTypeCell[]
   kpi: {
     assets: number
     assets_new_7d: number

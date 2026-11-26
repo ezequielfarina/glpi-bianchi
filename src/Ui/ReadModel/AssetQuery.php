@@ -93,6 +93,78 @@ final readonly class AssetQuery
         return ['items' => $items, 'total' => $total, 'page' => $page, 'perPage' => $perPage];
     }
 
+    /**
+     * Totais por tipo de ativo (todos os tipos, inclusive zerados), com situação e
+     * pendências — base da visão geral e dos contadores dos filtros da lista.
+     *
+     * @return list<array{type: string, label: string, total: int, in_use: int, in_stock: int, in_repair: int, other: int, stale: int, no_branch: int}>
+     */
+    public function typeSummary(?string $branch = null): array
+    {
+        $params = [];
+        $branchSql = '';
+        if ('none' === $branch) {
+            $branchSql = 'AND a.branch_id IS NULL';
+        } elseif (null !== $branch && ctype_digit($branch)) {
+            $branchSql = 'AND a.branch_id = :branch';
+            $params['branch'] = (int) $branch;
+        }
+
+        $rows = $this->db->fetchAllAssociative(<<<SQL
+            SELECT t.code AS type, t.label,
+                   count(a.id) AS total,
+                   count(a.id) FILTER (WHERE a.status = 'in_use') AS in_use,
+                   count(a.id) FILTER (WHERE a.status = 'in_stock') AS in_stock,
+                   count(a.id) FILTER (WHERE a.status = 'in_repair') AS in_repair,
+                   count(a.id) FILTER (WHERE a.status NOT IN ('in_use', 'in_stock', 'in_repair')) AS other,
+                   count(a.id) FILTER (WHERE a.dynamic AND a.last_inventory_at < now() - interval '7 days') AS stale,
+                   count(a.id) FILTER (WHERE a.branch_id IS NULL) AS no_branch
+            FROM asset_type t
+            LEFT JOIN asset a ON a.asset_type_id = t.id AND a.deleted_at IS NULL $branchSql
+            GROUP BY t.id, t.code, t.label
+            ORDER BY count(a.id) DESC, t.label
+            SQL, $params);
+
+        return array_map(static fn (array $r): array => [
+            'type' => (string) $r['type'],
+            'label' => (string) $r['label'],
+            'total' => (int) $r['total'],
+            'in_use' => (int) $r['in_use'],
+            'in_stock' => (int) $r['in_stock'],
+            'in_repair' => (int) $r['in_repair'],
+            'other' => (int) $r['other'],
+            'stale' => (int) $r['stale'],
+            'no_branch' => (int) $r['no_branch'],
+        ], $rows);
+    }
+
+    /**
+     * Matriz filial × tipo (só combinações com ativos).
+     *
+     * @return list<array{branch_id: int|null, branch: string|null, branch_code: string|null, kind: string|null, type: string, total: int}>
+     */
+    public function branchTypeMatrix(): array
+    {
+        $rows = $this->db->fetchAllAssociative(<<<'SQL'
+            SELECT b.id AS branch_id, b.name AS branch, b.code AS branch_code, b.kind, t.code AS type, count(*) AS total
+            FROM asset a
+            JOIN asset_type t ON t.id = a.asset_type_id
+            LEFT JOIN branch b ON b.id = a.branch_id
+            WHERE a.deleted_at IS NULL
+            GROUP BY b.id, b.name, b.code, b.kind, t.code
+            ORDER BY b.kind = 'headquarters' DESC NULLS LAST, b.name NULLS LAST, t.code
+            SQL);
+
+        return array_map(static fn (array $r): array => [
+            'branch_id' => null === $r['branch_id'] ? null : (int) $r['branch_id'],
+            'branch' => $r['branch'],
+            'branch_code' => $r['branch_code'],
+            'kind' => $r['kind'],
+            'type' => (string) $r['type'],
+            'total' => (int) $r['total'],
+        ], $rows);
+    }
+
     /** @return array<string, mixed>|null */
     public function detail(string $uuid): ?array
     {

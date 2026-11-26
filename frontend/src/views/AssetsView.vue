@@ -6,6 +6,7 @@ import AuthImage from '../components/AuthImage.vue'
 import LoadState from '../components/LoadState.vue'
 import { api } from '../lib/api'
 import { notify } from '../lib/toast'
+import { TYPE_FILTERS, typeIcon, typeStyle } from '../lib/assetTypes'
 import { ageDays, mib, num, relative } from '../lib/format'
 import type { AssetsResponse, Lookups } from '../lib/types'
 
@@ -71,6 +72,18 @@ function sortBy(col: string): void {
 }
 function go(p: number): void { page.value = p; syncUrl(); void load() }
 
+// Contadores dos chips de tipo (respeitam o filtro de filial)
+const counts = ref<Record<string, number>>({})
+async function loadCounts(): Promise<void> {
+  try {
+    const r = await api.assetSummary(branch.value || undefined)
+    counts.value = Object.fromEntries(r.types.map((t) => [t.type, t.total]))
+  } catch { /* contador é acessório */ }
+}
+const allCount = computed(() => Object.values(counts.value).reduce((a, b) => a + b, 0))
+watch(branch, () => void loadCounts())
+void loadCounts()
+
 // Filiais (filtro + mover em lote)
 const branches = ref<Lookups['branches']>([])
 void api.lookups().then((l) => { branches.value = l.branches }).catch(() => undefined)
@@ -95,7 +108,7 @@ async function moveSelected(): Promise<void> {
     notify('ok', `${r.updated} ativo(s) movido(s)`, name ? `Destino: ${name}` : undefined)
     selected.value = new Set()
     target.value = ''
-    await load()
+    await Promise.all([load(), loadCounts()])
   } catch (e) {
     notify('warn', 'Não foi possível mover', e instanceof Error ? e.message : String(e))
   } finally { moving.value = false }
@@ -120,21 +133,20 @@ void load()
     </header>
 
     <section class="panel">
+      <div class="type-chips" role="radiogroup" aria-label="Tipo de ativo">
+        <button type="button" role="radio" class="chip" :class="{ on: type === '' }" :aria-checked="type === ''" @click="type = ''">
+          <AppIcon name="box" :size="15" /> Todos <span class="cnt">{{ num(allCount) }}</span>
+        </button>
+        <button
+          v-for="t in TYPE_FILTERS" :key="t.code" type="button" role="radio" class="chip"
+          :class="{ on: type === t.code }" :aria-checked="type === t.code" :style="typeStyle(t.code)" @click="type = t.code"
+        >
+          <AppIcon :name="typeIcon(t.code)" :size="15" /> {{ t.label }} <span class="cnt">{{ num(counts[t.code] ?? 0) }}</span>
+        </button>
+      </div>
       <div class="filters">
         <label class="sr-only" for="asset-q">Buscar</label>
         <input id="asset-q" v-model="q" class="input grow" type="search" placeholder="Nome, serial, patrimônio, UUID, MAC ou IP" />
-        <label class="sr-only" for="asset-type">Tipo</label>
-        <select id="asset-type" v-model="type" class="input">
-          <option value="">Todos os tipos</option>
-          <option value="computer">Computadores</option>
-          <option value="network_equipment">Equipamentos de rede</option>
-          <option value="printer">Impressoras</option>
-          <option value="monitor">Monitores</option>
-          <option value="phone">Telefones</option>
-          <option value="tablet">Tablets</option>
-          <option value="data_collector">Coletores de dados</option>
-          <option value="peripheral">Periféricos</option>
-        </select>
         <label class="sr-only" for="asset-branch">Filial</label>
         <select id="asset-branch" v-model="branch" class="input">
           <option value="">Todas as filiais</option>
@@ -180,11 +192,15 @@ void load()
                 <td class="sel"><input type="checkbox" :checked="selected.has(a.uuid)" :aria-label="`Selecionar ${a.name}`" @change="toggle(a.uuid)" /></td>
                 <td>
                   <div class="asset-cell">
-                    <span class="thumb"><AuthImage :uuid="a.photo_uuid" alt=""><template #fallback><AppIcon name="assets" :size="16" /></template></AuthImage></span>
+                    <span class="thumb-wrap">
+                      <span v-if="a.photo_uuid" class="thumb"><AuthImage :uuid="a.photo_uuid" alt=""><template #fallback><AppIcon :name="typeIcon(a.type)" :size="18" /></template></AuthImage></span>
+                      <span v-else class="type-badge" :style="typeStyle(a.type)" :title="a.type_label"><AppIcon :name="typeIcon(a.type)" :size="18" /></span>
+                      <span v-if="a.photo_uuid" class="mini type-badge" :style="typeStyle(a.type)" :title="a.type_label"><AppIcon :name="typeIcon(a.type)" :size="11" /></span>
+                    </span>
                     <div>
                       <RouterLink :to="`/assets/${a.uuid}`" class="strong">{{ a.name }}</RouterLink>
                       <div class="muted small">
-                        <span class="tag">{{ a.type_label }}</span>
+                        <span class="type-tag" :style="typeStyle(a.type)">{{ a.type_label }}</span>
                         {{ [a.manufacturer, a.model].filter(Boolean).join(' · ') }}
                       </div>
                     </div>
@@ -225,6 +241,18 @@ void load()
 .page { display: flex; flex-direction: column; gap: 20px; max-width: 1480px; }
 .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .page-head p { margin: 4px 0 0; font-size: 13px; }
+.type-chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 16px 20px 0; }
+.chip { --type-hue: 210; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-2); font: inherit; font-size: 13px; cursor: pointer; }
+.chip :deep(svg) { color: hsl(var(--type-hue) 80% 65%); }
+.chip:hover { background: var(--panel-hover); }
+.chip.on { border-color: hsl(var(--type-hue) 70% 55%); background: hsl(var(--type-hue) 70% 50% / .14); color: var(--text); }
+.chip:first-child :deep(svg) { color: var(--text-3); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cnt { font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--text-3); background: var(--muted-soft); border-radius: 999px; padding: 0 6px; }
+.chip.on .cnt { color: var(--text); }
+.thumb-wrap { position: relative; flex: none; }
+.mini.type-badge { position: absolute; right: -5px; bottom: -5px; width: 18px; height: 18px; border-radius: 5px; background: var(--panel); }
 .bulk { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 20px 12px; padding: 10px 14px; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: var(--radius-sm); font-size: 13px; }
 .sel { width: 36px; }
 .sel input { width: 16px; height: 16px; accent-color: var(--accent); }

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import AppIcon from './AppIcon.vue'
 import { api } from '../lib/api'
+import { typeIcon, typeStyle } from '../lib/assetTypes'
 import type { AssetRow } from '../lib/types'
 
 // Busca de ativo por nome, patrimônio, serial, MAC ou IP (usa /api/ui/assets?q=).
@@ -40,7 +42,7 @@ function pick(a: AssetRow): void {
     <ul v-if="open && results.length" :id="`${id}-list`" class="list panel" role="listbox">
       <li v-for="a in results" :key="a.uuid" role="option" :aria-selected="false">
         <button type="button" @click="pick(a)">
-          <strong>{{ a.name }}</strong>
+          <strong><span class="type-tag" :style="typeStyle(a.type)"><AppIcon :name="typeIcon(a.type)" :size="11" /></span> {{ a.name }}</strong>
           <span class="muted small">{{ a.type_label }} · {{ a.inventory_number ?? 'sem patrimônio' }}<template v-if="a.serial_number"> · S/N {{ a.serial_number }}</template></span>
         </button>
       </li>

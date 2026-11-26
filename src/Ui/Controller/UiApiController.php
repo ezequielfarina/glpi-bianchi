@@ -57,6 +57,13 @@ final readonly class UiApiController
         return $this->json($this->assets->search($q, $type, $stale, $page, $perPage, $sort, $dir, $branch));
     }
 
+    /** Totais por tipo (contadores dos filtros); ?branch=id|none. */
+    #[Route('/assets/summary', name: 'asset_summary', methods: ['GET'], priority: 10)]
+    public function assetSummary(#[MapQueryParameter] ?string $branch = null): JsonResponse
+    {
+        return $this->json(['types' => $this->assets->typeSummary($branch)]);
+    }
+
     #[Route('/assets/{uuid}', name: 'asset', methods: ['GET'])]
     public function asset(string $uuid): JsonResponse
     {

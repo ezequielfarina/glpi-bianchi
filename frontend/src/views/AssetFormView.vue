@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import AppIcon, { type IconName } from '../components/AppIcon.vue'
+import AppIcon from '../components/AppIcon.vue'
 import AuthImage from '../components/AuthImage.vue'
 import LoadState from '../components/LoadState.vue'
+import { typeIcon } from '../lib/assetTypes'
 import { api, ApiError } from '../lib/api'
 import { ASSET_STATUS, TYPE_FIELDS } from '../lib/format'
 import { notify } from '../lib/toast'
@@ -15,10 +16,6 @@ const props = defineProps<{ uuid?: string }>()
 const router = useRouter()
 const editing = computed(() => !!props.uuid)
 
-const TYPE_ICON: Record<string, IconName> = {
-  computer: 'assets', monitor: 'monitor', printer: 'printer', phone: 'phone', tablet: 'tablet', data_collector: 'barcode',
-  network_equipment: 'network', peripheral: 'box', pdu: 'bolt', rack: 'box', enclosure: 'box', unmanaged: 'box',
-}
 
 const lookups = ref<Lookups | null>(null)
 const original = ref<AssetDetail | null>(null)
@@ -141,7 +138,7 @@ void load()
               v-for="t in lookups.asset_types" :key="t.code" type="button" role="radio" class="type"
               :class="{ on: form.type === t.code }" :aria-checked="form.type === t.code" @click="chooseType(t.code)"
             >
-              <AppIcon :name="TYPE_ICON[t.code] ?? 'box'" :size="22" />
+              <AppIcon :name="typeIcon(t.code)" :size="22" />
               <span>{{ t.label }}</span>
             </button>
           </div>

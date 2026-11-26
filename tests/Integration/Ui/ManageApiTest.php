@@ -98,6 +98,11 @@ final class ManageApiTest extends WebTestCase
         self::assertSame('Filial Campinas', $this->call('GET', '/api/ui/assets/'.$uuid)['branch']);
         $this->call('PATCH', '/api/ui/assets/'.$uuid, ['branch_id' => $hq]);
         self::assertSame(1, $this->call('GET', '/api/ui/assets?branch='.$hq)['total']);
+        $monitors = array_values(array_filter($this->call('GET', '/api/ui/assets/summary?branch='.$hq)['types'], static fn (array $t): bool => 'monitor' === $t['type']))[0];
+        self::assertSame(1, $monitors['total']);
+        $overview = $this->call('GET', '/api/ui/overview');
+        self::assertNotEmpty($overview['by_type']);
+        self::assertContains('Matriz', array_column($overview['by_branch'], 'branch'));
         self::assertSame(1, $this->call('POST', "/api/ui/branches/$fil/assets", ['assets' => [$uuid]])['updated']);
         self::assertSame(1, $this->call('GET', "/api/ui/branches/$fil")['assets']);
 
