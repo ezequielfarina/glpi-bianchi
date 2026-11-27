@@ -23,9 +23,11 @@ final readonly class OverviewQuery
     {
         $kpi = $this->db->fetchAssociative(<<<'SQL'
             SELECT
-              (SELECT count(*) FROM asset WHERE deleted_at IS NULL)                                         AS assets,
-              (SELECT count(*) FROM asset WHERE deleted_at IS NULL AND created_at > now() - interval '7 days') AS assets_new_7d,
-              (SELECT count(*) FROM asset WHERE deleted_at IS NULL AND dynamic
+              (SELECT count(*) FROM asset WHERE deleted_at IS NULL AND status <> 'in_stock')               AS assets,
+              (SELECT count(*) FROM asset WHERE deleted_at IS NULL AND status <> 'in_stock'
+                                         AND created_at > now() - interval '7 days')                         AS assets_new_7d,
+              (SELECT count(*) FROM asset WHERE deleted_at IS NULL AND status = 'in_stock')                AS assets_in_stock,
+              (SELECT count(*) FROM asset WHERE deleted_at IS NULL AND status <> 'in_stock' AND dynamic
                                          AND last_inventory_at < now() - interval '7 days')                  AS assets_stale_7d,
               (SELECT count(*) FROM agent)                                                                   AS agents,
               (SELECT count(*) FROM agent WHERE last_contact_at > now() - interval '24 hours')              AS agents_24h,
@@ -50,7 +52,7 @@ final readonly class OverviewQuery
 
         $os = $this->db->fetchAllAssociative(<<<'SQL'
             SELECT coalesce(os_full_name, os_name, 'Não informado') AS name, count(*) AS count
-            FROM asset WHERE deleted_at IS NULL
+            FROM asset WHERE deleted_at IS NULL AND status <> 'in_stock'
               AND asset_type_id = (SELECT id FROM asset_type WHERE code = 'computer')
             GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 6
             SQL);
@@ -69,7 +71,7 @@ final readonly class OverviewQuery
             LEFT JOIN manufacturer m ON m.id = a.manufacturer_id
             LEFT JOIN asset_model mo ON mo.id = a.model_id
             LEFT JOIN LATERAL (SELECT version FROM agent WHERE asset_id = a.id ORDER BY last_contact_at DESC LIMIT 1) ag ON true
-            WHERE a.deleted_at IS NULL
+            WHERE a.deleted_at IS NULL AND a.status <> 'in_stock'
             ORDER BY a.last_inventory_at DESC NULLS LAST, a.id DESC
             LIMIT 8
             SQL);

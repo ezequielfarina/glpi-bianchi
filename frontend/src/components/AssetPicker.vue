@@ -17,7 +17,7 @@ watch(q, (v) => {
   window.clearTimeout(t)
   if (v.trim().length < 2) { results.value = []; return }
   t = window.setTimeout(async () => {
-    results.value = (await api.assets({ q: v.trim(), perPage: 8 })).items
+    results.value = (await api.assets({ q: v.trim(), perPage: 8, stock: 'all' })).items
     open.value = true
   }, 250)
 })

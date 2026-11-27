@@ -135,7 +135,7 @@ export const api = {
   scanExportUrl: (id: number) => `/api/ui/tools/scanner/scans/${id}/export`,
   // ---------------------------------------------------------------- inventário
   overview: () => request<Overview>('/overview'),
-  assets: (p: { q?: string; type?: string; stale?: boolean; page?: number; perPage?: number; sort?: string; dir?: string; branch?: string }) =>
+  assets: (p: { q?: string; type?: string; stale?: boolean; page?: number; perPage?: number; sort?: string; dir?: string; branch?: string; stock?: 'all' | 'only' }) =>
     request<AssetsResponse>(`/assets${qs(p)}`),
   assetSummary: (branch?: string) => request<{ types: TypeSummary[] }>(`/assets/summary${qs({ branch })}`),
   asset: (uuid: string) => request<AssetDetail>(`/assets/${encodeURIComponent(uuid)}`),

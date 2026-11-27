@@ -39,6 +39,12 @@ gera uma nota fiscal que precisa ser registrada e enviada ao setor de lançament
    ativos criados por ela.
 8. **Custo médio ponderado** calculado das entradas com valor; registrado como `unit_cost` em saídas/ajustes.
 9. **Alerta de mínimo** só na interface: contador no menu (`/api/ui/stock/low-count`) e lista "a comprar".
+12. **Estoque separado dos ativos de TI** (revisão de 2026-11-27): equipamento guardado (`status = in_stock`) não
+    é ativo em uso. Fica fora da lista de Ativos, dos totais da visão geral, da matriz filial × tipo e dos
+    contadores "sem filial"/"sem inventário" — aparece no Estoque (unidades do item). A lista de Ativos tem o filtro
+    *Em uso / Em uso + estoque / Só os guardados* (`GET /api/ui/assets?stock=all|only`) e avisa quando a busca só
+    encontra equipamentos guardados (`in_stock_matches`). Na saída para a filial o ativo vira `in_use` e entra na
+    lista. O detalhe do ativo mostra a origem (item, entrada, nota) e a última movimentação.
 10. Anexos (DANFE/XML) usam o módulo de anexos existente (`owner_type = invoice`).
 11. **Etiqueta de envio** (revisão de 2026-11-27, modelo `Entrega_TI.odt`): a saída grava o setor de destino
     (`stock_movement.department`) e abre a etiqueta — remetente, destinatário (filial + código, ex.

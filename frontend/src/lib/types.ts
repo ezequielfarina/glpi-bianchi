@@ -28,6 +28,7 @@ export interface Overview {
   kpi: {
     assets: number
     assets_new_7d: number
+    assets_in_stock: number
     assets_stale_7d: number
     agents: number
     agents_24h: number
@@ -87,6 +88,8 @@ export interface AssetsResponse {
   total: number
   page: number
   perPage: number
+  /** equipamentos guardados no estoque que batem com a busca (fora da lista por padrão) */
+  in_stock_matches?: number
 }
 
 export interface Component {
@@ -208,6 +211,9 @@ export interface AssetDetail {
   photo_uuid: string | null
   licenses: { assignment_id: number; id: number; name: string; expires_at: string | null; license_type: string }[]
   contracts: { id: number; title: string; number: string | null; end_date: string | null; supplier: string | null }[]
+  /** origem no estoque central (ADR-0014) */
+  stock: { item_id: number; item: string; entered_at: string; invoice_id: number | null; invoice_number: string | null; supplier: string | null;
+    last_kind: 'in' | 'out' | 'adjust'; last_at: string; last_branch: string | null; last_department: string | null; last_recipient: string | null } | null
   locked_fields: string[]
   deleted_at: string | null
 }

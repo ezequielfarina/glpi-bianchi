@@ -18,6 +18,8 @@ const q = ref(String(route.query.q ?? ''))
 const type = ref(String(route.query.type ?? ''))
 const stale = ref(route.query.stale === '1')
 const branch = ref(String(route.query.branch ?? ''))
+// equipamentos guardados no estoque central ficam fora da lista (ADR-0014); 'all' inclui, 'only' mostra só eles
+const stock = ref<'' | 'all' | 'only'>(route.query.stock === 'all' || route.query.stock === 'only' ? route.query.stock : '')
 const page = ref(Number(route.query.page ?? 1))
 const sort = ref(String(route.query.sort ?? 'name'))
 const dir = ref(String(route.query.dir ?? 'asc'))
@@ -31,7 +33,7 @@ async function load(): Promise<void> {
   loading.value = true
   error.value = null
   try {
-    data.value = await api.assets({ q: q.value, type: type.value, stale: stale.value, page: page.value, perPage, sort: sort.value, dir: dir.value, branch: branch.value || undefined })
+    data.value = await api.assets({ q: q.value, type: type.value, stale: stale.value, page: page.value, perPage, sort: sort.value, dir: dir.value, branch: branch.value || undefined, stock: stock.value || undefined })
     const visible = new Set(data.value.items.map((a) => a.uuid))
     selected.value = new Set([...selected.value].filter((u) => visible.has(u)))
   } catch (e) {
@@ -48,6 +50,7 @@ function syncUrl(): void {
       ...(type.value ? { type: type.value } : {}),
       ...(stale.value ? { stale: '1' } : {}),
       ...(branch.value ? { branch: branch.value } : {}),
+      ...(stock.value ? { stock: stock.value } : {}),
       ...(page.value > 1 ? { page: String(page.value) } : {}),
       ...(sort.value !== 'name' ? { sort: sort.value } : {}),
       ...(dir.value !== 'asc' ? { dir: dir.value } : {}),
@@ -60,7 +63,7 @@ watch(q, () => {
   window.clearTimeout(debounce)
   debounce = window.setTimeout(() => { page.value = 1; syncUrl(); void load() }, 300)
 })
-watch([type, stale, branch], () => { page.value = 1; syncUrl(); void load() })
+watch([type, stale, branch, stock], () => { page.value = 1; syncUrl(); void load() })
 // Busca vinda da barra global (outra rota → esta)
 watch(() => route.query.q, (v) => { if (typeof v === 'string' && v !== q.value) q.value = v })
 
@@ -157,7 +160,19 @@ void load()
           <input v-model="stale" type="checkbox" />
           Sem inventário há mais de 7 dias
         </label>
+        <label class="sr-only" for="asset-stock">Estoque</label>
+        <select id="asset-stock" v-model="stock" class="input" title="Equipamentos guardados no estoque central">
+          <option value="">Em uso (sem o estoque)</option>
+          <option value="all">Em uso + estoque</option>
+          <option value="only">Só os guardados no estoque</option>
+        </select>
       </div>
+      <p v-if="!stock && data?.in_stock_matches" class="stock-hint">
+        <AppIcon name="box" :size="14" />
+        {{ num(data.in_stock_matches) }} equipamento(s) guardado(s) no estoque {{ q ? 'também correspondem à busca' : 'não aparecem nesta lista' }}.
+        <button class="link-btn" type="button" @click="stock = 'all'">Mostrar</button> ·
+        <RouterLink to="/stock">ir para o Estoque</RouterLink>
+      </p>
 
       <div v-if="selected.size" class="edit-only bulk" role="region" aria-label="Ações em lote">
         <strong>{{ selected.size }} selecionado(s)</strong>
@@ -258,6 +273,7 @@ void load()
 .sel input { width: 16px; height: 16px; accent-color: var(--accent); }
 tr.picked td { background: var(--accent-soft); }
 .branch { color: var(--text); font-weight: 500; }
+.stock-hint { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0; padding: 0 20px 12px; font-size: 12.5px; color: var(--text-3); }
 .asset-cell { display: flex; gap: 10px; align-items: center; }
 .thumb { width: 36px; height: 36px; border-radius: 8px; background: var(--panel-hover); display: grid; place-items: center; overflow: hidden; color: var(--text-3); flex: none; }
 .thumb :deep(img) { width: 100%; height: 100%; object-fit: cover; }

@@ -215,6 +215,14 @@ async function force(deviceId: string, label: string): Promise<void> {
               {{ [a.manufacturer, a.model].filter(Boolean).join(' · ') || 'Fabricante não informado' }}
               · {{ ASSET_STATUS[a.status] ?? a.status }}<template v-if="a.branch"> · <RouterLink :to="`/branches/${a.branch_id}`" class="branch-link"><AppIcon name="pin" :size="12" /> {{ a.branch }}</RouterLink></template><template v-if="a.location"> · {{ a.location }}</template><template v-if="a.user"> · {{ a.user }}</template>
             </p>
+            <p v-if="a.stock" class="stock-origin" :class="{ guarded: a.status === 'in_stock' }">
+              <AppIcon name="box" :size="14" />
+              <template v-if="a.status === 'in_stock'"><strong>Guardado no estoque central</strong> — não aparece na lista de ativos em uso.</template>
+              <template v-else-if="a.stock.last_kind === 'out'">Saiu do estoque em {{ dateOnly(a.stock.last_at) }}<template v-if="a.stock.last_branch"> para {{ a.stock.last_branch }}</template><template v-if="a.stock.last_department || a.stock.last_recipient"> ({{ [a.stock.last_department, a.stock.last_recipient].filter(Boolean).join(' A/C ') }})</template>.</template>
+              <template v-else>Baixado do estoque em {{ dateOnly(a.stock.last_at) }}.</template>
+              Item <RouterLink :to="`/stock/items/${a.stock.item_id}`">{{ a.stock.item }}</RouterLink>,
+              entrada em {{ dateOnly(a.stock.entered_at) }}<template v-if="a.stock.invoice_id"> pela <RouterLink :to="`/invoices/${a.stock.invoice_id}`">NF {{ a.stock.invoice_number }}</RouterLink><template v-if="a.stock.supplier"> ({{ a.stock.supplier }})</template></template>.
+            </p>
           </div>
           <div class="hero-actions">
           <RouterLink v-if="diagIp" :to="{ path: '/tools/net', query: { tab: 'ping', host: diagIp } }" class="edit-only btn" :title="`Ping, traceroute e portas para ${diagIp}`"><AppIcon name="pulse" :size="16" /> Diagnosticar</RouterLink>
@@ -499,6 +507,9 @@ async function force(deviceId: string, label: string): Promise<void> {
 @media (max-width: 1100px) { .links { grid-template-columns: 1fr; } }
 .hero-top .btn-primary:disabled { opacity: 0.6; cursor: progress; }
 .title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.stock-origin { margin: 6px 0 0; font-size: 12.5px; color: var(--text-3); }
+.stock-origin.guarded { color: var(--warn-text); }
+.stock-origin :deep(svg) { vertical-align: -2px; margin-right: 4px; }
 .hero-main p { margin: 6px 0 0; }
 .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px; margin: 0; }
 .facts dt { font-size: 12px; color: var(--text-3); margin-bottom: 3px; }

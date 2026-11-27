@@ -54,6 +54,14 @@ ArgoxBancada), ajustável em *Papel — largura/altura* (fica salvo no navegador
 | Saiu de cabeça para baixo | sentido da bobina | driver em *Retrato 180°* |
 | Pula uma etiqueta em branco | sensor de gap não calibrado | calibrar o sensor no driver/painel da Argox |
 
+## Estoque × Ativos
+
+Equipamento guardado no estoque **não aparece em Ativos** (nem nos totais da visão geral): ele está no Estoque, nas
+unidades do item. Quando sai para uma filial, passa a *Em uso* e entra na lista de Ativos. Em **Ativos** o filtro
+*Em uso / Em uso + estoque / Só os guardados* mostra os guardados quando preciso; se uma busca (patrimônio, série)
+só encontra equipamento guardado, a tela avisa e oferece mostrar. O detalhe do ativo mostra de onde ele veio (item,
+data de entrada, nota fiscal) e para onde foi.
+
 ## Ajuste, histórico e consumo
 
 - **Ajustar** (sempre com motivo): sem patrimônio, quantidade + ou −; com patrimônio, baixa de unidades escolhidas

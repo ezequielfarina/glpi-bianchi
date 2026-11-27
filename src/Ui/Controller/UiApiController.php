@@ -53,8 +53,11 @@ final readonly class UiApiController
         #[MapQueryParameter] string $sort = 'name',
         #[MapQueryParameter] string $dir = 'asc',
         #[MapQueryParameter] ?string $branch = null,
+        #[MapQueryParameter] ?string $stock = null,
     ): JsonResponse {
-        return $this->json($this->assets->search($q, $type, $stale, $page, $perPage, $sort, $dir, $branch));
+        $stock = \in_array($stock, ['all', 'only'], true) ? $stock : null;
+
+        return $this->json($this->assets->search($q, $type, $stale, $page, $perPage, $sort, $dir, $branch, $stock));
     }
 
     /** Totais por tipo (contadores dos filtros); ?branch=id|none. */

@@ -18,6 +18,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- **Estoque separado dos ativos de TI:** equipamento guardado no estoque não aparece mais em Ativos nem nos totais da visão geral; entra na lista quando sai para a filial. Filtro *Em uso / + estoque / só guardados*, aviso quando a busca só encontra guardados e origem (item, entrada, NF) no detalhe do ativo.
 - **Auditoria de ações (ADR-0015):** tudo que é feito pela interface fica registrado (cadastros, alterações, exclusões, movimentações de estoque, notas, ferramentas, monitoramento, usuários, configurações, exibição de chave de licença) com usuário, IP, objeto (lido antes da exclusão) e o que foi enviado — sem segredos. Somente inclusão (o banco bloqueia alteração e exclusão). Tela *Auditoria* com abas *Ações no sistema* e *Acessos e contas*.
 - **Estoque central de TI e notas fiscais (ADR-0014):**
   - Itens com estoque mínimo e lista "a comprar"; contador no menu (alerta só no sistema).

@@ -69,7 +69,7 @@ const hourlyTotal = computed(() => (data.value?.hourly ?? []).reduce((s, h) => s
     <LoadState :loading="loading && !data" :error="error" :rows="6" @retry="reload">
       <template v-if="data && k">
         <section class="kpis" aria-label="Indicadores">
-          <KpiCard label="Ativos" :value="num(k.assets)" :note="`+${num(k.assets_new_7d)} nos últimos 7 dias`" to="/assets" />
+          <KpiCard label="Ativos" :value="num(k.assets)" :note="`+${num(k.assets_new_7d)} nos últimos 7 dias${k.assets_in_stock ? ` · ${num(k.assets_in_stock)} no estoque` : ''}`" to="/assets" />
           <KpiCard
             label="Agentes ativos (24 h)"
             :value="num(k.agents_24h)"

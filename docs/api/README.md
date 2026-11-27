@@ -40,6 +40,7 @@ Paginação: `?page=2&itemsPerPage=100` (máximo 500).
 | DELETE | `/api/ui/branches/{id}` | ativos ficam sem filial |
 | POST | `/api/ui/branches/{id}/assets` | `{"assets": [uuid, …]}` move em lote; `{id}` = `0` remove o vínculo |
 | GET | `/api/ui/assets?branch={id}` · `?branch=none` | ativos da filial / sem filial |
+| GET | `/api/ui/assets?stock=all` · `?stock=only` | por padrão a lista **não** traz equipamentos guardados no estoque (`status=in_stock`); `all` inclui, `only` só eles. Sem o parâmetro, a resposta traz `in_stock_matches` |
 
 ### Estoque e notas fiscais (`/api/ui/stock`, mesmo token — ADR-0014)
 

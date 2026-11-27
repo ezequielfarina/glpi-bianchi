@@ -28,9 +28,12 @@ final readonly class AssetQuery
     }
 
     /**
-     * @return array{items: list<array<string, mixed>>, total: int, page: int, perPage: int}
+     * Equipamento guardado no estoque central (status `in_stock`) não é ativo de TI em uso: fica fora da lista
+     * por padrão (ADR-0014). $stock: null = sem os do estoque · 'all' = todos · 'only' = só os do estoque.
+     *
+     * @return array{items: list<array<string, mixed>>, total: int, page: int, perPage: int, in_stock_matches?: int}
      */
-    public function search(?string $q, ?string $type, ?string $stale, int $page, int $perPage, string $sort, string $dir, ?string $branch = null): array
+    public function search(?string $q, ?string $type, ?string $stale, int $page, int $perPage, string $sort, string $dir, ?string $branch = null, ?string $stock = null): array
     {
         $where = ['a.deleted_at IS NULL'];
         $params = [];
@@ -62,6 +65,14 @@ final readonly class AssetQuery
             $where[] = "a.dynamic AND a.last_inventory_at < now() - interval '7 days'";
         }
 
+        // busca que só encontra equipamentos guardados: a tela avisa e oferece mostrar (contagem sem o filtro de estoque)
+        $baseSql = implode(' AND ', $where);
+        if ('only' === $stock) {
+            $where[] = "a.status = 'in_stock'";
+        } elseif ('all' !== $stock) {
+            $where[] = "a.status <> 'in_stock'";
+        }
+
         $whereSql = implode(' AND ', $where);
         $orderBy = (self::SORTS[$sort] ?? 'a.name').' '.('desc' === strtolower($dir) ? 'DESC NULLS LAST' : 'ASC NULLS LAST');
         $perPage = max(1, min(200, $perPage));
@@ -90,7 +101,13 @@ final readonly class AssetQuery
             LIMIT :limit OFFSET :offset
             SQL, $params + ['limit' => $perPage, 'offset' => ($page - 1) * $perPage], ['limit' => ParameterType::INTEGER, 'offset' => ParameterType::INTEGER]);
 
-        return ['items' => $items, 'total' => $total, 'page' => $page, 'perPage' => $perPage];
+        $out = ['items' => $items, 'total' => $total, 'page' => $page, 'perPage' => $perPage];
+        if (null === $stock) {
+            $out['in_stock_matches'] = (int) $this->db->fetchOne(
+                "SELECT count(*) FROM asset a JOIN asset_type t ON t.id = a.asset_type_id WHERE $baseSql AND a.status = 'in_stock'", $params);
+        }
+
+        return $out;
     }
 
     /**
@@ -112,17 +129,17 @@ final readonly class AssetQuery
 
         $rows = $this->db->fetchAllAssociative(<<<SQL
             SELECT t.code AS type, t.label,
-                   count(a.id) AS total,
+                   count(a.id) FILTER (WHERE a.status <> 'in_stock') AS total,
                    count(a.id) FILTER (WHERE a.status = 'in_use') AS in_use,
                    count(a.id) FILTER (WHERE a.status = 'in_stock') AS in_stock,
                    count(a.id) FILTER (WHERE a.status = 'in_repair') AS in_repair,
                    count(a.id) FILTER (WHERE a.status NOT IN ('in_use', 'in_stock', 'in_repair')) AS other,
-                   count(a.id) FILTER (WHERE a.dynamic AND a.last_inventory_at < now() - interval '7 days') AS stale,
-                   count(a.id) FILTER (WHERE a.branch_id IS NULL) AS no_branch
+                   count(a.id) FILTER (WHERE a.status <> 'in_stock' AND a.dynamic AND a.last_inventory_at < now() - interval '7 days') AS stale,
+                   count(a.id) FILTER (WHERE a.status <> 'in_stock' AND a.branch_id IS NULL) AS no_branch
             FROM asset_type t
             LEFT JOIN asset a ON a.asset_type_id = t.id AND a.deleted_at IS NULL $branchSql
             GROUP BY t.id, t.code, t.label
-            ORDER BY count(a.id) DESC, t.label
+            ORDER BY count(a.id) FILTER (WHERE a.status <> 'in_stock') DESC, t.label
             SQL, $params);
 
         return array_map(static fn (array $r): array => [
@@ -150,7 +167,7 @@ final readonly class AssetQuery
             FROM asset a
             JOIN asset_type t ON t.id = a.asset_type_id
             LEFT JOIN branch b ON b.id = a.branch_id
-            WHERE a.deleted_at IS NULL
+            WHERE a.deleted_at IS NULL AND a.status <> 'in_stock'
             GROUP BY b.id, b.name, b.code, b.kind, t.code
             ORDER BY b.kind = 'headquarters' DESC NULLS LAST, b.name NULLS LAST, t.code
             SQL);
@@ -271,7 +288,22 @@ final readonly class AssetQuery
             FROM raw_inventory WHERE asset_id = :id ORDER BY id DESC LIMIT 20
             SQL, ['id' => $id]);
 
+        // origem no estoque central (ADR-0014): entrada (nota/manual) e última movimentação da unidade
+        $stock = $this->db->fetchAssociative(<<<'SQL'
+            SELECT i.id AS item_id, i.name AS item,
+                   first.occurred_at AS entered_at, inv.id AS invoice_id, inv.number AS invoice_number, s.name AS supplier,
+                   last.kind AS last_kind, last.occurred_at AS last_at, b.name AS last_branch, last.department AS last_department, last.recipient AS last_recipient
+            FROM (SELECT * FROM stock_movement WHERE asset_id = :id ORDER BY id LIMIT 1) first
+            JOIN stock_item i ON i.id = first.stock_item_id
+            LEFT JOIN invoice_item ii ON ii.id = first.invoice_item_id
+            LEFT JOIN invoice inv ON inv.id = ii.invoice_id
+            LEFT JOIN supplier s ON s.id = inv.supplier_id
+            CROSS JOIN LATERAL (SELECT * FROM stock_movement WHERE asset_id = :id ORDER BY id DESC LIMIT 1) last
+            LEFT JOIN branch b ON b.id = last.branch_id
+            SQL, ['id' => $id]) ?: null;
+
         return $asset + [
+            'stock' => $stock,
             'components' => $components,
             'software' => $software,
             'networkPorts' => $ports,
