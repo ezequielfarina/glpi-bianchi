@@ -37,7 +37,7 @@ final readonly class DeviceService
      */
     public function list(array $f = [], int $limit = 1000): array
     {
-        return $this->db->fetchAllAssociative(<<<'SQL'
+        return Num::rows($this->db->fetchAllAssociative(<<<'SQL'
             SELECT d.id, d.name, d.status, d.serial, d.asset_tag, d.position::float8 AS position, d.face, d.branch_id, b.name AS branch, b.code AS branch_code,
                    d.location_id, l.name AS location, d.rack_id, k.name AS rack, ro.name AS role, ro.color, t.model AS device_type, m.name AS manufacturer,
                    t.u_height::float8 AS u_height, a.uuid AS asset_uuid, a.name AS asset_name,
@@ -64,7 +64,7 @@ final readonly class DeviceService
             ORDER BY b.name, d.name
             LIMIT :limit
             SQL, ['branch' => $f['branch'] ?? null, 'location' => $f['location'] ?? null, 'rack' => $f['rack'] ?? null, 'role' => $f['role'] ?? null,
-            'type' => $f['type'] ?? null, 'status' => $f['status'] ?? null, 'q' => $f['q'] ?? null, 'limit' => max(1, min($limit, 5000))]);
+            'type' => $f['type'] ?? null, 'status' => $f['status'] ?? null, 'q' => $f['q'] ?? null, 'limit' => max(1, min($limit, 5000))]), ['position', 'u_height'], ['ports', 'connected']);
     }
 
     /** @return array<string, mixed> */
@@ -86,6 +86,7 @@ final readonly class DeviceService
             LEFT JOIN ipam_ip_address ip ON ip.id = d.primary_ip_id
             WHERE d.id = ?
             SQL, [$id]) ?: throw new NotFoundException('Equipamento não encontrado.');
+        $d = Num::row($d, ['position', 'u_height']);
         $d['ports'] = $this->ports($id);
         $d['ips'] = $this->db->fetchAllAssociative(<<<'SQL'
             SELECT ip.id, host(ip.address) || '/' || masklen(ip.address) AS address, ip.status, ip.role, ip.dns_name, p.id AS port_id, p.name AS port, v.name AS vrf
@@ -510,6 +511,7 @@ final readonly class DeviceService
         if (null === $d) {
             return null;
         }
+        $d = Num::row($d, ['position']);
         $d['connections'] = array_values(array_map(static fn (array $p): array => [
             'port_id' => $p['id'], 'port' => $p['name'], 'kind' => $p['kind'], 'cable_label' => $p['cable_label'], 'destination' => $p['destination'],
             'link_peers' => $p['link_peers'],

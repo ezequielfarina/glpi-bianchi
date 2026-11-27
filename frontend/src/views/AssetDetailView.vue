@@ -15,9 +15,19 @@ import { ASSET_STATUS, attrLabel, bytes, dateOnly, dateTime, fieldLabel, kindLab
 import { notify } from '../lib/toast'
 import type { Component, LicenseRow, Lookups } from '../lib/types'
 import { useAsync } from '../lib/useAsync'
+import DeviceFormModal from '../components/dcim/DeviceFormModal.vue'
+import { dcim, type AssetDevice } from '../lib/dcim'
 
 const props = defineProps<{ uuid: string }>()
 const { data: a, loading, error, reload } = useAsync(() => api.asset(props.uuid))
+// posição física documentada (ADR-0016): equipamento vinculado, onde está e onde cada porta chega
+const phys = ref<AssetDevice | null>(null)
+const physLoaded = ref(false)
+const placing = ref(false)
+async function loadPhys(): Promise<void> {
+  try { phys.value = (await dcim.assetDevice(props.uuid)).device } catch { phys.value = null } finally { physLoaded.value = true }
+}
+void loadPhys()
 const refreshAfterInventory = useInventoryRefresh(reload)
 
 type Tab = 'hardware' | 'software' | 'network' | 'links' | 'attachments' | 'history' | 'inventories'
@@ -223,6 +233,19 @@ async function force(deviceId: string, label: string): Promise<void> {
               Item <RouterLink :to="`/stock/items/${a.stock.item_id}`">{{ a.stock.item }}</RouterLink>,
               entrada em {{ dateOnly(a.stock.entered_at) }}<template v-if="a.stock.invoice_id"> pela <RouterLink :to="`/invoices/${a.stock.invoice_id}`">NF {{ a.stock.invoice_number }}</RouterLink><template v-if="a.stock.supplier"> ({{ a.stock.supplier }})</template></template>.
             </p>
+            <p v-if="phys" class="stock-origin phys">
+              <AppIcon name="cable" :size="14" />
+              <RouterLink :to="`/dcim/devices/${phys.id}`">{{ phys.name }}</RouterLink>
+              em {{ [phys.branch, phys.location, phys.rack].filter(Boolean).join(' › ') }}<template v-if="!phys.connections.length"> — sem cabo documentado</template>
+              <template v-for="cn in phys.connections" :key="cn.port_id">
+                · <span class="mono">{{ cn.port }}</span> →
+                <template v-if="cn.destination"><template v-for="n in cn.destination.nodes" :key="n.id"><RouterLink :to="`/dcim/devices/${n.device_id}`">{{ n.device }}</RouterLink> <span class="mono">{{ n.name }}</span></template></template>
+                <template v-else-if="cn.link_peers[0]">{{ cn.link_peers[0].device }} {{ cn.link_peers[0].port }} (incompleto)</template>
+                <template v-if="cn.link_peers[0] && cn.destination && cn.link_peers[0].device_id !== cn.destination.nodes[0]?.device_id"> via {{ cn.link_peers[0].device }} {{ cn.link_peers[0].port }}</template>
+              </template>
+            </p>
+            <p v-else-if="physLoaded && canEdit" class="stock-origin"><AppIcon name="cable" :size="14" /> Posição física não documentada —
+              <button type="button" class="link-btn" @click="placing = true">documentar onde está e onde está ligado</button></p>
           </div>
           <div class="hero-actions">
           <RouterLink v-if="diagIp" :to="{ path: '/tools/net', query: { tab: 'ping', host: diagIp } }" class="edit-only btn" :title="`Ping, traceroute e portas para ${diagIp}`"><AppIcon name="pulse" :size="16" /> Diagnosticar</RouterLink>
@@ -484,6 +507,8 @@ async function force(deviceId: string, label: string): Promise<void> {
             <pre class="mono">{{ payload.text }}</pre>
           </div>
         </section>
+        <DeviceFormModal v-if="placing" :preset="{ asset: { uuid: a.uuid, name: a.name, serial_number: a.serial_number ?? null, inventory_number: a.inventory_number ?? null, type: '', branch: a.branch ?? null, branch_id: a.branch_id ?? null, location_id: null, interfaces: 1 } }"
+          @close="placing = false" @saved="(id) => router.push(`/dcim/devices/${id}`)" />
       </template>
     </LoadState>
   </div>
@@ -509,6 +534,7 @@ async function force(deviceId: string, label: string): Promise<void> {
 .title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .stock-origin { margin: 6px 0 0; font-size: 12.5px; color: var(--text-3); }
 .stock-origin.guarded { color: var(--warn-text); }
+.stock-origin.phys a { color: var(--accent-text); }
 .stock-origin :deep(svg) { vertical-align: -2px; margin-right: 4px; }
 .hero-main p { margin: 6px 0 0; }
 .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px; margin: 0; }

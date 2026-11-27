@@ -63,6 +63,30 @@ Paginação: `?page=2&itemsPerPage=100` (máximo 500).
 | GET · PUT · DELETE | `/api/ui/stock/invoices/{id}` | detalhe · altera cabeçalho · exclui (se nada saiu do estoque) |
 | POST | `/api/ui/stock/invoices/{id}/status` | `{status: "registered"}` ou `{status: "sent"}` |
 
+### Infraestrutura, cabeamento, circuitos e IPAM (ADR-0016)
+
+Leitura para qualquer perfil; escrita para Técnico/Administrador; toda escrita entra na auditoria. Listas devolvem `{items: [...]}`; criação devolve `201 {id}`.
+
+| Método | Rota | Uso |
+|---|---|---|
+| GET | `/api/ui/dcim/choices` | opções (tipos de porta e físicos, tipos/cores de cabo, status, compatibilidade, funções) |
+| GET · POST · PUT · DELETE | `/api/ui/dcim/locations[/{id}]` | árvore (`branch`) · detalhe (racks, equipamentos, ativos, fotos) · `{name, kind, branch_id \| parent_id, code, description}` |
+| GET · POST · PUT · DELETE | `/api/ui/dcim/racks[/{id}]` | lista (`branch`, `location`, `q`) · detalhe com `devices` (elevação) e `unracked` |
+| GET · POST · PUT · DELETE | `/api/ui/dcim/roles[/{id}]` · `/device-types[/{id}]` | funções · tipos (com `templates`) |
+| POST · PUT · DELETE | `/api/ui/dcim/device-types/{id}/templates` · `/port-templates/{id}` | portas do modelo em lote: `{kind, name: "Gi1/0/[1-48]", type, …}`; `kind: "pair"` cria frontal+traseira mapeadas |
+| GET · POST · PUT · DELETE | `/api/ui/dcim/devices[/{id}]` | lista (`q`, `branch`, `location`, `rack`, `role`, `type`, `status`) · detalhe com portas, *link peers*, destino do caminho, IPs, energia · `{name, device_type_id, role_id?, branch_id, location_id?, rack_id?, position?, face?, asset_uuid?, copy_interfaces?}` |
+| GET | `/api/ui/dcim/asset-candidates` · `/assets/{uuid}/device` | ativos sem equipamento (`q`) · posição física e conexões do ativo |
+| GET · POST | `/api/ui/dcim/devices/{id}/ports` | portas para seletores (`kind`, `free=1`) · cria em lote |
+| PUT · DELETE · POST | `/api/ui/dcim/ports/{id}` · `/ports/delete` | altera (VLANs: `mode`, `untagged_vlan_id`, `tagged_vlan_ids`; mapeamento: `rear_port_id`, `rear_position`) · exclui · exclui em lote `{ids}` |
+| GET | `/api/ui/dcim/ports/{id}/trace` · `/circuit-terminations/{id}/trace` | caminho: `{hops: [{t:"nodes"}, {t:"cable"}…], complete, active, split, ends, cables, length_m, bidirectional}` |
+| GET · POST · PUT · DELETE | `/api/ui/dcim/cables[/{id}]` | lista (`q`, `branch`, `device`, `type`, `status`) · `{label, type, status, color, length, length_unit, a_terminations: [{type: "port"\|"circuit", id}], b_terminations}` |
+| GET · POST · PUT · DELETE | `/api/ui/circuits[/{id}]` · `/circuits/types[/{id}]` | circuitos (`q`, `branch`, `supplier`, `status`) · `{supplier_id, type_id, cid, status, commit_rate_kbps, contract_id, install_date, termination_date}` |
+| PUT · DELETE | `/api/ui/circuits/{id}/terminations/{A\|Z}` · `/circuits/terminations/{id}` | lado do circuito `{branch_id, location_id \| provider_network, xconnect_id, pp_info, port_speed_kbps}` |
+| GET · POST · PUT · DELETE | `/api/ui/ipam/prefixes[/{id}]` · `/prefixes/{id}/next-ip` | árvore com `depth`/`utilization` (`q` aceita IP contido, `vrf=0` = global, `within`) · detalhe (pais, filhos, faixas, IPs, `slots`, `available_prefixes`) · próximo IP livre |
+| GET · POST · PUT · DELETE | `/api/ui/ipam/ranges[/{id}]` · `/ranges/{id}/next-ip` | faixas `{start_address, end_address, vrf_id, status, role, mark_utilized}` |
+| GET · POST · PUT · DELETE | `/api/ui/ipam/ip-addresses[/{id}]` | IPs (`q` aceita rede `10.1.0.0/16`, `assigned`, `device`) · `{address, vrf_id, port_id, status, role, dns_name, make_primary}` |
+| GET · POST · PUT · DELETE | `/api/ui/ipam/vrfs` · `/vlan-groups` · `/vlans[/{id}]` | VRFs, grupos e VLANs (detalhe da VLAN com portas e prefixos) |
+
 ### Auditoria (`/api/ui/audit`, só Administrador — ADR-0015)
 
 | Método | Rota | Uso |

@@ -63,6 +63,28 @@ erDiagram
     stock_movement }o--o| branch : "saída"
     stock_movement }o--o| asset : "unidade"
     app_account ||--o{ audit_log : ""
+    branch ||--o{ location : "locais (ADR-0016)"
+    location ||--o{ dcim_rack : ""
+    branch ||--o{ dcim_rack : ""
+    dcim_rack ||--o{ dcim_device : "U/face"
+    location ||--o{ dcim_device : ""
+    dcim_device_type ||--o{ dcim_port_template : "modelo de portas"
+    dcim_device_type ||--o{ dcim_device : ""
+    dcim_device_role ||--o{ dcim_device : ""
+    asset |o--o| dcim_device : "vínculo opcional"
+    dcim_device ||--o{ dcim_port : "portas"
+    dcim_port ||--o{ dcim_port_mapping : "frontal↔traseira"
+    dcim_cable ||--|{ dcim_cable_termination : "pontas A/B"
+    dcim_port |o--o| dcim_cable_termination : ""
+    circuit_termination |o--o| dcim_cable_termination : ""
+    supplier ||--o{ circuit : "operadora"
+    circuit ||--o{ circuit_termination : "lados A/Z"
+    ipam_vrf ||--o{ ipam_prefix : ""
+    ipam_vrf ||--o{ ipam_ip_address : ""
+    ipam_vlan ||--o{ ipam_prefix : ""
+    ipam_vlan_group ||--o{ ipam_vlan : ""
+    dcim_port ||--o{ ipam_ip_address : "IP na interface"
+    dcim_port }o--o{ ipam_vlan : "tagged"
 ```
 
 ## Dicionário
@@ -156,6 +178,29 @@ erDiagram
 | `invoice` | nota fiscal simplificada: fornecedor, `number` (sem zeros à esquerda), `series`, `issue_date`, `total` informado, `status` registered/sent + data/autor do envio ao lançamento | UNIQUE `(supplier_id, number, series)`; fornecedor `RESTRICT`; anexos com `owner_type = invoice` |
 | `invoice_item` | linha da nota: item, `quantity` > 0, `unit_price` ≥ 0, `position` | CASCADE com a nota; item `RESTRICT`; não editável depois de salvo |
 | `stock_movement` | razão do estoque: `kind` in/out/adjust, `quantity` com sinal, `unit_cost`, `batch` (operação), filial (saída), ativo (unidade com patrimônio), `recipient` (A/C), `department` (setor — etiqueta de envio), `reason`, `actor`, `occurred_at` | **saldo = SUM(quantity)**; CHECK de sinal por tipo; entrada some com a nota (CASCADE via `invoice_item`); operações travam `stock_item` FOR UPDATE |
+
+### Infraestrutura: DCIM, cabeamento, circuitos e IPAM (ADR-0016)
+
+| Tabela | Descrição | Pontos de atenção |
+|---|---|---|
+| `location` (+colunas) | `branch_id` (filial), `kind` (building/floor/room/datacenter/workstation/other), `description` | filho herda a filial (serviço); trocar filial bloqueado se há rack/equipamento na subárvore |
+| `dcim_device_role` | função do equipamento com cor hex | seed: Switch, Patch panel, Ponto de rede, DIO, PDU… |
+| `dcim_device_type` | fabricante (`manufacturer`) + modelo, `u_height` (passo 0,5), `is_full_depth`, função padrão | UNIQUE `(manufacturer_id, model)`; anexos `device_type` (foto do modelo) |
+| `dcim_port_template` | portas do modelo: `kind`, nome, tipo físico, `positions` (traseira), `rear_port_template_id` + `rear_position` (frontal) | instanciadas ao criar o equipamento |
+| `dcim_rack` | rack: filial, local, `u_height`, `width`, `starting_unit`, `desc_units`, status | UNIQUE `(branch_id, name)`; equipamento `RESTRICT` |
+| `dcim_device` | equipamento: filial/local/rack, `position` (U) + `face`, tipo, função, status, série, patrimônio, `asset_id` (UNIQUE, SET NULL), `primary_ip_id` | CHECK posição ⇒ rack + face; sobreposição de U validada no serviço com `FOR UPDATE` no rack |
+| `dcim_port` | **uma tabela para as 7 portas do NetBox**: `kind` interface/front/rear/console/console_server/power_port/power_outlet; MAC, modo 802.1Q, VLAN nativa, `positions`, consumo W, `mark_connected` | UNIQUE `(device_id, kind, name)`; `positions > 1` só em traseira |
+| `dcim_port_vlan` | VLANs tagged da interface | |
+| `dcim_port_mapping` | frontal (posição) ↔ traseira (posição) | UNIQUE em cada lado |
+| `dcim_cable` | cabo: etiqueta, tipo, status connected/planned/decommissioning, cor, comprimento + unidade | anexos `cable` (certificação) |
+| `dcim_cable_termination` | ponta A/B do cabo em **porta ou terminação de circuito** (FK real) | CHECK `num_nonnulls = 1`; UNIQUE por porta/terminação → no máximo um cabo; CASCADE |
+| `circuit_type` / `circuit` | circuito de operadora: `supplier_id` (operadora), tipo, `cid`, status, banda (kbps), datas, contrato | UNIQUE `(supplier_id, cid)` |
+| `circuit_termination` | lado A/Z: filial/local **ou** `provider_network`, cross-connect, entrega, velocidades | UNIQUE `(circuit_id, term_side)` |
+| `ipam_vrf` | VRF, RD, `enforce_unique` | |
+| `ipam_prefix` | `prefix CIDR`, VRF, filial, local, VLAN, status (container/active/reserved/deprecated), papel, `is_pool`, `mark_utilized` | hierarquia por contenção (`<<`), índice GiST `inet_ops`; duplicado recusado no serviço |
+| `ipam_ip_range` | faixa `start_address`–`end_address` (INET com máscara), status, papel, `mark_utilized` | CHECK mesma família/máscara e início ≤ fim; sobreposição recusada no serviço |
+| `ipam_ip_address` | `address INET` com máscara, VRF, `port_id` (interface), status, papel, DNS | GiST `inet_ops`; unicidade por VRF no serviço sob `pg_advisory_xact_lock` |
+| `ipam_vlan_group` / `ipam_vlan` | grupo com faixa de VID; VLAN (VID 1–4094, único no grupo) | não confundir com `vlan` (VLANs vistas pelo agente) |
 
 ## Objetos fora do ORM
 

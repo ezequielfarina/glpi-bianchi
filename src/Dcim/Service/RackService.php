@@ -25,7 +25,7 @@ final readonly class RackService
     /** @return list<array<string, mixed>> */
     public function list(?int $branchId = null, ?int $locationId = null, ?string $q = null): array
     {
-        return $this->db->fetchAllAssociative(<<<'SQL'
+        return Num::rows($this->db->fetchAllAssociative(<<<'SQL'
             SELECT r.id, r.name, r.status, r.role, r.u_height, r.width, r.facility_id, r.branch_id, b.name AS branch, b.code AS branch_code,
                    r.location_id, l.name AS location,
                    (SELECT count(*) FROM dcim_device d WHERE d.rack_id = r.id) AS devices,
@@ -39,7 +39,7 @@ final readonly class RackService
               AND (CAST(:location AS int) IS NULL OR r.location_id IN (SELECT id FROM location WHERE path <@ (SELECT path FROM location WHERE id = :location)))
               AND (CAST(:q AS text) IS NULL OR r.name ILIKE '%' || CAST(:q AS text) || '%' OR r.facility_id ILIKE '%' || CAST(:q AS text) || '%')
             ORDER BY b.name, r.name
-            SQL, ['branch' => $branchId, 'location' => $locationId, 'q' => $q]);
+            SQL, ['branch' => $branchId, 'location' => $locationId, 'q' => $q]), ['used_u'], ['u_height', 'width', 'devices']);
     }
 
     /** @return array<string, mixed> */
@@ -50,6 +50,7 @@ final readonly class RackService
             FROM dcim_rack r JOIN branch b ON b.id = r.branch_id LEFT JOIN location l ON l.id = r.location_id
             WHERE r.id = ?
             SQL, [$id]) ?: throw new NotFoundException('Rack não encontrado.');
+        $r = Num::row($r, [], ['u_height', 'width', 'starting_unit', 'outer_depth_mm']);
         $devices = $this->db->fetchAllAssociative(<<<'SQL'
             SELECT d.id, d.name, d.status, d.position::float8 AS position, d.face, d.serial, d.asset_tag,
                    t.model AS device_type, t.u_height::float8 AS u_height, t.is_full_depth, m.name AS manufacturer,
@@ -65,6 +66,7 @@ final readonly class RackService
             WHERE d.rack_id = ?
             ORDER BY d.position DESC NULLS LAST, d.name
             SQL, [$id]);
+        $devices = Num::rows($devices, ['position', 'u_height']);
         $r['devices'] = array_values(array_filter($devices, static fn (array $d): bool => null !== $d['position']));
         $r['unracked'] = array_values(array_filter($devices, static fn (array $d): bool => null === $d['position']));
         $used = 0.0;

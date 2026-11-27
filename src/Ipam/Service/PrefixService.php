@@ -180,6 +180,7 @@ final readonly class PrefixService
 
         return array_map(static function (array $r): array {
             $r['status_label'] = self::RANGE_STATUS[(string) $r['status']] ?? $r['status'];
+            $r['size'] = (float) $r['size'];
 
             return $r;
         }, $this->db->fetchAllAssociative(<<<'SQL'
@@ -294,6 +295,8 @@ final readonly class PrefixService
         $usable = 'container' !== $r['status'] && 4 === (int) $r['family'] && $len < 31 && !(bool) $r['is_pool'] ? $size - 2 : $size;
         $used = (bool) $r['mark_utilized'] ? $usable : (float) $r['used'];
         $r['usable'] = $usable;
+        $r['size'] = $size;
+        $r['used'] = (float) $r['used'];
         $r['utilization'] = $usable > 0 ? min(100.0, round(100 * $used / $usable, 1)) : 0.0;
         $r['status_label'] = self::STATUS[(string) $r['status']] ?? $r['status'];
         $r['bits'] = $bits;

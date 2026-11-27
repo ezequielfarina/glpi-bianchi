@@ -146,6 +146,8 @@ descritas em [`CLAUDE.md`](CLAUDE.md): **banco** (`migrations/`, `docs/database/
 - [x] Monitoramento: varreduras agendadas, alertas de mudança e conflito de IP/MAC, notificações (Teams/Telegram/Slack/webhook), diagnóstico (ping/MTR/portas/TLS) e consultas (DNS/RDAP/ASN/MAC)
 - [x] Estoque central de TI e notas fiscais simplificadas (entrada por nota, patrimônio por unidade, saída para filial, mínimo/"a comprar", etiqueta de envio para Argox)
 - [x] Auditoria de todas as ações da interface (somente inclusão, sem segredos) + auditoria de acesso
+- [x] Infraestrutura no modelo do NetBox: locais por filial, racks com elevação, equipamentos com portas, cabos com **rastreamento ponta a ponta** (operadora → firewall → switch → patch panel → tomada → estação), circuitos, energia/console, IPAM (prefixos, faixas, IPs, VLANs, VRFs) e fotos
+- [ ] Infraestrutura: sugestões por LLDP/ARP/scanner, importação CSV/NetBox, etiqueta de cabo/tomada na Argox
 - [ ] Notificação por e-mail (symfony/mailer + SMTP)
 - [ ] Estoque: importação do XML da NF-e, pedido de compra, aviso de mínimo no Teams/Telegram
 
@@ -163,6 +165,7 @@ descritas em [`CLAUDE.md`](CLAUDE.md): **banco** (`migrations/`, `docs/database/
 |---|---|
 | [docs/adr/](docs/adr/) | decisões de arquitetura (por que reescrever, stack, modelo de dados...) |
 | [docs/tools/scanner-de-rede.md](docs/tools/scanner-de-rede.md) | scanner de rede (capabilities, SNMP, FortiGate) e calculadora |
+| [docs/dcim/infraestrutura.md](docs/dcim/infraestrutura.md) | locais, racks, equipamentos, cabos e rastreamento, circuitos, energia, IPAM — passo a passo e convenções |
 | [docs/stock/estoque-e-notas.md](docs/stock/estoque-e-notas.md) | estoque, notas fiscais, saída para filial e etiqueta de envio (impressão na Argox) |
 | [docs/audit/auditoria.md](docs/audit/auditoria.md) | auditoria: ações no sistema e acessos, o que é registrado, consultas SQL |
 | [docs/database/README.md](docs/database/README.md) | modelo de dados, ER, índices, triggers, manutenção |

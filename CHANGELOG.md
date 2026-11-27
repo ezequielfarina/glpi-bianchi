@@ -5,6 +5,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 ## [Unreleased]
 
 ### Corrigido
+- Anexar arquivo em **filial** ou **nota fiscal** dava erro 500 (tabela fora da lista de validação).
+- Índice redundante `invoice(supplier_id)` removido (já coberto por `uniq_invoice_number`; `schema:validate` acusava diferença).
 - `install.sh`: `net.ipv4.ping_group_range` limitado ao `gid_map` do CT unprivileged (o ping do Diagnóstico ficava sem permissão); PostgreSQL só reinicia quando um parâmetro exige (`pending_restart`), senão `reload` — o restart incondicional derrubava a varredura em andamento.
 - Ativo excluído com o GLPI Agent ainda instalado voltava **duplicado** (novo patrimônio, sem
   histórico): agora o mesmo ativo é restaurado da lixeira (por UUID de hardware, serial ou vínculo do agente).
@@ -18,6 +20,14 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- **Infraestrutura física e lógica no modelo do NetBox (ADR-0016)** — menu *Infraestrutura* e *IPAM*:
+  - **Locais** por filial em árvore (prédio, andar, sala/CPD, posto de trabalho); **racks** com elevação frontal/traseira (clique na U vazia para instalar), ocupação e fotos.
+  - **Tipos de equipamento** com modelo de portas (lote `Gi1/0/[1-48]`, par frontal/traseira para patch panel/tomada) e tipos genéricos prontos (patch panel, tomada, DIO com bandeja multiposição, switch, PDU, quadro, estação, AP).
+  - **Equipamentos** com interfaces, portas de patch, console e energia; vínculo opcional com o ativo do inventário (copia as NICs com MAC); IP primário; resumo de carga da PDU.
+  - **Cabos** com etiqueta, tipo, cor e comprimento e as regras do NetBox (uma porta = um cabo, tipos compatíveis); **rastreamento ponta a ponta** desenhado como no NetBox, com fibra em tronco (posição certa no DIO remoto), circuito de operadora até a rede dela, e trace nos dois sentidos a partir da tomada/patch panel. Na porta: *Ligado em* e *Destino final*; no ativo: onde está e em qual porta de switch chega.
+  - **Circuitos** (operadora = fornecedor, contrato) com lados A/Z.
+  - **IPAM**: VRFs, prefixos em árvore com utilização, blocos livres e **próximo IP livre** (pula faixas DHCP), mapa de IPs livres/usados da sub-rede, faixas, IPs por interface, grupos de VLAN e VLANs (acesso/tronco nas portas).
+  - **Fotos** (câmera do celular) e documentos em locais, racks, equipamentos, tipos, circuitos e cabos. Auditoria de todas as escritas.
 - Menu lateral em **seções recolhíveis** (Estoque, Gestão, Inventário automático, Ferramentas, Sistema): estado salvo no navegador, a seção da página atual abre sozinha, seção fechada mostra o total de alertas/itens a comprar; a lista rola e o rodapé (tema/sair) fica fixo — os últimos itens não ficam mais cortados.
 - Saída para filial com **prévia da etiqueta ao lado** (exatamente o que sai na impressora) e troca rápida do IP/porta/linguagem da impressora pelo Administrador; cabeçalho da etiqueta (REMETENTE/DESTINATÁRIO) maior, como no modelo.
 - **Etiqueta impressa direto na Argox pela rede (porta 9100):** ao registrar a saída, uma etiqueta por volume sai automaticamente, desenhada no servidor (layout do modelo, acentos e logo) e enviada em PPLA, PPLB ou PPLZ/ZPL (a ArgoxBancada usa PPLA — sem trocar a emulação). Configuração e etiqueta de teste em *Configurações*; prévia exata na tela da etiqueta; falha de conexão mostra o erro e as alternativas (.odt e navegador). `install.sh` instala `php-gd` e `fonts-liberation2`.

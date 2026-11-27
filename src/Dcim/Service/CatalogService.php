@@ -81,7 +81,7 @@ final readonly class CatalogService
     /** @return list<array<string, mixed>> */
     public function types(?string $q = null): array
     {
-        return $this->db->fetchAllAssociative(<<<'SQL'
+        return Num::rows($this->db->fetchAllAssociative(<<<'SQL'
             SELECT t.id, t.model, t.part_number, t.u_height::float8 AS u_height, t.is_full_depth, t.description, m.name AS manufacturer,
                    t.default_role_id, r.name AS default_role, r.color,
                    (SELECT count(*) FROM dcim_device d WHERE d.device_type_id = t.id) AS devices,
@@ -96,7 +96,7 @@ final readonly class CatalogService
             LEFT JOIN dcim_device_role r ON r.id = t.default_role_id
             WHERE CAST(:q AS text) IS NULL OR t.model ILIKE '%' || CAST(:q AS text) || '%' OR m.name ILIKE '%' || CAST(:q AS text) || '%'
             ORDER BY m.name, t.model
-            SQL, ['q' => $q]);
+            SQL, ['q' => $q]), ['u_height'], ['devices', 'interfaces', 'front_ports', 'rear_ports', 'power_ports', 'console_ports']);
     }
 
     /** @return array<string, mixed> */
@@ -109,6 +109,7 @@ final readonly class CatalogService
             FROM dcim_device_type t JOIN manufacturer m ON m.id = t.manufacturer_id LEFT JOIN dcim_device_role r ON r.id = t.default_role_id
             WHERE t.id = ?
             SQL, [$id]) ?: throw new NotFoundException('Tipo de equipamento não encontrado.');
+        $t = Num::row($t, ['u_height'], ['devices']);
         $t['templates'] = $this->templates($id);
         $t['attachments'] = $this->manage->attachments('device_type', $id);
 

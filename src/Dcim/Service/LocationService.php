@@ -95,17 +95,19 @@ final readonly class LocationService
         $sub = 'SELECT id FROM location WHERE path <@ (SELECT path FROM location WHERE id = :id)';
         $l['racks'] = $this->db->fetchAllAssociative(<<<SQL
             SELECT r.id, r.name, r.status, r.u_height, r.location_id, lo.name AS location,
-                   (SELECT coalesce(sum(t.u_height), 0) FROM dcim_device d JOIN dcim_device_type t ON t.id = d.device_type_id
+                   (SELECT coalesce(sum(t.u_height), 0)::float8 FROM dcim_device d JOIN dcim_device_type t ON t.id = d.device_type_id
                      WHERE d.rack_id = r.id AND d.position IS NOT NULL) AS used_u
             FROM dcim_rack r LEFT JOIN location lo ON lo.id = r.location_id
             WHERE r.location_id IN ($sub) ORDER BY r.name
             SQL, ['id' => $id]);
+        $l['racks'] = Num::rows($l['racks'], ['used_u'], ['u_height']);
         $l['devices'] = $this->db->fetchAllAssociative(<<<SQL
             SELECT d.id, d.name, d.status, r.name AS role, r.color, t.model AS device_type, k.name AS rack, d.position, lo.name AS location
             FROM dcim_device d JOIN dcim_device_role r ON r.id = d.role_id JOIN dcim_device_type t ON t.id = d.device_type_id
             LEFT JOIN dcim_rack k ON k.id = d.rack_id LEFT JOIN location lo ON lo.id = d.location_id
             WHERE d.location_id IN ($sub) ORDER BY d.name
             SQL, ['id' => $id]);
+        $l['devices'] = Num::rows($l['devices'], ['position']);
         $l['assets'] = $this->db->fetchAllAssociative(<<<SQL
             SELECT a.uuid, a.name, a.inventory_number, t.label AS type, lo.name AS location
             FROM asset a JOIN asset_type t ON t.id = a.asset_type_id LEFT JOIN location lo ON lo.id = a.location_id

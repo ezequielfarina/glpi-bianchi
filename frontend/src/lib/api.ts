@@ -235,3 +235,10 @@ export const api = {
       body: JSON.stringify(values),
     }),
 }
+
+/** Acesso genérico para módulos com cliente próprio (lib/dcim.ts). */
+export const http = {
+  get: <T>(path: string) => request<T>(path),
+  send: <T>(method: string, path: string, body?: unknown) => send<T>(method, path, body),
+  qs,
+}

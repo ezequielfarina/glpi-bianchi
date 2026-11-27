@@ -1,0 +1,36 @@
+/* Telas de infraestrutura (DCIM, cabeamento, IPAM, circuitos — ADR-0016). Prefixo .dc- para não colidir. */
+.dc-page { display: flex; flex-direction: column; gap: 20px; max-width: 1480px; }
+.dc-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.dc-head h1 { margin: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dc-head p { margin: 4px 0 0; font-size: 13px; }
+.dc-filters { display: flex; align-items: center; gap: 10px; padding: 16px 20px; flex-wrap: wrap; }
+.dc-filters .input { width: auto; min-width: 160px; }
+.dc-filters .search { width: min(320px, 100%); }
+.dc-back { display: inline-flex; align-items: center; gap: 4px; color: var(--text-2); text-decoration: none; font-size: 13px; }
+.dc-back:hover { color: var(--accent-text); }
+.dc-cols { display: grid; grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr); gap: 20px; align-items: start; }
+.dc-cols > div { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+@media (max-width: 1100px) { .dc-cols { grid-template-columns: 1fr; } }
+.dc-kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; padding: 0 20px 20px; margin: 0; font-size: 13.5px; }
+.dc-kv dt { color: var(--text-3); }
+.dc-kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.dc-link { color: var(--accent-text); text-decoration: none; }
+.dc-link:hover { text-decoration: underline; }
+.dc-strong { color: var(--text); font-weight: 500; text-decoration: none; }
+.dc-strong:hover { color: var(--accent-text); text-decoration: underline; }
+.dc-role { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 1px 8px; border-radius: 999px; font-weight: 500; white-space: nowrap; }
+.dc-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; box-shadow: 0 0 0 1px var(--border); }
+.dc-clickable { cursor: pointer; }
+.dc-small { font-size: 12px; }
+.dc-nowrap { white-space: nowrap; }
+.dc-util { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+.dc-util .bar { flex: 1; height: 6px; border-radius: 3px; background: var(--muted-soft); overflow: hidden; }
+.dc-util .bar > span { display: block; height: 100%; background: var(--ok); border-radius: 3px; }
+.dc-util .bar > span.warn { background: var(--warn); }
+.dc-util .bar > span.bad { background: var(--bad); }
+.dc-util .pct { font: 12px var(--mono); color: var(--text-2); width: 44px; text-align: right; }
+.dc-empty-cta { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 32px 20px; text-align: center; }
+.dc-tabs { padding: 0 20px; }
+.dc-actions-row { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: nowrap; }
+.dc-wire { display: inline-block; width: 22px; height: 6px; border-radius: 3px; vertical-align: middle; box-shadow: 0 0 0 1px var(--border); }
+:root .dc-tree-indent { display: inline-block; }

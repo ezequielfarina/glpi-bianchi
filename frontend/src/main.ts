@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import '@fontsource-variable/inter'
 import '@fontsource-variable/jetbrains-mono'
 import './styles.css'
+import './styles-dcim.css'
 import App from './App.vue'
 import { router } from './router'
 
