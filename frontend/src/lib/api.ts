@@ -5,7 +5,7 @@ import type {
   AgentsResponse, Alerts, AssetDetail, AssetsResponse, Attachment, BranchDetail, BranchRow, ContractDetail, ContractRow, AccountRow, AuditPage, Me, SessionRow, InventoriesResponse, LicenseDetail,
   LicenseRow, Lookups, Overview, SettingsResponse, SupplierDetail, SupplierRow, TypeSummary, WakeupResult, ScannerInfo, ScanRow, ScanDetail,
   ScanSchedule, AlertFlags, NetworkAlert, AlertCounts, NotificationChannel, ConflictReport, NetInfo, PingResult, TraceResult, PortsResult, DnsResult, AsnResult, RdapResult, MacItem,
-  StockItem, StockItemDetail, StockMovement, StockSummary, StockConsumption, StockShipment, InvoiceRow, InvoiceDetail, InvoiceStatus,
+  StockItem, StockItemDetail, StockMovement, StockSummary, StockConsumption, StockShipment, LabelPrinterInfo, LabelPrintResult, InvoiceRow, InvoiceDetail, InvoiceStatus,
   AuditActionsPage,
 } from './types'
 
@@ -214,6 +214,9 @@ export const api = {
   stockMovements: (p: { item?: number; branch?: number; kind?: string; from?: string; to?: string; limit?: number } = {}) =>
     request<{ items: StockMovement[]; total: number }>(`/stock/movements${qs(p)}`),
   stockConsumption: (from?: string, to?: string) => request<StockConsumption>(`/stock/consumption${qs({ from, to })}`),
+  labelPrinter: () => request<LabelPrinterInfo>('/stock/label-printer'),
+  labelPrinterTest: () => send<LabelPrintResult>('POST', '/stock/label-printer/test'),
+  printShipment: (batch: string, body: Record<string, unknown>) => send<LabelPrintResult>('POST', `/stock/shipments/${batch}/print`, body),
   stockShipment: (batch: string) => request<StockShipment>(`/stock/shipments/${batch}`),
   stockIn: (body: Record<string, unknown>) => send<{ batch: string; assets: number }>('POST', '/stock/in', body),
   stockOut: (body: Record<string, unknown>) => send<{ batch: string }>('POST', '/stock/out', body),

@@ -4,6 +4,7 @@ import AppIcon from '../AppIcon.vue'
 import AppModal from '../AppModal.vue'
 import { api } from '../../lib/api'
 import { dateOnly } from '../../lib/format'
+import { labelPrinter, loadLabelPrinter, printShipmentLabel } from '../../lib/stock'
 import type { StockShipment } from '../../lib/types'
 
 /**
@@ -11,7 +12,7 @@ import type { StockShipment } from '../../lib/types'
  * setor A/C pessoa e logo). Impressão pelo navegador com @page no tamanho exato da etiqueta — pensada para
  * impressora térmica (Argox): preto puro, logo em P&B, sem margens do navegador.
  */
-const props = defineProps<{ batch: string; departments?: string[]; justSaved?: boolean }>()
+const props = defineProps<{ batch: string; departments?: string[]; justSaved?: boolean; volumes?: number; printError?: string | null }>()
 const emit = defineEmits<{ close: [] }>()
 // v5: papel = o do driver da Argox (USER 102,4 × 74,9 mm). O Chrome só usa o papel do driver quando o
 // @page pede exatamente esse tamanho; sem tamanho ele cai no padrão dele (A4/Carta) e divide a etiqueta.
@@ -23,7 +24,7 @@ const saved: Saved = (() => {
 })()
 const ship = ref<StockShipment | null>(null)
 const error = ref<string | null>(null)
-const f = reactive({ sender: saved.sender, destination: '', department: '', attention: '', volumes: 1, logo: saved.logo, width: saved.width, height: saved.height })
+const f = reactive({ sender: saved.sender, destination: '', department: '', attention: '', volumes: props.volumes ?? 1, logo: saved.logo, width: saved.width, height: saved.height })
 const frame = ref<HTMLIFrameElement | null>(null)
 
 api.stockShipment(props.batch).then((s) => {
@@ -88,6 +89,29 @@ const odtUrl = computed(() => {
   return `/api/ui/stock/shipments/${props.batch}/label.odt?${p.toString()}`
 })
 
+// ---------------------------------------------------------------- impressão direta na Argox (rede)
+void loadLabelPrinter().then((p) => { if (p?.sender && f.sender === 'TI') f.sender = p.sender })
+const sendError = ref<string | null>(props.printError ?? null)
+const sending = ref(false)
+const fields = () => ({ sender: f.sender, destination: f.destination, department: f.department, attention: f.attention })
+async function printDirect(): Promise<void> {
+  sending.value = true
+  sendError.value = await printShipmentLabel(props.batch, Math.max(1, Math.min(50, f.volumes || 1)), fields())
+  sending.value = false
+  if (!sendError.value) emit('close')
+}
+// prévia exata (PNG 1 bit) do que vai para a impressora; atualiza 400 ms depois da última digitação
+const pngUrl = ref('')
+let pngTimer: number | undefined
+watch(() => [f.sender, f.destination, f.department, f.attention, f.volumes, ship.value], () => {
+  window.clearTimeout(pngTimer)
+  pngTimer = window.setTimeout(() => {
+    const p = new URLSearchParams({ ...fields(), volumes: String(f.volumes || 1) })
+    pngUrl.value = `/api/ui/stock/shipments/${props.batch}/label.png?${p.toString()}`
+  }, 400)
+}, { immediate: true })
+const more = ref(false)
+
 function print(): void {
   const win = frame.value?.contentWindow
   if (!win) return
@@ -117,6 +141,7 @@ function print(): void {
           <div class="field"><label for="lb-snd">Remetente</label><input id="lb-snd" v-model="f.sender" class="input" /></div>
           <div class="field"><label for="lb-vol">Volumes</label><input id="lb-vol" v-model.number="f.volumes" class="input num" type="number" min="1" max="50" /></div>
         </div>
+        <template v-if="!labelPrinter?.configured || more">
         <div class="row">
           <div class="field"><label for="lb-w">Papel — largura (mm)</label><input id="lb-w" v-model.number="f.width" class="input num" type="number" min="30" max="120" step="0.1" /></div>
           <div class="field"><label for="lb-h">Papel — altura (mm)</label><input id="lb-h" v-model.number="f.height" class="input num" type="number" min="20" max="220" step="0.1" /></div>
@@ -124,17 +149,31 @@ function print(): void {
         <label class="check"><input v-model="f.logo" type="checkbox" /> Imprimir logo</label>
         <p class="hint"><strong>Recomendado:</strong> "Baixar etiqueta (LibreOffice)" gera o seu modelo <em>Entrega_TI</em> já preenchido — abra e imprima (Ctrl+P) na ArgoxBancada; com mais de um volume, informe as cópias no LibreOffice.</p>
         <p class="hint">Pelo navegador: use <strong>o mesmo tamanho do papel do driver</strong> (Argox: USER 102,4 × 74,9). No diálogo de impressão: <strong>Tamanho do papel = USER</strong>, <strong>Margens: Nenhuma</strong>, <strong>Escala: Padrão</strong>, sem cabeçalhos e rodapés.</p>
+        </template>
+        <p v-if="labelPrinter?.configured" class="hint">A prévia é exatamente o que vai para a impressora ({{ labelPrinter.printer }}, {{ labelPrinter.width_mm }} × {{ labelPrinter.height_mm }} mm, {{ labelPrinter.dpi }} dpi).</p>
         <p class="hint">As alterações valem só para esta impressão; o remetente fica salvo neste navegador.</p>
       </div>
       <div class="preview">
-        <iframe ref="frame" title="Prévia da etiqueta" :srcdoc="html" :style="frameStyle" />
+        <img v-if="labelPrinter?.configured && pngUrl" class="png" :src="pngUrl" alt="Prévia da etiqueta como será impressa" />
+        <iframe v-show="!labelPrinter?.configured" ref="frame" title="Prévia da etiqueta" :srcdoc="html" :style="frameStyle" />
       </div>
     </div>
     <p v-else class="muted">Carregando…</p>
+    <p v-if="sendError" class="send-err" role="alert">Não imprimiu: {{ sendError }}</p>
     <div class="form-actions">
       <button class="btn" type="button" @click="emit('close')">Fechar</button>
-      <button class="btn" type="button" :disabled="!ship" title="Depende do Chrome casar a página com o papel do driver" @click="print"><AppIcon name="printer" :size="16" /> Imprimir pelo navegador</button>
-      <a class="btn btn-primary" :class="{ disabled: !ship }" :href="ship ? odtUrl : undefined" download><AppIcon name="download" :size="16" /> Baixar etiqueta (LibreOffice)</a>
+      <template v-if="labelPrinter?.configured">
+        <button v-if="!more" class="link-btn" type="button" @click="more = true">Outras opções</button>
+        <template v-else>
+          <button class="btn" type="button" :disabled="!ship" @click="print"><AppIcon name="printer" :size="16" /> Pelo navegador</button>
+          <a class="btn" :class="{ disabled: !ship }" :href="ship ? odtUrl : undefined" download><AppIcon name="download" :size="16" /> Baixar .odt</a>
+        </template>
+        <button class="btn btn-primary" type="button" :disabled="!ship || sending" @click="printDirect"><AppIcon name="printer" :size="16" /> {{ sending ? 'Enviando…' : `Imprimir na impressora${f.volumes > 1 ? ` (${f.volumes})` : ''}` }}</button>
+      </template>
+      <template v-else>
+        <button class="btn" type="button" :disabled="!ship" title="Depende do Chrome casar a página com o papel do driver" @click="print"><AppIcon name="printer" :size="16" /> Imprimir pelo navegador</button>
+        <a class="btn btn-primary" :class="{ disabled: !ship }" :href="ship ? odtUrl : undefined" download><AppIcon name="download" :size="16" /> Baixar etiqueta (LibreOffice)</a>
+      </template>
     </div>
   </AppModal>
 </template>
@@ -149,5 +188,7 @@ function print(): void {
 .hint { margin: 0; }
 .err { color: var(--warn-text); }
 a.btn.disabled { opacity: .55; pointer-events: none; }
+.png { display: block; width: 400px; max-width: 100%; background: #fff; border: 1px solid #ccc; image-rendering: pixelated; }
+.send-err { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--bad-soft, rgba(220,38,38,.12)); color: var(--bad-text, #f87171); font-size: 13px; }
 @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
 </style>

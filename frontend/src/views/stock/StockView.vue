@@ -11,7 +11,7 @@ import StockOutModal from '../../components/stock/StockOutModal.vue'
 import ShippingLabelModal from '../../components/stock/ShippingLabelModal.vue'
 import { api } from '../../lib/api'
 import { dateOnly, money, num } from '../../lib/format'
-import { MOVEMENT_KIND, refreshStockLow, today } from '../../lib/stock'
+import { MOVEMENT_KIND, printShipmentLabel, refreshStockLow, today } from '../../lib/stock'
 import type { Lookups, StockConsumption, StockItem, StockMovement, StockSummary } from '../../lib/types'
 
 const route = useRoute()
@@ -85,7 +85,18 @@ const editing = ref<StockItem | null | undefined>(undefined)
 const outFor = ref<number | null | undefined>(undefined)
 const inFor = ref<number | null | undefined>(undefined)
 const adjusting = ref<StockItem | null>(null)
-const label = ref<{ batch: string; fresh: boolean } | null>(null)
+const label = ref<{ batch: string; fresh: boolean; volumes?: number; error?: string | null } | null>(null)
+// saída registrada: imprime direto na Argox (se marcado) ou abre a etiqueta; falha de impressão abre a etiqueta com o erro
+async function onOutSaved(batch: string, o: { print: boolean; volumes: number }): Promise<void> {
+  void afterChange()
+  if (o.print) {
+    const err = await printShipmentLabel(batch, o.volumes)
+    if (!err) return
+    label.value = { batch, fresh: true, volumes: o.volumes, error: err }
+    return
+  }
+  label.value = { batch, fresh: true, volumes: o.volumes }
+}
 async function ensureLookups(): Promise<void> { lookups.value ??= await api.lookups() }
 async function openEdit(i: StockItem | null): Promise<void> { await ensureLookups(); editing.value = i }
 async function openOut(id: number | null = null): Promise<void> { await ensureLookups(); outFor.value = id }
@@ -230,8 +241,8 @@ void loadTab()
     </section>
 
     <StockItemFormModal v-if="editing !== undefined && lookups" :item="editing" :categories="summary?.categories ?? []" :asset-types="assetTypes" @close="editing = undefined" @saved="afterChange" />
-    <StockOutModal v-if="outFor !== undefined && lookups" :items="items" :branches="branches" :departments="summary?.departments" :preset-item="outFor ?? undefined" @close="outFor = undefined" @saved="(b) => { label = { batch: b, fresh: true }; void afterChange() }" />
-    <ShippingLabelModal v-if="label" :batch="label.batch" :just-saved="label.fresh" :departments="summary?.departments" @close="label = null" />
+    <StockOutModal v-if="outFor !== undefined && lookups" :items="items" :branches="branches" :departments="summary?.departments" :preset-item="outFor ?? undefined" @close="outFor = undefined" @saved="onOutSaved" />
+    <ShippingLabelModal v-if="label" :batch="label.batch" :just-saved="label.fresh" :volumes="label.volumes" :print-error="label.error" :departments="summary?.departments" @close="label = null" />
     <StockInModal v-if="inFor !== undefined" :items="items" :preset-item="inFor ?? undefined" @close="inFor = undefined" @saved="afterChange" />
     <StockAdjustModal v-if="adjusting" :item="adjusting" @close="adjusting = null" @saved="afterChange" />
   </div>

@@ -39,6 +39,16 @@ gera uma nota fiscal que precisa ser registrada e enviada ao setor de lançament
    ativos criados por ela.
 8. **Custo médio ponderado** calculado das entradas com valor; registrado como `unit_cost` em saídas/ajustes.
 9. **Alerta de mínimo** só na interface: contador no menu (`/api/ui/stock/low-count`) e lista "a comprar".
+14. **Impressão direta na Argox pela rede (caminho principal quando configurada):** o servidor desenha a etiqueta
+    como imagem 1 bit (GD + Liberation Sans, layout do modelo, logo P&B, `VOLUME i/N`) no tamanho e resolução
+    configurados (padrão 102 × 75 mm, 203 dpi) e envia por TCP para a porta RAW da impressora (9100) como gráfico
+    na linguagem da emulação: **PPLB** (`GW`, bit 0 = preto) ou **PPLZ/ZPL** (`^GFA`). PPLA não é suportada.
+    Sem driver, sem diálogo e sem depender das fontes da impressora (acentos e logo idênticos). Ao registrar a saída,
+    a etiqueta sai sozinha (opção marcada por padrão, com nº de volumes); falha de conexão abre a tela da etiqueta
+    com o erro e as alternativas (.odt e navegador). Configuração em *Configurações → Impressora de etiquetas*
+    (IP, porta, linguagem, dpi, largura, altura, remetente) com botão de etiqueta de teste. Prévia exata em
+    `GET …/label.png`; impressão em `POST …/print` e teste em `POST /api/ui/stock/label-printer/test` (auditados).
+    Dependências de sistema: `php-gd` e `fonts-liberation2` (install.sh). Rede: o CT precisa alcançar `IP:9100`.
 13. **Etiqueta em .odt (caminho principal de impressão):** mesmo com o papel `USER` escolhido, o Chrome manda a
     etiqueta (mais larga que alta) como paisagem e o driver da Argox, configurado em retrato, reposiciona a
     impressão. O LibreOffice imprime o modelo do usuário corretamente, então `GET /api/ui/stock/shipments/{batch}/label.odt`

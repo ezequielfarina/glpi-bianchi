@@ -6,6 +6,7 @@ namespace App\Stock\Controller;
 
 use App\Identity\Security\CurrentActor;
 use App\Stock\Service\InvoiceService;
+use App\Stock\Service\LabelPrinter;
 use App\Stock\Service\ShippingLabelDocument;
 use App\Stock\Service\StockCatalog;
 use App\Stock\Service\StockLedger;
@@ -37,6 +38,7 @@ final readonly class StockController
         private InvoiceService $invoices,
         private LoggerInterface $logger,
         private ShippingLabelDocument $label,
+        private LabelPrinter $printer,
     ) {
     }
 
@@ -139,6 +141,66 @@ final readonly class StockController
             'Content-Disposition' => 'attachment; filename="'.$name.'"',
             'Cache-Control' => 'no-store',
         ]);
+    }
+
+    /** Impressora de etiquetas configurada? (a tela decide entre imprimir direto ou .odt/navegador) */
+    #[Route('/label-printer', name: 'label_printer', methods: ['GET'])]
+    public function labelPrinter(): JsonResponse
+    {
+        $c = $this->printer->config();
+
+        return $this->json(['configured' => $c['configured'], 'printer' => $c['configured'] ? $c['host'].':'.$c['port'] : null,
+            'language' => $c['language'], 'dpi' => $c['dpi'], 'width_mm' => $c['width_mm'], 'height_mm' => $c['height_mm'], 'sender' => $c['sender']]);
+    }
+
+    /** Etiqueta de teste (calibração) — só da tela de Configurações. */
+    #[Route('/label-printer/test', name: 'label_printer_test', methods: ['POST'])]
+    public function labelPrinterTest(): JsonResponse
+    {
+        return $this->json($this->printer->print(['destination' => 'TESTE - 00', 'department' => 'TI', 'attention' => 'ETIQUETA DE TESTE'], 1));
+    }
+
+    /** Imprime a etiqueta da saída direto na Argox. Corpo: {volumes, sender?, destination?, department?, attention?}. */
+    #[Route('/shipments/{batch}/print', name: 'shipment_print', methods: ['POST'])]
+    public function shipmentPrint(string $batch, Request $request): JsonResponse
+    {
+        $b = $this->body($request);
+        $volumes = (int) ($b['volumes'] ?? 1);
+
+        return $this->json($this->printer->print($this->labelFields($batch, $b), $volumes) + ['batch' => $batch]);
+    }
+
+    /** Prévia exata (PNG 1 bit) do que vai para a impressora. */
+    #[Route('/shipments/{batch}/label.png', name: 'shipment_label_png', methods: ['GET'])]
+    public function shipmentPng(string $batch, Request $request): Response
+    {
+        $q = $request->query->all();
+        $vol = (int) ($q['volumes'] ?? 1);
+
+        return new Response($this->printer->png($this->labelFields($batch, $q), $vol > 1 ? "VOLUME 1/$vol" : null), Response::HTTP_OK,
+            ['Content-Type' => 'image/png', 'Cache-Control' => 'no-store']);
+    }
+
+    /**
+     * Campos da etiqueta: o que veio da tela (ajustado pelo usuário) ou o gravado na saída.
+     *
+     * @param array<string, mixed> $in
+     *
+     * @return array{sender: string, destination: string, department: string, attention: string}
+     */
+    private function labelFields(string $batch, array $in): array
+    {
+        $s = $this->query->shipment($batch);
+        $str = static fn (mixed $v, int $max): ?string => \is_string($v) ? mb_substr(trim($v), 0, $max) : null;
+        $branch = mb_strtoupper((string) $s['branch']);
+        $code = mb_strtoupper((string) ($s['branch_code'] ?? ''));
+
+        return [
+            'sender' => $str($in['sender'] ?? null, 40) ?? '',
+            'destination' => $str($in['destination'] ?? null, 80) ?? ('' !== $code && !str_contains($branch, $code) ? "$branch - $code" : $branch),
+            'department' => $str($in['department'] ?? null, 64) ?? (string) ($s['department'] ?? ''),
+            'attention' => $str($in['attention'] ?? null, 80) ?? (string) ($s['recipient'] ?? ''),
+        ];
     }
 
     #[Route('/in', name: 'in', methods: ['POST'])]

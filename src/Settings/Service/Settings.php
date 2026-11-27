@@ -21,6 +21,13 @@ final class Settings
     public const string ASSET_INVENTORY_PREFIX = 'asset.inventory_prefix';
     public const string SESSION_IDLE_MINUTES = 'security.session_idle_minutes';
     public const string SESSION_MAX_HOURS = 'security.session_max_hours';
+    public const string LABEL_PRINTER_HOST = 'label.printer_host';
+    public const string LABEL_PRINTER_PORT = 'label.printer_port';
+    public const string LABEL_PRINTER_LANGUAGE = 'label.printer_language';
+    public const string LABEL_PRINTER_DPI = 'label.printer_dpi';
+    public const string LABEL_WIDTH_MM = 'label.width_mm';
+    public const string LABEL_HEIGHT_MM = 'label.height_mm';
+    public const string LABEL_SENDER = 'label.sender';
 
     /**
      * @var array<string, array{label: string, help: string, type: 'int'|'string', min: int, max: int, unit?: string, pattern?: string}>
@@ -58,6 +65,62 @@ final class Settings
             'max' => 16,
             'pattern' => '/^[A-Za-z0-9._\/-]*$/',
         ],
+        // etiqueta de envio impressa direto na Argox pela rede (ADR-0014)
+        self::LABEL_PRINTER_HOST => [
+            'label' => 'Impressora de etiquetas: IP',
+            'help' => 'IP (ou nome) da Argox na rede. O servidor envia a etiqueta direto para ela ao registrar a saída. Vazio = desligado (usa .odt/navegador).',
+            'type' => 'string',
+            'min' => 0,
+            'max' => 64,
+            'pattern' => '/^[A-Za-z0-9.:-]*$/',
+        ],
+        self::LABEL_PRINTER_PORT => [
+            'label' => 'Impressora de etiquetas: porta',
+            'help' => 'Porta RAW da impressora (Argox/Zebra: 9100).',
+            'type' => 'int',
+            'min' => 1,
+            'max' => 65535,
+        ],
+        self::LABEL_PRINTER_LANGUAGE => [
+            'label' => 'Impressora de etiquetas: linguagem',
+            'help' => 'Emulação configurada na Argox (veja a folha de autoteste). PPLA não é suportada — troque a emulação para PPLB ou PPLZ.',
+            'type' => 'string',
+            'min' => 0,
+            'max' => 8,
+            'options' => ['pplb' => 'PPLB (padrão Argox)', 'zpl' => 'PPLZ / ZPL'],
+        ],
+        self::LABEL_PRINTER_DPI => [
+            'label' => 'Impressora de etiquetas: resolução',
+            'help' => 'Pontos por polegada da cabeça de impressão (OS-214/OS-2140: 203; modelos 300 dpi: 300).',
+            'type' => 'int',
+            'min' => 150,
+            'max' => 600,
+            'unit' => 'dpi',
+        ],
+        self::LABEL_WIDTH_MM => [
+            'label' => 'Etiqueta: largura',
+            'help' => 'Largura da etiqueta (papel USER do driver: 102,4 mm → 102).',
+            'type' => 'int',
+            'min' => 30,
+            'max' => 120,
+            'unit' => 'mm',
+        ],
+        self::LABEL_HEIGHT_MM => [
+            'label' => 'Etiqueta: altura',
+            'help' => 'Altura da etiqueta (papel USER do driver: 74,9 mm → 75).',
+            'type' => 'int',
+            'min' => 20,
+            'max' => 200,
+            'unit' => 'mm',
+        ],
+        self::LABEL_SENDER => [
+            'label' => 'Etiqueta: remetente',
+            'help' => 'Texto de "REMETENTE:" na etiqueta de envio.',
+            'type' => 'string',
+            'min' => 0,
+            'max' => 40,
+            'pattern' => '/^[\p{L}\p{N} .,&\/-]*$/u',
+        ],
         self::AGENT_HTTP_PORT => [
             'label' => 'Porta HTTP do agente',
             'help' => 'Porta do servidor HTTP embutido do GLPI Agent, usada para "Forçar inventário" (padrão 62354).',
@@ -92,7 +155,7 @@ final class Settings
     }
 
     /**
-     * @return array<string, array{value: mixed, default: mixed, label: string, help: string, type: string, min: int, max: int, unit?: string, updatedAt: ?string}>
+     * @return array<string, array{value: mixed, default: mixed, label: string, help: string, type: string, min: int, max: int, unit?: string, options?: array<string, string>, pattern?: string, updatedAt: ?string}>
      */
     public function all(): array
     {
@@ -131,6 +194,15 @@ final class Settings
             $def = self::DEFINITIONS[$name] ?? null;
             if (null === $def) {
                 $errors[$name] = 'Configuração desconhecida.';
+                continue;
+            }
+            if ('string' === $def['type'] && isset($def['options'])) {
+                $str = \is_scalar($value) ? (string) $value : '';
+                if (!\array_key_exists($str, $def['options'])) {
+                    $errors[$name] = 'Opção inválida.';
+                    continue;
+                }
+                $clean[$name] = $str;
                 continue;
             }
             if ('string' === $def['type']) {
@@ -181,6 +253,13 @@ final class Settings
             self::ASSET_INVENTORY_PREFIX => 'BIA-',
             self::SESSION_IDLE_MINUTES => 30,
             self::SESSION_MAX_HOURS => 12,
+            self::LABEL_PRINTER_HOST => '',
+            self::LABEL_PRINTER_PORT => 9100,
+            self::LABEL_PRINTER_LANGUAGE => 'pplb',
+            self::LABEL_PRINTER_DPI => 203,
+            self::LABEL_WIDTH_MM => 102,
+            self::LABEL_HEIGHT_MM => 75,
+            self::LABEL_SENDER => 'TI',
             default => 0,
         };
     }

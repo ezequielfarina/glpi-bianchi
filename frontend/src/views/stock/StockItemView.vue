@@ -10,7 +10,7 @@ import StockOutModal from '../../components/stock/StockOutModal.vue'
 import ShippingLabelModal from '../../components/stock/ShippingLabelModal.vue'
 import { api } from '../../lib/api'
 import { dateOnly, money } from '../../lib/format'
-import { MOVEMENT_KIND, refreshStockLow } from '../../lib/stock'
+import { MOVEMENT_KIND, printShipmentLabel, refreshStockLow } from '../../lib/stock'
 import { notify } from '../../lib/toast'
 import type { Lookups, StockItem } from '../../lib/types'
 import { useAsync } from '../../lib/useAsync'
@@ -21,7 +21,17 @@ const { data: it, loading, error, reload } = useAsync(() => api.stockItem(Number
 const lookups = ref<Lookups | null>(null)
 const categories = ref<string[]>([])
 const modal = ref<'' | 'edit' | 'out' | 'in' | 'adjust'>('')
-const label = ref<{ batch: string; fresh: boolean } | null>(null)
+const label = ref<{ batch: string; fresh: boolean; volumes?: number; error?: string | null } | null>(null)
+async function onOutSaved(batch: string, o: { print: boolean; volumes: number }): Promise<void> {
+  void done()
+  if (o.print) {
+    const err = await printShipmentLabel(batch, o.volumes)
+    if (!err) return
+    label.value = { batch, fresh: true, volumes: o.volumes, error: err }
+    return
+  }
+  label.value = { batch, fresh: true, volumes: o.volumes }
+}
 const departments = ref<string[]>([])
 const branches = computed(() => (lookups.value?.branches ?? []).map((b) => ({ id: b.id, name: b.name })))
 const asList = computed<StockItem[]>(() => (it.value ? [it.value] : []))
@@ -129,8 +139,8 @@ async function remove(): Promise<void> {
         </div>
 
         <StockItemFormModal v-if="modal === 'edit' && lookups" :item="it" :categories="categories" :asset-types="lookups.asset_types" @close="modal = ''" @saved="done" />
-        <StockOutModal v-if="modal === 'out' && lookups" :items="asList" :branches="branches" :departments="departments" :preset-item="it.id" @close="modal = ''" @saved="(b) => { label = { batch: b, fresh: true }; void done() }" />
-        <ShippingLabelModal v-if="label" :batch="label.batch" :just-saved="label.fresh" :departments="departments" @close="label = null" />
+        <StockOutModal v-if="modal === 'out' && lookups" :items="asList" :branches="branches" :departments="departments" :preset-item="it.id" @close="modal = ''" @saved="onOutSaved" />
+        <ShippingLabelModal v-if="label" :batch="label.batch" :just-saved="label.fresh" :volumes="label.volumes" :print-error="label.error" :departments="departments" @close="label = null" />
         <StockInModal v-if="modal === 'in'" :items="asList" :preset-item="it.id" @close="modal = ''" @saved="done" />
         <StockAdjustModal v-if="modal === 'adjust'" :item="it" @close="modal = ''" @saved="done" />
       </template>

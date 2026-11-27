@@ -66,6 +66,8 @@ final class AuditCatalog
         'ui_stock_in' => ['stock.in', 'Entrada manual no estoque', 'stock', null, null],
         'ui_stock_out' => ['stock.out', 'Saída para filial', 'stock', 'branch', null],
         'ui_stock_adjust' => ['stock.adjusted', 'Ajuste de estoque', 'stock', 'stock_item', null],
+        'ui_stock_shipment_print' => ['stock.label_printed', 'Etiqueta de envio impressa', 'stock', null, null],
+        'ui_stock_label_printer_test' => ['stock.label_test', 'Etiqueta de teste impressa', 'stock', null, null],
         'ui_stock_invoice_create' => ['invoice.created', 'Nota fiscal registrada', 'invoices', 'invoice', null],
         'ui_stock_invoice_update' => ['invoice.updated', 'Nota fiscal alterada', 'invoices', 'invoice', 'id'],
         'ui_stock_invoice_status' => ['invoice.status', 'Situação da nota alterada', 'invoices', 'invoice', 'id'],

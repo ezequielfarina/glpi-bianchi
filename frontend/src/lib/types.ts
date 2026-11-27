@@ -230,6 +230,7 @@ export interface SettingItem {
   min: number
   max: number
   unit?: string
+  options?: Record<string, string>
   updatedAt: string | null
 }
 export interface SettingsResponse { items: Record<string, SettingItem> }
@@ -698,6 +699,9 @@ export interface StockSummary {
   categories: string[]
   departments: string[]
 }
+
+export interface LabelPrinterInfo { configured: boolean; printer: string | null; language: string; dpi: number; width_mm: number; height_mm: number; sender: string }
+export interface LabelPrintResult { printed: number; printer: string; bytes: number; ms: number }
 
 export interface StockShipment {
   batch: string

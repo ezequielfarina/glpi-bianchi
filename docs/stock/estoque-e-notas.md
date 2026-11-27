@@ -38,23 +38,46 @@ antes de imprimir. Reimpressão: ícone de impressora em *Movimentações* ou no
 
 ### Impressão na Argox
 
-**Recomendado — LibreOffice:** na tela da etiqueta, **Baixar etiqueta (LibreOffice)**. O arquivo é o seu modelo
-`Entrega_TI` já preenchido (remetente, filial, setor e A/C, com o mesmo tamanho, fontes e logo). Abra e imprima
-(Ctrl+P) na ArgoxBancada, como já era feito; com mais de um volume, informe o número de cópias no LibreOffice.
+**Automática (recomendado):** com a impressora configurada, ao registrar a saída a etiqueta sai sozinha na Argox —
+uma por volume (`VOLUME 1/3`, `2/3`…). Na saída, informe **Volumes** e deixe marcado *Imprimir etiqueta na
+impressora*. Reimpressão: ícone de impressora em *Movimentações* → **Imprimir na impressora**. A tela da etiqueta
+mostra a **prévia exata** do que vai para a impressora.
 
-> O modelo fica em `resources/labels/entrega-ti.odt`. Para trocar o layout, substitua o arquivo mantendo a ordem:
-> parágrafo `REMETENTE: <texto>`, parágrafo `DESTINATÁRIO:`, depois o parágrafo da filial e o de "setor A/C pessoa".
+Configuração (uma vez), em **Configurações**:
 
-**Alternativa — navegador:** *Imprimir pelo navegador* usa o tamanho em *Papel* (padrão 102,4 × 74,9 mm, o
-papel `USER` do driver). No diálogo: **Tamanho do papel = USER**, **Margens: Nenhuma**, **Escala: Padrão**.
-Mesmo assim o Chrome envia a etiqueta como **paisagem** (ela é mais larga que alta) e o driver da Argox em retrato
-pode girar ou deslocar a impressão — por isso o caminho recomendado é o LibreOffice.
+| Campo | Valor |
+|---|---|
+| Impressora de etiquetas: IP | IP da Argox (ex.: `192.168.110.80`) |
+| porta | `9100` |
+| linguagem | a emulação da impressora: **PPLB** (padrão Argox) ou **PPLZ/ZPL** |
+| resolução | `203` dpi (OS-214/OS-2140) ou `300` |
+| largura / altura | `102` × `75` mm (papel `USER 102,4 × 74,9`) |
+| remetente | `TI` |
 
-| Sintoma | Causa | Correção |
-|---|---|---|
-| Pelo navegador: saiu girada/deslocada | Chrome manda paisagem; driver em retrato | usar a etiqueta do LibreOffice |
-| Prévia do Chrome em A4/Carta, sai em 2 etiquetas | tamanho em *Papel* ≠ papel do driver | igualar *Papel* ao `USER` do driver |
-| Pula uma etiqueta em branco | sensor de gap não calibrado | calibrar o sensor no driver/painel da Argox |
+Depois, **Imprimir etiqueta de teste**.
+
+Requisitos e ajustes:
+
+- A emulação aparece na folha de autoteste (desligada, segure FEED e ligue). **PPLA não é suportada** — troque
+  para PPLB ou PPLZ no painel/utilitário da Argox.
+- O CT precisa alcançar a impressora na porta 9100. Se houver FortiGate entre eles, libere
+  `192.168.110.55 → IP-da-Argox TCP/9100`. Teste no CT:
+  ```bash
+  nc -vz IP-DA-ARGOX 9100
+  printf '\nN\nA50,50,0,4,1,1,N,"TESTE"\nP1\n' | nc -q1 IP-DA-ARGOX 9100   # PPLB: imprime "TESTE"
+  ```
+- Etiqueta saindo deslocada ou pulando uma em branco: calibre o sensor de gap (no utilitário da Argox ou segurando
+  FEED); confira largura/altura em Configurações.
+- Impressora desligada/inalcançável: a saída é registrada normalmente e a tela da etiqueta abre com o erro e as
+  alternativas abaixo.
+
+**Alternativas** (sem impressora configurada, ou em *Outras opções*):
+
+- **Baixar .odt** — o seu modelo `Entrega_TI` preenchido, para imprimir pelo LibreOffice (como era feito à mão).
+  O modelo fica em `resources/labels/entrega-ti.odt`; para trocar o layout, mantenha a ordem: `REMETENTE: <texto>`,
+  `DESTINATÁRIO:`, parágrafo da filial, parágrafo "setor A/C pessoa".
+- **Pelo navegador** — depende do Chrome casar a página com o papel do driver (*Tamanho do papel = USER*,
+  *Margens: Nenhuma*); com o driver em retrato, o Chrome manda paisagem e a impressão pode sair deslocada.
 
 ## Estoque × Ativos
 

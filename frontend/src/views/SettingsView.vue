@@ -36,6 +36,19 @@ async function save(): Promise<void> {
   }
 }
 
+const testing = ref(false)
+async function testLabel(): Promise<void> {
+  testing.value = true
+  try {
+    const r = await api.labelPrinterTest()
+    notify('ok', 'Etiqueta de teste enviada', `${r.printer} · ${Math.round(r.bytes / 1024)} KB`)
+  } catch (e) {
+    notify('warn', 'A impressora não respondeu', e instanceof Error ? e.message : String(e))
+  } finally {
+    testing.value = false
+  }
+}
+
 function restore(key: string, item: SettingItem): void {
   form[key] = item.default
 }
@@ -46,7 +59,7 @@ function restore(key: string, item: SettingItem): void {
     <header class="page-head">
       <div>
         <h1>Configurações</h1>
-        <p class="muted">Coleta do inventário, patrimônio e cadastros auxiliares</p>
+        <p class="muted">Coleta do inventário, patrimônio, impressora de etiquetas e cadastros auxiliares</p>
       </div>
     </header>
 
@@ -58,8 +71,11 @@ function restore(key: string, item: SettingItem): void {
             <span v-if="item.updatedAt" class="muted small">alterado em {{ dateTime(item.updatedAt) }}</span>
           </div>
           <div class="field-row">
+            <select v-if="item.options" :id="key" v-model="form[key]" class="input" :aria-describedby="`${key}-help`">
+              <option v-for="(l, k) in item.options" :key="k" :value="k">{{ l }}</option>
+            </select>
             <input
-              v-if="item.type === 'string'"
+              v-else-if="item.type === 'string'"
               :id="key"
               v-model="form[key]"
               class="input mono"
@@ -80,7 +96,10 @@ function restore(key: string, item: SettingItem): void {
             />
             <span v-if="item.unit" class="muted">{{ item.unit }}</span>
             <button v-if="form[key] !== item.default" type="button" class="btn" @click="restore(key, item)">
-              Restaurar padrão ({{ item.default }})
+              Restaurar padrão ({{ item.options?.[String(item.default)] ?? (item.default === '' ? 'vazio' : item.default) }})
+            </button>
+            <button v-if="key === 'label.printer_host' && item.value" type="button" class="admin-only btn" :disabled="testing || dirty" :title="dirty ? 'Salve antes de testar' : ''" @click="testLabel">
+              <AppIcon name="printer" :size="15" /> {{ testing ? 'Enviando…' : 'Imprimir etiqueta de teste' }}
             </button>
           </div>
           <p :id="`${key}-help`" class="help muted">{{ item.help }}</p>

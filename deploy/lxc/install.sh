@@ -62,9 +62,10 @@ apt-get install -y -q --no-install-recommends \
     valkey-server \
     "php${PHP_VER}-fpm" "php${PHP_VER}-cli" "php${PHP_VER}-pgsql" "php${PHP_VER}-intl" \
     "php${PHP_VER}-mbstring" "php${PHP_VER}-xml" "php${PHP_VER}-zip" "php${PHP_VER}-curl" \
-    "php${PHP_VER}-opcache" "php${PHP_VER}-redis" "php${PHP_VER}-apcu" "php${PHP_VER}-snmp" \
+    "php${PHP_VER}-opcache" "php${PHP_VER}-redis" "php${PHP_VER}-apcu" "php${PHP_VER}-snmp" "php${PHP_VER}-gd" \
     composer \
-    nmap iproute2 arp-scan bind9-dnsutils mtr-tiny traceroute iputils-ping
+    nmap iproute2 arp-scan bind9-dnsutils mtr-tiny traceroute iputils-ping \
+    fonts-liberation2
 
 timedatectl set-timezone America/Sao_Paulo 2>/dev/null || ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
 

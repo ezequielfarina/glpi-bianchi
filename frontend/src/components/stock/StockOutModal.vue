@@ -4,17 +4,20 @@ import AppIcon from '../AppIcon.vue'
 import AppModal from '../AppModal.vue'
 import UnitPicker from './UnitPicker.vue'
 import { api } from '../../lib/api'
-import { today } from '../../lib/stock'
+import { labelPrinter, loadLabelPrinter, today } from '../../lib/stock'
 import type { StockItem, StockUnit } from '../../lib/types'
 import { useForm } from '../forms/useForm'
 
 // Saída para filial: várias linhas; item com patrimônio → escolhe as unidades.
 const props = defineProps<{ items: StockItem[]; branches: { id: number; name: string }[]; presetItem?: number; departments?: string[] }>()
-const emit = defineEmits<{ close: []; saved: [batch: string] }>()
+const emit = defineEmits<{ close: []; saved: [batch: string, opts: { print: boolean; volumes: number }] }>()
 const { saving, errors, submit } = useForm()
 type Line = { key: number; stock_item_id: number | ''; quantity: number; assets: string[]; units: StockUnit[] | null }
 let seq = 0
 const f = reactive({ branch_id: '' as number | '', department: '', recipient: '', occurred_at: today(), notes: '' })
+// etiqueta: impressa direto na Argox ao registrar (se a impressora estiver configurada)
+const label = reactive({ print: true, volumes: 1 })
+void loadLabelPrinter()
 const lines = ref<Line[]>([])
 const available = computed(() => props.items.filter((i) => i.active && i.balance > 0))
 const byId = (id: number | '') => props.items.find((i) => i.id === id)
@@ -44,7 +47,7 @@ async function save(): Promise<void> {
     lines: lines.value.map((l) => (byId(l.stock_item_id)?.tracked ? { stock_item_id: l.stock_item_id, assets: l.assets } : { stock_item_id: l.stock_item_id, quantity: l.quantity })),
   }
   const r = await submit(() => api.stockOut(body), 'Saída registrada')
-  if (r) emit('saved', r.batch)
+  if (r) emit('saved', r.batch, { print: !!labelPrinter.value?.configured && label.print, volumes: Math.max(1, Math.min(50, label.volumes || 1)) })
 }
 void addLine(props.presetItem ?? '')
 </script>
@@ -62,6 +65,11 @@ void addLine(props.presetItem ?? '')
         <div class="field"><label for="so-dep">Setor (etiqueta)</label><input id="so-dep" v-model="f.department" class="input" list="so-deps" maxlength="64" placeholder="ex.: COMPRAS" />
           <datalist id="so-deps"><option v-for="d in departments ?? []" :key="d" :value="d" /></datalist></div>
         <div class="field"><label for="so-rec">A/C — quem vai receber</label><input id="so-rec" v-model="f.recipient" class="input" maxlength="150" /></div>
+        <div class="field"><label for="so-vol">Volumes (etiquetas)</label><input id="so-vol" v-model.number="label.volumes" class="input num" type="number" min="1" max="50" /></div>
+        <div class="field label-opt">
+          <label v-if="labelPrinter?.configured" class="check"><input v-model="label.print" type="checkbox" /> Imprimir etiqueta na impressora ({{ labelPrinter.printer }})</label>
+          <span v-else class="hint">Impressora de etiquetas não configurada — a etiqueta abre para baixar/imprimir.</span>
+        </div>
         <div class="field full"><label for="so-notes">Observação</label><input id="so-notes" v-model="f.notes" class="input" placeholder="ex.: chamado 1234, substituição" /></div>
       </div>
 
@@ -107,6 +115,7 @@ void addLine(props.presetItem ?? '')
 .grow { flex: 1; }
 .qty { width: 130px; }
 .rm { flex: none; }
+.label-opt { justify-content: flex-end; }
 .add { margin-top: 8px; }
 .small { font-size: 12px; }
 .err { font-size: 12px; color: var(--warn-text); }
