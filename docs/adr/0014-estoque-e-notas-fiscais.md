@@ -42,7 +42,10 @@ gera uma nota fiscal que precisa ser registrada e enviada ao setor de lançament
 14. **Impressão direta na Argox pela rede (caminho principal quando configurada):** o servidor desenha a etiqueta
     como imagem 1 bit (GD + Liberation Sans, layout do modelo, logo P&B, `VOLUME i/N`) no tamanho e resolução
     configurados (padrão 102 × 75 mm, 203 dpi) e envia por TCP para a porta RAW da impressora (9100) como gráfico
-    na linguagem da emulação: **PPLB** (`GW`, bit 0 = preto) ou **PPLZ/ZPL** (`^GFA`). PPLA não é suportada.
+    na linguagem da emulação: **PPLA** (BMP 1 bit gravado na RAM com `<STX>IAB` + formato com campo de imagem, fonte
+    `Y` — a ArgoxBancada da TI está em PPLA; opção "inverter imagem" para firmwares que leem a paleta ao contrário),
+    **PPLB** (`GW`, bit 0 = preto) ou **PPLZ/ZPL** (`^GFA`). Não é preciso trocar a emulação da impressora (o driver
+    Windows/LibreOffice continua funcionando).
     Sem driver, sem diálogo e sem depender das fontes da impressora (acentos e logo idênticos). Ao registrar a saída,
     a etiqueta sai sozinha (opção marcada por padrão, com nº de volumes); falha de conexão abre a tela da etiqueta
     com o erro e as alternativas (.odt e navegador). Configuração em *Configurações → Impressora de etiquetas*

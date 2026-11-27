@@ -11,7 +11,8 @@ use App\Ui\Write\ValidationException;
  * Etiqueta de envio impressa direto na Argox pela rede (ADR-0014).
  *
  * A etiqueta é desenhada no servidor como imagem 1 bit (GD + TTF), no layout do modelo Entrega_TI, e enviada
- * como gráfico na linguagem da impressora (PPLB `GW` ou ZPL/PPLZ `^GFA`) para a porta RAW (9100). Assim não
+ * como gráfico na linguagem da impressora (PPLA: BMP gravado na RAM + formato com fonte `Y`; PPLB `GW`;
+ * ZPL/PPLZ `^GFA`) para a porta RAW (9100). Assim não
  * depende de driver, de diálogo de impressão nem das fontes internas da impressora (acentos e logo saem iguais).
  */
 final readonly class LabelPrinter
@@ -62,7 +63,12 @@ final readonly class LabelPrinter
         $job = '';
         for ($i = 1; $i <= $volumes; ++$i) {
             $img = $this->render($f, $volumes > 1 ? "VOLUME $i/$volumes" : null);
-            $job .= 'zpl' === $c['language'] ? self::zpl($img) : self::pplb($img);
+            $job .= match ($c['language']) {
+                'zpl' => self::zpl($img),
+                'ppla' => self::ppla($img),
+                'ppla_inv' => self::ppla($img, true),
+                default => self::pplb($img),
+            };
             imagedestroy($img);
         }
         $t = microtime(true);
@@ -210,6 +216,43 @@ final readonly class LabelPrinter
         $data = implode('', array_map(static fn (string $r): string => ~$r, self::rows($img)));
 
         return "\nN\nq$w\nQ$h,24\nS3\nD10\nGW0,0,$bpr,$h,".$data."\nP1\n";
+    }
+
+    /**
+     * PPLA (compatível Datamax DPL): grava a etiqueta como BMP monocromático na RAM (`<STX>IAB<nome>`) e imprime
+     * um formato com o campo de imagem (fonte `Y`) na origem. `$invert` cobre firmwares que tratam o índice 1 da
+     * paleta como "imprimir" (sai tudo preto com fundo → escolha "PPLA (inverter imagem)").
+     */
+    public static function ppla(\GdImage $img, bool $invert = false): string
+    {
+        $name = 'BIAETQ';
+
+        return "\x02IAB$name\r".self::bmp1($img, $invert)
+            ."\x02L\r"           // início do formato
+            ."D11\r"              // ponto 1 × 1
+            ."1Y11000"."0000"."0000".$name."\r"   // rotação 1, fonte Y (imagem), mult 1×1, linha 0, coluna 0
+            ."Q0001\r"
+            ."E\r";
+    }
+
+    /** BMP 1 bit (bottom-up, linhas alinhadas em 4 bytes). Paleta: 0 = preto, 1 = branco. */
+    public static function bmp1(\GdImage $img, bool $invert = false): string
+    {
+        $w = imagesx($img);
+        $h = imagesy($img);
+        $rows = self::rows($img);                       // bit 1 = preto
+        $stride = (intdiv($w + 31, 32)) * 4;
+        $data = '';
+        for ($y = $h - 1; $y >= 0; --$y) {
+            $r = $invert ? $rows[$y] : ~$rows[$y];       // na paleta, bit 0 = preto
+            $data .= str_pad($r, $stride, $invert ? "\x00" : "\xFF");
+        }
+        $palette = "\x00\x00\x00\x00\xFF\xFF\xFF\x00";
+        $offset = 14 + 40 + 8;
+
+        return 'BM'.pack('VvvV', $offset + \strlen($data), 0, 0, $offset)
+            .pack('VVVvvVVVVVV', 40, $w, $h, 1, 1, 0, \strlen($data), 8000, 8000, 2, 2)
+            .$palette.$data;
     }
 
     /** ZPL II / PPLZ: gráfico `^GFA` em hexadecimal (bit 1 = preto). */

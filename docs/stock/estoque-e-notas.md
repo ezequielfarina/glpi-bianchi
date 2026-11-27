@@ -49,7 +49,7 @@ Configuração (uma vez), em **Configurações**:
 |---|---|
 | Impressora de etiquetas: IP | IP da Argox (ex.: `192.168.110.80`) |
 | porta | `9100` |
-| linguagem | a emulação da impressora: **PPLB** (padrão Argox) ou **PPLZ/ZPL** |
+| linguagem | a emulação da impressora: **PPLA** (a ArgoxBancada, 192.168.0.253), PPLB ou PPLZ/ZPL |
 | resolução | `203` dpi (OS-214/OS-2140) ou `300` |
 | largura / altura | `102` × `75` mm (papel `USER 102,4 × 74,9`) |
 | remetente | `TI` |
@@ -58,13 +58,19 @@ Depois, **Imprimir etiqueta de teste**.
 
 Requisitos e ajustes:
 
-- A emulação aparece na folha de autoteste (desligada, segure FEED e ligue). **PPLA não é suportada** — troque
-  para PPLB ou PPLZ no painel/utilitário da Argox.
+- Descubra a emulação mandando um texto de teste em cada linguagem — a que imprimir é a certa:
+  ```bash
+  printf '\002L\nD11\n121100000500050TESTE PPLA\nE\n' | nc -q1 IP-DA-ARGOX 9100
+  printf '\nN\nA50,50,0,4,1,1,N,"TESTE PPLB"\nP1\n' | nc -q1 IP-DA-ARGOX 9100
+  printf '^XA^FO50,50^A0N,40,40^FDTESTE PPLZ^FS^XZ\n' | nc -q1 IP-DA-ARGOX 9100
+  ```
+  Não troque a emulação da impressora só por causa do sistema: as três são suportadas, e o driver do Windows
+  depende da emulação atual.
+- Em PPLA, se a etiqueta de teste sair **com o fundo preto e o texto em branco**, escolha *PPLA (inverter imagem)*.
 - O CT precisa alcançar a impressora na porta 9100. Se houver FortiGate entre eles, libere
   `192.168.110.55 → IP-da-Argox TCP/9100`. Teste no CT:
   ```bash
   nc -vz IP-DA-ARGOX 9100
-  printf '\nN\nA50,50,0,4,1,1,N,"TESTE"\nP1\n' | nc -q1 IP-DA-ARGOX 9100   # PPLB: imprime "TESTE"
   ```
 - Etiqueta saindo deslocada ou pulando uma em branco: calibre o sensor de gap (no utilitário da Argox ou segurando
   FEED); confira largura/altura em Configurações.

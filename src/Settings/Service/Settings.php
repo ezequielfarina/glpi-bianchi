@@ -83,11 +83,11 @@ final class Settings
         ],
         self::LABEL_PRINTER_LANGUAGE => [
             'label' => 'Impressora de etiquetas: linguagem',
-            'help' => 'Emulação configurada na Argox (veja a folha de autoteste). PPLA não é suportada — troque a emulação para PPLB ou PPLZ.',
+            'help' => 'Emulação configurada na Argox (folha de autoteste). Se a etiqueta de teste sair com o fundo preto em PPLA, use "PPLA (inverter imagem)".',
             'type' => 'string',
             'min' => 0,
             'max' => 8,
-            'options' => ['pplb' => 'PPLB (padrão Argox)', 'zpl' => 'PPLZ / ZPL'],
+            'options' => ['ppla' => 'PPLA', 'ppla_inv' => 'PPLA (inverter imagem)', 'pplb' => 'PPLB', 'zpl' => 'PPLZ / ZPL'],
         ],
         self::LABEL_PRINTER_DPI => [
             'label' => 'Impressora de etiquetas: resolução',

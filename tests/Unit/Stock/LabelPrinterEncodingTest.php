@@ -29,6 +29,17 @@ final class LabelPrinterEncodingTest extends TestCase
         self::assertSame("^XA^PW10^LL2^LH0,0^FO0,0^GFA,4,4,2,E0000000^FS^PQ1^XZ\n", $zpl);
     }
 
+    public function testPplaDownloadsBmpAndPrintsImageField(): void
+    {
+        $job = LabelPrinter::ppla($this->image());
+        self::assertStringStartsWith("\x02IABBIAETQ\rBM", $job);
+        self::assertStringEndsWith("\x02L\rD11\r1Y1100000000000BIAETQ\rQ0001\rE\r", $job);
+        $bmp = LabelPrinter::bmp1($this->image());
+        self::assertSame(62 + 2 * 4, \strlen($bmp));                 // 2 linhas × 4 bytes (alinhamento)
+        self::assertSame("\xFF\xFF\xFF\xFF", substr($bmp, 62, 4));     // linha de baixo (branca) primeiro
+        self::assertSame("\x1F\xFF\xFF\xFF", substr($bmp, 66, 4));     // 3 pontos pretos = bits 0
+    }
+
     public function testPplbInvertsBits(): void
     {
         $job = LabelPrinter::pplb($this->image());
