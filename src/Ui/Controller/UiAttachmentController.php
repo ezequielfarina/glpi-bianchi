@@ -21,7 +21,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * Upload (multipart: file, owner_type, owner, kind, description), download e exclusão.
- * `owner` = UUID do ativo ou ID numérico de contrato/fornecedor/licença/filial.
+ * `owner` = UUID do ativo ou ID numérico de contrato/fornecedor/licença/filial/nota fiscal.
  */
 #[AsController]
 #[Route('/api/ui/attachments', name: 'ui_attachment_')]
@@ -108,7 +108,7 @@ final readonly class UiAttachmentController
         if ('asset' === $type) {
             return $this->refs->asset($owner)['id'] ?? throw new NotFoundException('Ativo não encontrado.');
         }
-        $table = ['contract' => 'contract', 'supplier' => 'supplier', 'license' => 'license', 'branch' => 'branch'][$type]
+        $table = ['contract' => 'contract', 'supplier' => 'supplier', 'license' => 'license', 'branch' => 'branch', 'invoice' => 'invoice'][$type]
             ?? throw new ValidationException(['owner_type' => 'Tipo de dono inválido.']);
         if (!ctype_digit($owner) || !$this->refs->exists($table, (int) $owner)) {
             throw new NotFoundException('Registro não encontrado.');

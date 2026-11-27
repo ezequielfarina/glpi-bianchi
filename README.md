@@ -144,7 +144,9 @@ descritas em [`CLAUDE.md`](CLAUDE.md): **banco** (`migrations/`, `docs/database/
 - [x] Login individual (Argon2id), 2FA TOTP, perfis Administrador/Técnico/Leitura, auditoria de acesso, HTTPS
 - [x] Ferramentas: scanner de rede (nmap, SNMP ARP, correlação com inventário) e calculadora de sub-rede
 - [x] Monitoramento: varreduras agendadas, alertas de mudança e conflito de IP/MAC, notificações (Teams/Telegram/Slack/webhook), diagnóstico (ping/MTR/portas/TLS) e consultas (DNS/RDAP/ASN/MAC)
+- [x] Estoque central de TI e notas fiscais simplificadas (entrada por nota, patrimônio por unidade, saída para filial, mínimo/"a comprar")
 - [ ] Notificação por e-mail (symfony/mailer + SMTP)
+- [ ] Estoque: importação do XML da NF-e, pedido de compra, aviso de mínimo no Teams/Telegram
 
 **Fase 2**
 - [ ] Login LDAP/AD e OIDC (Entra ID/Keycloak) com grupos → perfis; permissão por filial

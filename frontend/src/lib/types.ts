@@ -599,3 +599,115 @@ export interface MacItem {
   input: string; mac: string | null; oui: string | null; vendor: string | null; valid: boolean; flags: string[]
   assets: AssetRef[]; scans: { scan_id: number; ip: string; target: string; at: string }[]
 }
+
+// ------------------------------------------------------------------ estoque e notas fiscais (ADR-0014)
+
+export interface StockItem {
+  id: number
+  name: string
+  category: string
+  tracked: boolean
+  type_code: string | null
+  type_label: string | null
+  min_quantity: number
+  active: boolean
+  notes: string | null
+  balance: number
+  low: boolean
+  to_buy: number
+  avg_cost: string | null
+  value: string | null
+  last_in: string | null
+  last_out: string | null
+  movements: number
+}
+
+export interface StockUnit {
+  uuid: string
+  inventory_number: string | null
+  serial_number: string | null
+  since: string
+  unit_cost: string | null
+  invoice_number: string | null
+  invoice_id: number | null
+}
+
+export interface StockMovement {
+  id: number
+  batch: string | null
+  kind: 'in' | 'out' | 'adjust'
+  kind_label: string
+  item_id: number
+  item: string
+  category: string
+  quantity: number
+  unit_cost: string | null
+  occurred_at: string
+  branch_id: number | null
+  branch: string | null
+  recipient: string | null
+  reason: string | null
+  actor: string
+  invoice_id: number | null
+  invoice_number: string | null
+  supplier: string | null
+  inventory_numbers: string[]
+  asset_uuids: string[]
+}
+
+export interface StockItemDetail extends StockItem {
+  units: StockUnit[]
+  movements_recent: StockMovement[]
+  consumption: { branch_id: number; branch: string; quantity: number; last_at: string }[]
+}
+
+export interface StockSummary {
+  items: number
+  units: number
+  value: string
+  low: number
+  to_buy: number
+  invoices_pending: number
+  categories: string[]
+}
+
+export interface StockConsumption {
+  from: string
+  to: string
+  branches: { branch_id: number; branch: string; quantity: number; value: string; items: { item_id: number; item: string; category: string; quantity: number; value: string }[] }[]
+}
+
+export type InvoiceStatus = 'registered' | 'sent' | 'posted'
+
+export interface InvoiceRow {
+  id: number
+  number: string
+  series: string
+  supplier_id: number
+  supplier: string
+  issue_date: string
+  total: string
+  items_total: string
+  difference: string
+  status: InvoiceStatus
+  status_label: string
+  sent_at: string | null
+  posted_at: string | null
+  created_at: string
+  lines?: number
+  units?: number
+  summary?: string | null
+}
+
+export interface InvoiceDetail extends InvoiceRow {
+  supplier_tax_id: string | null
+  notes: string | null
+  sent_by: string | null
+  posted_by: string | null
+  created_by: string
+  items: { id: number; stock_item_id: number; item: string; category: string; tracked: boolean; quantity: number; unit_price: string; subtotal: string }[]
+  assets: { uuid: string; name: string; inventory_number: string | null; serial_number: string | null; status: string; branch: string | null; invoice_item_id: number }[]
+  attachments: Attachment[]
+  can_delete: boolean
+  delete_blocker: string | null
+}

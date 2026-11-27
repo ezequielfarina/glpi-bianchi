@@ -80,6 +80,11 @@ doctrine:
                 is_bundle: false
                 dir: '%kernel.project_dir%/src/Tools/Entity'
                 prefix: 'App\Tools\Entity'
+            Stock:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Stock/Entity'
+                prefix: 'App\Stock\Entity'
         controller_resolver:
             auto_mapping: false
 

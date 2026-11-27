@@ -18,3 +18,4 @@ Para uma nova decisão, copie [`0000-template.md`](0000-template.md) usando o pr
 | [0011](0011-autenticacao-e-perfis.md) | Login individual: Argon2id, sessão em cookie, 2FA TOTP, perfis, HTTPS | aceito |
 | [0012](0012-ferramentas-scanner-de-rede.md) | Ferramentas: scanner de rede (nmap em worker com CAP_NET_RAW) e calculadora de sub-rede | aceito |
 | [0013](0013-monitoramento-alertas-diagnostico.md) | Monitoramento de rede (agendamento + alertas + notificações), conflitos de IP/MAC e diagnóstico (ping/MTR/portas/DNS/RDAP) | aceito |
+| [0014](0014-estoque-e-notas-fiscais.md) | Estoque central de TI (razão de movimentações, patrimônio desde a entrada) e nota fiscal simplificada | aceito |

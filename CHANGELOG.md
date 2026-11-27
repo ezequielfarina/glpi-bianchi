@@ -5,6 +5,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 ## [Unreleased]
 
 ### Corrigido
+- `install.sh`: `net.ipv4.ping_group_range` limitado ao `gid_map` do CT unprivileged (o ping do Diagnóstico ficava sem permissão); PostgreSQL só reinicia quando um parâmetro exige (`pending_restart`), senão `reload` — o restart incondicional derrubava a varredura em andamento.
 - Ativo excluído com o GLPI Agent ainda instalado voltava **duplicado** (novo patrimônio, sem
   histórico): agora o mesmo ativo é restaurado da lixeira (por UUID de hardware, serial ou vínculo do agente).
 - F5 no detalhe do ativo dava 404 do nginx: o build do Vite usava `/app/assets/`, a mesma rota da tela.
@@ -17,6 +18,13 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- **Estoque central de TI e notas fiscais (ADR-0014):**
+  - Itens com estoque mínimo e lista "a comprar"; contador no menu (alerta só no sistema).
+  - Nota fiscal simplificada (número, série, fornecedor, emissão, itens com valor unitário e total). Registrar a nota dá entrada no estoque; a diferença entre o total e a soma dos itens é exibida.
+  - Itens com patrimônio: cada unidade vira um ativo "Em estoque" com patrimônio automático e série opcional; a saída entrega o ativo à filial.
+  - Situação da nota: registrada → enviada para lançamento → lançada (com data e autor), inclusive em lote.
+  - Saída para filial, entrada manual (saldo inicial, devolução) e ajuste com motivo; histórico de movimentações e consumo por filial.
+  - Anexo de DANFE/XML na nota.
 - **Monitoramento de rede (ADR-0013):**
   - Varreduras agendadas: horário fixo nos dias escolhidos ou a cada N horas, via timer systemd `bianchi-scan-scheduler`.
   - Alertas por comparação com a execução anterior: dispositivo novo sem cadastro, MAC trocado num IP (crítico no gateway), portas novas (de risco em destaque), ativo que sumiu, varredura que falhou.

@@ -5,6 +5,7 @@ import AppIcon, { type IconName } from './AppIcon.vue'
 import ToastHost from './ToastHost.vue'
 import { api } from '../lib/api'
 import { alertCounts, refreshAlertCounts } from '../lib/alerts'
+import { refreshStockLow, stockLow } from '../lib/stock'
 import { canEdit, clearMe, isAdmin, me, ROLE_LABEL } from '../lib/session'
 import { theme, toggleTheme } from '../lib/theme'
 
@@ -12,10 +13,12 @@ const route = useRoute()
 const router = useRouter()
 const search = ref('')
 
-const allNav: { to: string; label: string; icon: IconName; group?: string; admin?: boolean; edit?: boolean; badge?: 'alerts' }[] = [
+const allNav: { to: string; label: string; icon: IconName; group?: string; admin?: boolean; edit?: boolean; badge?: 'alerts' | 'stock' }[] = [
   { to: '/', label: 'Visão geral', icon: 'home' },
   { to: '/assets', label: 'Ativos', icon: 'assets' },
   { to: '/branches', label: 'Matriz e filiais', icon: 'building' },
+  { to: '/stock', label: 'Estoque', icon: 'box', group: 'Estoque', badge: 'stock' },
+  { to: '/invoices', label: 'Notas fiscais', icon: 'file' },
   { to: '/licenses', label: 'Licenças', icon: 'key', group: 'Gestão' },
   { to: '/contracts', label: 'Contratos', icon: 'contract' },
   { to: '/suppliers', label: 'Fornecedores', icon: 'truck' },
@@ -50,7 +53,10 @@ watch(canEdit, (can) => {
   void refreshAlertCounts()
   alertTimer = window.setInterval(() => { if (document.visibilityState === 'visible') void refreshAlertCounts() }, 60_000)
 }, { immediate: true })
-onBeforeUnmount(() => window.clearInterval(alertTimer))
+// itens abaixo do mínimo (badge "Estoque") — todos os perfis
+void refreshStockLow()
+const stockTimer = window.setInterval(() => { if (document.visibilityState === 'visible') void refreshStockLow() }, 120_000)
+onBeforeUnmount(() => { window.clearInterval(alertTimer); window.clearInterval(stockTimer) })
 const initials = computed(() => (me.value?.display_name ?? '?').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join(''))
 
 const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.startsWith(to))
@@ -96,6 +102,10 @@ async function logout(): Promise<void> {
               class="nav-badge" :class="{ crit: alertCounts.critical > 0 }"
               :title="`${alertCounts.open} alerta(s) aberto(s)${alertCounts.critical ? `, ${alertCounts.critical} crítico(s)` : ''}`"
             >{{ alertCounts.open > 99 ? '99+' : alertCounts.open }}</span>
+            <span
+              v-if="item.badge === 'stock' && stockLow > 0"
+              class="nav-badge" :title="`${stockLow} item(ns) abaixo do estoque mínimo`"
+            >{{ stockLow > 99 ? '99+' : stockLow }}</span>
           </RouterLink>
         </template>
       </nav>

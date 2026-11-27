@@ -5,6 +5,7 @@ import type {
   AgentsResponse, Alerts, AssetDetail, AssetsResponse, Attachment, BranchDetail, BranchRow, ContractDetail, ContractRow, AccountRow, AuditPage, Me, SessionRow, InventoriesResponse, LicenseDetail,
   LicenseRow, Lookups, Overview, SettingsResponse, SupplierDetail, SupplierRow, TypeSummary, WakeupResult, ScannerInfo, ScanRow, ScanDetail,
   ScanSchedule, AlertFlags, NetworkAlert, AlertCounts, NotificationChannel, ConflictReport, NetInfo, PingResult, TraceResult, PortsResult, DnsResult, AsnResult, RdapResult, MacItem,
+  StockItem, StockItemDetail, StockMovement, StockSummary, StockConsumption, InvoiceRow, InvoiceDetail, InvoiceStatus,
 } from './types'
 
 export class ApiError extends Error {
@@ -197,6 +198,28 @@ export const api = {
   assignLicense: (id: number, body: { asset_uuid?: string; user?: string; notes?: string; force?: boolean }) =>
     send<{ id: number }>('POST', `/licenses/${id}/assignments`, body),
   unassignLicense: (assignmentId: number) => send<unknown>('DELETE', `/license-assignments/${assignmentId}`),
+
+  // ---------------------------------------------------------------- estoque e notas fiscais (ADR-0014)
+  stockSummary: () => request<StockSummary>('/stock/summary'),
+  stockLowCount: () => request<{ low: number }>('/stock/low-count'),
+  stockItems: (p: { q?: string; category?: string; low?: boolean; inactive?: boolean } = {}) =>
+    request<{ items: StockItem[] }>(`/stock/items${qs({ q: p.q, category: p.category, low: p.low ? 1 : undefined, inactive: p.inactive ? 1 : undefined })}`),
+  stockItem: (id: number) => request<StockItemDetail>(`/stock/items/${id}`),
+  saveStockItem: (id: number | null, body: Record<string, unknown>) =>
+    id ? send<{ id: number }>('PUT', `/stock/items/${id}`, body) : send<{ id: number }>('POST', '/stock/items', body),
+  deleteStockItem: (id: number) => send<{ result: 'deleted' | 'deactivated' }>('DELETE', `/stock/items/${id}`),
+  stockMovements: (p: { item?: number; branch?: number; kind?: string; from?: string; to?: string; limit?: number } = {}) =>
+    request<{ items: StockMovement[]; total: number }>(`/stock/movements${qs(p)}`),
+  stockConsumption: (from?: string, to?: string) => request<StockConsumption>(`/stock/consumption${qs({ from, to })}`),
+  stockIn: (body: Record<string, unknown>) => send<{ batch: string; assets: number }>('POST', '/stock/in', body),
+  stockOut: (body: Record<string, unknown>) => send<{ batch: string }>('POST', '/stock/out', body),
+  stockAdjust: (body: Record<string, unknown>) => send<{ ok: boolean }>('POST', '/stock/adjust', body),
+  invoices: (p: { status?: string; q?: string; supplier?: number } = {}) => request<{ items: InvoiceRow[] }>(`/stock/invoices${qs(p)}`),
+  invoice: (id: number) => request<InvoiceDetail>(`/stock/invoices/${id}`),
+  createInvoice: (body: Record<string, unknown>) => send<{ id: number }>('POST', '/stock/invoices', body),
+  updateInvoice: (id: number, body: Record<string, unknown>) => send<{ id: number }>('PUT', `/stock/invoices/${id}`, body),
+  setInvoiceStatus: (id: number, status: InvoiceStatus) => send<{ id: number; status: InvoiceStatus }>('POST', `/stock/invoices/${id}/status`, { status }),
+  deleteInvoice: (id: number) => send<unknown>('DELETE', `/stock/invoices/${id}`),
 
   saveSettings: (values: Record<string, number | string>) =>
     request<SettingsResponse>('/settings', {

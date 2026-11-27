@@ -54,6 +54,14 @@ erDiagram
     network_scan ||--o{ network_alert : ""
     network_alert }o--o| asset : ""
     network_alert }o--o| branch : ""
+    asset_type ||--o{ stock_item : "patrimônio"
+    supplier ||--o{ invoice : ""
+    invoice ||--o{ invoice_item : ""
+    stock_item ||--o{ invoice_item : ""
+    stock_item ||--o{ stock_movement : "razão"
+    invoice_item ||--o{ stock_movement : "entrada"
+    stock_movement }o--o| branch : "saída"
+    stock_movement }o--o| asset : "unidade"
 ```
 
 ## Dicionário
@@ -133,6 +141,15 @@ erDiagram
 | `notification_channel` | canal de notificação: teams/telegram/slack/webhook, `min_severity`, último status | `target` (URL/token) **cifrado**; só admin |
 | `network_scan_host` | host encontrado: IP, MAC + origem (`arp`/`snmp`/`netbios`), fabricante, nomes, SO, `device_type`, portas e detalhes (JSONB), `asset_id` + `match_by` | UNIQUE `(scan_id, ip)` para upsert em streaming; some com a varredura (CASCADE); ativo excluído → `SET NULL` |
 
+### Estoque e notas fiscais (ADR-0014)
+
+| Tabela | Descrição | Pontos de atenção |
+|---|---|---|
+| `stock_item` | item do estoque central: nome (único), categoria, `tracked` (patrimônio por unidade) + `asset_type_id`, `min_quantity`, `active` | CHECK `tracked → asset_type_id`; com histórico não se exclui (só desativa, com saldo zero) nem troca `tracked` |
+| `invoice` | nota fiscal simplificada: fornecedor, `number` (sem zeros à esquerda), `series`, `issue_date`, `total` informado, `status` registered/sent/posted + datas/autores | UNIQUE `(supplier_id, number, series)`; fornecedor `RESTRICT`; anexos com `owner_type = invoice` |
+| `invoice_item` | linha da nota: item, `quantity` > 0, `unit_price` ≥ 0, `position` | CASCADE com a nota; item `RESTRICT`; não editável depois de salvo |
+| `stock_movement` | razão do estoque: `kind` in/out/adjust, `quantity` com sinal, `unit_cost`, `batch` (operação), filial (saída), ativo (unidade com patrimônio), `recipient`, `reason`, `actor`, `occurred_at` | **saldo = SUM(quantity)**; CHECK de sinal por tipo; entrada some com a nota (CASCADE via `invoice_item`); operações travam `stock_item` FOR UPDATE |
+
 ## Objetos fora do ORM
 
 | Objeto | Onde | Por quê |
@@ -147,6 +164,19 @@ erDiagram
 Esses índices são registrados em `src/Shared/Doctrine/SchemaExtrasListener.php`; sem isso, o `make diff` tentaria removê-los.
 
 ## Consultas úteis
+
+```sql
+-- saldo, mínimo e quanto comprar por item (estoque central)
+SELECT i.name, i.category, coalesce(sum(m.quantity), 0) AS saldo, i.min_quantity,
+       greatest(i.min_quantity - coalesce(sum(m.quantity), 0), 0) AS comprar
+FROM stock_item i LEFT JOIN stock_movement m ON m.stock_item_id = i.id
+WHERE i.active GROUP BY i.id ORDER BY comprar DESC, i.name;
+
+-- notas ainda não enviadas ao setor de lançamento
+SELECT n.number, s.name AS fornecedor, n.issue_date, n.total FROM invoice n JOIN supplier s ON s.id = n.supplier_id
+WHERE n.status = 'registered' ORDER BY n.issue_date;
+```
+
 
 ```sql
 -- Subárvore de uma organização

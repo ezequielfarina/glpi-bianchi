@@ -9,7 +9,7 @@ import { notify } from '../lib/toast'
 import type { Attachment } from '../lib/types'
 
 // Lista + upload (arrastar/selecionar) + download + exclusão de anexos de qualquer registro.
-const props = defineProps<{ ownerType: 'asset' | 'contract' | 'supplier' | 'license' | 'branch'; owner: string | number; items: Attachment[]; title?: string }>()
+const props = defineProps<{ ownerType: 'asset' | 'contract' | 'supplier' | 'license' | 'branch' | 'invoice'; owner: string | number; items: Attachment[]; title?: string }>()
 const emit = defineEmits<{ changed: [] }>()
 const busy = ref(false)
 const dragging = ref(false)
