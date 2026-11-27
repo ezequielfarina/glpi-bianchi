@@ -112,7 +112,7 @@ final readonly class StockLedger
     /**
      * Saída para filial.
      *
-     * @param array<string, mixed> $data {branch_id, recipient?, occurred_at?, notes?, lines: [{stock_item_id, quantity} | {stock_item_id, assets: [uuid]}]}
+     * @param array<string, mixed> $data {branch_id, recipient?, department?, occurred_at?, notes?, lines: [{stock_item_id, quantity} | {stock_item_id, assets: [uuid]}]}
      *
      * @return array{batch: string}
      */
@@ -124,6 +124,7 @@ final readonly class StockLedger
             $errors['branch_id'] = 'Escolha a filial de destino.';
         }
         $recipient = self::text($data['recipient'] ?? null, 150);
+        $department = self::text($data['department'] ?? null, 64);
         $notes = self::text($data['notes'] ?? null, 2000);
         $occurredAt = self::occurredAt($data['occurred_at'] ?? null);
         $lines = self::lines($data['lines'] ?? null, 'lines');
@@ -132,7 +133,7 @@ final readonly class StockLedger
         }
         $batch = Uuid::v7();
 
-        $this->db->transactional(function () use ($lines, $branchId, $recipient, $notes, $occurredAt, $batch, $actor): void {
+        $this->db->transactional(function () use ($lines, $branchId, $recipient, $department, $notes, $occurredAt, $batch, $actor): void {
             $items = $this->lockItems(array_map(static fn (array $l): int => self::positiveInt($l['stock_item_id'] ?? null) ?? 0, $lines));
             $balances = $this->balances(array_keys($items));
             $errors = [];
@@ -144,7 +145,7 @@ final readonly class StockLedger
                 if ($item['tracked']) {
                     $assets = $this->pickAssets($itemId, $l['assets'] ?? null, "lines.$i.assets", $errors);
                     foreach ($assets as $a) {
-                        $this->insert($itemId, 'out', -1, $a['unit_cost'], null, $branchId, $a['id'], $batch, $recipient, $notes, $actor, $occurredAt, $now);
+                        $this->insert($itemId, 'out', -1, $a['unit_cost'], null, $branchId, $a['id'], $batch, $recipient, $notes, $actor, $occurredAt, $now, $department);
                         $this->moveAsset($a['id'], AssetStatus::InUse->value, $branchId, $branchName, $actor, $now);
                     }
                     $balances[$itemId] -= \count($assets);
@@ -160,7 +161,7 @@ final readonly class StockLedger
                     continue;
                 }
                 $balances[$itemId] -= $qty;
-                $this->insert($itemId, 'out', -$qty, $this->averageCost($itemId), null, $branchId, null, $batch, $recipient, $notes, $actor, $occurredAt, $now);
+                $this->insert($itemId, 'out', -$qty, $this->averageCost($itemId), null, $branchId, null, $batch, $recipient, $notes, $actor, $occurredAt, $now, $department);
             }
             if ([] !== $errors) {
                 throw new ValidationException($errors);
@@ -387,12 +388,12 @@ final readonly class StockLedger
     }
 
     private function insert(int $itemId, string $kind, int $qty, ?string $unitCost, ?int $invoiceItemId, ?int $branchId, ?int $assetId,
-        Uuid $batch, ?string $recipient, ?string $reason, string $actor, string $occurredAt, string $now): void
+        Uuid $batch, ?string $recipient, ?string $reason, string $actor, string $occurredAt, string $now, ?string $department = null): void
     {
         $this->db->executeStatement(<<<'SQL'
-            INSERT INTO stock_movement (stock_item_id, invoice_item_id, branch_id, asset_id, kind, quantity, unit_cost, batch, recipient, reason, actor, occurred_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            SQL, [$itemId, $invoiceItemId, $branchId, $assetId, $kind, $qty, $unitCost, $batch->toRfc4122(), $recipient, $reason, $actor, $occurredAt, $now]);
+            INSERT INTO stock_movement (stock_item_id, invoice_item_id, branch_id, asset_id, kind, quantity, unit_cost, batch, recipient, department, reason, actor, occurred_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            SQL, [$itemId, $invoiceItemId, $branchId, $assetId, $kind, $qty, $unitCost, $batch->toRfc4122(), $recipient, $department, $reason, $actor, $occurredAt, $now]);
     }
 
     // ------------------------------------------------------------------ validação de entrada

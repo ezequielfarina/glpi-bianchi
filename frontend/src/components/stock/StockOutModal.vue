@@ -9,12 +9,12 @@ import type { StockItem, StockUnit } from '../../lib/types'
 import { useForm } from '../forms/useForm'
 
 // Saída para filial: várias linhas; item com patrimônio → escolhe as unidades.
-const props = defineProps<{ items: StockItem[]; branches: { id: number; name: string }[]; presetItem?: number }>()
-const emit = defineEmits<{ close: []; saved: [] }>()
+const props = defineProps<{ items: StockItem[]; branches: { id: number; name: string }[]; presetItem?: number; departments?: string[] }>()
+const emit = defineEmits<{ close: []; saved: [batch: string] }>()
 const { saving, errors, submit } = useForm()
 type Line = { key: number; stock_item_id: number | ''; quantity: number; assets: string[]; units: StockUnit[] | null }
 let seq = 0
-const f = reactive({ branch_id: '' as number | '', recipient: '', occurred_at: today(), notes: '' })
+const f = reactive({ branch_id: '' as number | '', department: '', recipient: '', occurred_at: today(), notes: '' })
 const lines = ref<Line[]>([])
 const available = computed(() => props.items.filter((i) => i.active && i.balance > 0))
 const byId = (id: number | '') => props.items.find((i) => i.id === id)
@@ -40,11 +40,11 @@ const ready = computed(() => f.branch_id !== '' && lines.value.length > 0 && lin
 }))
 async function save(): Promise<void> {
   const body = {
-    ...f, recipient: f.recipient || null, notes: f.notes || null,
+    ...f, recipient: f.recipient || null, department: f.department || null, notes: f.notes || null,
     lines: lines.value.map((l) => (byId(l.stock_item_id)?.tracked ? { stock_item_id: l.stock_item_id, assets: l.assets } : { stock_item_id: l.stock_item_id, quantity: l.quantity })),
   }
   const r = await submit(() => api.stockOut(body), 'Saída registrada')
-  if (r) emit('saved')
+  if (r) emit('saved', r.batch)
 }
 void addLine(props.presetItem ?? '')
 </script>
@@ -59,8 +59,10 @@ void addLine(props.presetItem ?? '')
           <span v-if="errors.branch_id" class="err">{{ errors.branch_id }}</span>
         </div>
         <div class="field"><label for="so-date">Data</label><input id="so-date" v-model="f.occurred_at" class="input" type="date" :max="today()" /><span v-if="errors.occurred_at" class="err">{{ errors.occurred_at }}</span></div>
-        <div class="field"><label for="so-rec">Solicitante / quem recebeu</label><input id="so-rec" v-model="f.recipient" class="input" maxlength="150" /></div>
-        <div class="field"><label for="so-notes">Observação</label><input id="so-notes" v-model="f.notes" class="input" placeholder="ex.: chamado 1234, substituição" /></div>
+        <div class="field"><label for="so-dep">Setor (etiqueta)</label><input id="so-dep" v-model="f.department" class="input" list="so-deps" maxlength="64" placeholder="ex.: COMPRAS" />
+          <datalist id="so-deps"><option v-for="d in departments ?? []" :key="d" :value="d" /></datalist></div>
+        <div class="field"><label for="so-rec">A/C — quem vai receber</label><input id="so-rec" v-model="f.recipient" class="input" maxlength="150" /></div>
+        <div class="field full"><label for="so-notes">Observação</label><input id="so-notes" v-model="f.notes" class="input" placeholder="ex.: chamado 1234, substituição" /></div>
       </div>
 
       <h3 class="sub">Itens</h3>
@@ -92,7 +94,7 @@ void addLine(props.presetItem ?? '')
 
       <div class="form-actions">
         <button class="btn" type="button" @click="emit('close')">Cancelar</button>
-        <button class="btn btn-primary" type="submit" :disabled="saving || !ready">{{ saving ? 'Registrando…' : 'Registrar saída' }}</button>
+        <button class="btn btn-primary" type="submit" :disabled="saving || !ready">{{ saving ? 'Registrando…' : 'Registrar saída e gerar etiqueta' }}</button>
       </div>
     </form>
   </AppModal>

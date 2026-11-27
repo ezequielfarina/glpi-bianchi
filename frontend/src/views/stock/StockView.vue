@@ -8,6 +8,7 @@ import StockAdjustModal from '../../components/stock/StockAdjustModal.vue'
 import StockInModal from '../../components/stock/StockInModal.vue'
 import StockItemFormModal from '../../components/stock/StockItemFormModal.vue'
 import StockOutModal from '../../components/stock/StockOutModal.vue'
+import ShippingLabelModal from '../../components/stock/ShippingLabelModal.vue'
 import { api } from '../../lib/api'
 import { dateOnly, money, num } from '../../lib/format'
 import { MOVEMENT_KIND, refreshStockLow, today } from '../../lib/stock'
@@ -84,6 +85,7 @@ const editing = ref<StockItem | null | undefined>(undefined)
 const outFor = ref<number | null | undefined>(undefined)
 const inFor = ref<number | null | undefined>(undefined)
 const adjusting = ref<StockItem | null>(null)
+const label = ref<{ batch: string; fresh: boolean } | null>(null)
 async function ensureLookups(): Promise<void> { lookups.value ??= await api.lookups() }
 async function openEdit(i: StockItem | null): Promise<void> { await ensureLookups(); editing.value = i }
 async function openOut(id: number | null = null): Promise<void> { await ensureLookups(); outFor.value = id }
@@ -188,7 +190,7 @@ void loadTab()
       <LoadState :loading="movesLoading && !moves.length" :error="null" :rows="6" :empty="!moves.length" empty-text="Nenhuma movimentação no período.">
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th class="num">Qtd.</th><th>Destino / origem</th><th>Detalhe</th><th>Por</th></tr></thead>
+            <thead><tr><th>Data</th><th>Tipo</th><th>Item</th><th class="num">Qtd.</th><th>Destino / origem</th><th>Detalhe</th><th>Por</th><th><span class="sr-only">Etiqueta</span></th></tr></thead>
             <tbody>
               <tr v-for="m in moves" :key="m.id">
                 <td class="nowrap">{{ dateOnly(m.occurred_at) }}</td>
@@ -201,8 +203,9 @@ void loadTab()
                   <template v-else-if="m.branch">{{ m.branch }}</template><template v-else>—</template>
                   <div v-if="m.supplier" class="muted small">{{ m.supplier }}</div>
                 </td>
-                <td class="muted small">{{ [m.recipient, m.reason].filter(Boolean).join(' · ') || '—' }}</td>
+                <td class="muted small">{{ [m.department, m.recipient, m.reason].filter(Boolean).join(' · ') || '—' }}</td>
                 <td class="muted small">{{ m.actor }}</td>
+                <td><button v-if="m.kind === 'out' && m.batch" class="btn btn-icon btn-sm" type="button" title="Etiqueta de envio" :aria-label="`Etiqueta de envio — ${m.branch}`" @click="label = { batch: m.batch, fresh: false }"><AppIcon name="printer" :size="14" /></button></td>
               </tr>
             </tbody>
           </table>
@@ -227,7 +230,8 @@ void loadTab()
     </section>
 
     <StockItemFormModal v-if="editing !== undefined && lookups" :item="editing" :categories="summary?.categories ?? []" :asset-types="assetTypes" @close="editing = undefined" @saved="afterChange" />
-    <StockOutModal v-if="outFor !== undefined && lookups" :items="items" :branches="branches" :preset-item="outFor ?? undefined" @close="outFor = undefined" @saved="afterChange" />
+    <StockOutModal v-if="outFor !== undefined && lookups" :items="items" :branches="branches" :departments="summary?.departments" :preset-item="outFor ?? undefined" @close="outFor = undefined" @saved="(b) => { label = { batch: b, fresh: true }; void afterChange() }" />
+    <ShippingLabelModal v-if="label" :batch="label.batch" :just-saved="label.fresh" :departments="summary?.departments" @close="label = null" />
     <StockInModal v-if="inFor !== undefined" :items="items" :preset-item="inFor ?? undefined" @close="inFor = undefined" @saved="afterChange" />
     <StockAdjustModal v-if="adjusting" :item="adjusting" @close="adjusting = null" @saved="afterChange" />
   </div>

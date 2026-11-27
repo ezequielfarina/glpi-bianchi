@@ -62,6 +62,10 @@ class StockMovement
     #[ORM\Column(length: 150, nullable: true)]
     private ?string $recipient = null;
 
+    /** setor de destino na filial (etiqueta de envio) */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $department = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $reason = null;
 
@@ -131,6 +135,11 @@ class StockMovement
     public function getRecipient(): ?string
     {
         return $this->recipient;
+    }
+
+    public function getDepartment(): ?string
+    {
+        return $this->department;
     }
 
     public function getReason(): ?string

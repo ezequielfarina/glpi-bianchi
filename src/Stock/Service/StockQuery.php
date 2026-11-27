@@ -74,6 +74,7 @@ final readonly class StockQuery
             'to_buy' => array_sum(array_column($low, 'to_buy')),
             'invoices_pending' => (int) $this->db->fetchOne("SELECT count(*) FROM invoice WHERE status = 'registered'"),
             'categories' => $this->categories(),
+            'departments' => $this->departments(),
         ];
     }
 
@@ -89,6 +90,64 @@ final readonly class StockQuery
         $used = array_map('strval', $this->db->fetchFirstColumn('SELECT DISTINCT category FROM stock_item ORDER BY 1'));
 
         return array_values(array_unique([...$used, ...['Mouse', 'Teclado', 'Monitor', 'CPU', 'Notebook', 'Cabo', 'Periférico', 'Rede', 'Suprimento']]));
+    }
+
+    /**
+     * Setores sugeridos na saída (etiqueta): os do modelo de etiqueta + os já usados.
+     *
+     * @return list<string>
+     */
+    public function departments(): array
+    {
+        $used = array_map('strval', $this->db->fetchFirstColumn(
+            "SELECT department FROM stock_movement WHERE department IS NOT NULL GROUP BY department ORDER BY count(*) DESC LIMIT 50"));
+
+        return array_values(array_unique([...['COMPRAS', 'VENDAS', 'LUBRIFICANTES', 'MARKETING', 'ESTOQUE', 'DESENVOLVIMENTO'], ...$used]));
+    }
+
+    /**
+     * Uma saída para filial (operação = batch): dados da etiqueta de envio e itens.
+     *
+     * @return array<string, mixed>
+     */
+    public function shipment(string $batch): array
+    {
+        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $batch)) {
+            throw new NotFoundException('Saída não encontrada.');
+        }
+        $rows = $this->db->fetchAllAssociative(<<<'SQL'
+            SELECT m.occurred_at, m.recipient, m.department, m.reason, m.actor, b.id AS branch_id, b.name AS branch, b.code AS branch_code,
+                   b.city, b.state, i.name AS item, -sum(m.quantity) AS quantity,
+                   array_remove(array_agg(a.inventory_number ORDER BY a.inventory_number), NULL) AS inventory_numbers
+            FROM stock_movement m
+            JOIN stock_item i ON i.id = m.stock_item_id
+            LEFT JOIN branch b ON b.id = m.branch_id
+            LEFT JOIN asset a ON a.id = m.asset_id
+            WHERE m.batch = CAST(:batch AS uuid) AND m.kind = 'out'
+            GROUP BY m.occurred_at, m.recipient, m.department, m.reason, m.actor, b.id, b.name, b.code, b.city, b.state, i.name
+            ORDER BY i.name
+            SQL, ['batch' => $batch]);
+        if ([] === $rows) {
+            throw new NotFoundException('Saída não encontrada.');
+        }
+        $f = $rows[0];
+
+        return [
+            'batch' => strtolower($batch),
+            'occurred_at' => $f['occurred_at'],
+            'branch_id' => null === $f['branch_id'] ? null : (int) $f['branch_id'],
+            'branch' => $f['branch'],
+            'branch_code' => $f['branch_code'],
+            'city' => $f['city'],
+            'state' => $f['state'],
+            'recipient' => $f['recipient'],
+            'department' => $f['department'],
+            'notes' => $f['reason'],
+            'actor' => $f['actor'],
+            'items' => array_map(static fn (array $r): array => [
+                'item' => $r['item'], 'quantity' => (int) $r['quantity'], 'inventory_numbers' => self::pgArray($r['inventory_numbers']),
+            ], $rows),
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -165,7 +224,7 @@ final readonly class StockQuery
         $rows = $this->db->fetchAllAssociative(<<<SQL
             SELECT min(m.id) AS id, m.batch, m.kind, i.id AS item_id, i.name AS item, i.category, sum(m.quantity) AS quantity,
                    max(m.unit_cost) AS unit_cost, max(m.occurred_at) AS occurred_at, m.branch_id, max(b.name) AS branch,
-                   max(m.recipient) AS recipient, max(m.reason) AS reason, max(m.actor) AS actor,
+                   max(m.recipient) AS recipient, max(m.department) AS department, max(m.reason) AS reason, max(m.actor) AS actor,
                    max(inv.id) AS invoice_id, max(inv.number) AS invoice_number, max(sup.name) AS supplier,
                    array_remove(array_agg(a.inventory_number ORDER BY a.inventory_number), NULL) AS inventory_numbers,
                    array_remove(array_agg(a.uuid::text ORDER BY a.inventory_number), NULL) AS asset_uuids
@@ -198,6 +257,7 @@ final readonly class StockQuery
                 'branch_id' => null === $r['branch_id'] ? null : (int) $r['branch_id'],
                 'branch' => $r['branch'],
                 'recipient' => $r['recipient'],
+                'department' => $r['department'],
                 'reason' => $r['reason'],
                 'actor' => $r['actor'],
                 'invoice_id' => null === $r['invoice_id'] ? null : (int) $r['invoice_id'],

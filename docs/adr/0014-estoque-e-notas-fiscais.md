@@ -40,6 +40,12 @@ gera uma nota fiscal que precisa ser registrada e enviada ao setor de lançament
 8. **Custo médio ponderado** calculado das entradas com valor; registrado como `unit_cost` em saídas/ajustes.
 9. **Alerta de mínimo** só na interface: contador no menu (`/api/ui/stock/low-count`) e lista "a comprar".
 10. Anexos (DANFE/XML) usam o módulo de anexos existente (`owner_type = invoice`).
+11. **Etiqueta de envio** (revisão de 2026-11-27, modelo `Entrega_TI.odt`): a saída grava o setor de destino
+    (`stock_movement.department`) e abre a etiqueta — remetente, destinatário (filial + código, ex.
+    "CHAPECÓ - 08"), "SETOR A/C PESSOA", logo e volume N/M. Gerada no navegador (HTML + `@page` no tamanho exato,
+    105×75 mm por padrão, ajustável) e impressa pelo driver da impressora térmica (Argox): preto puro, logo em P&B,
+    sem servidor de impressão nem linguagem PPLA/PPLB. Reimpressão pela lista de movimentações
+    (`GET /api/ui/stock/shipments/{batch}`).
 
 ## Alternativas consideradas
 

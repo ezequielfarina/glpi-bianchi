@@ -61,10 +61,16 @@ final class StockApiTest extends WebTestCase
 
         $unit = $this->call('GET', "/api/ui/stock/items/$monitor")['units'][0]['uuid'];
         $this->call('POST', '/api/ui/stock/out', ['branch_id' => $this->branch, 'lines' => [['stock_item_id' => $mouse, 'quantity' => 21]]], 422);
-        $this->call('POST', '/api/ui/stock/out', ['branch_id' => $this->branch, 'recipient' => 'Ana', 'lines' => [
+        $batch = $this->call('POST', '/api/ui/stock/out', ['branch_id' => $this->branch, 'recipient' => 'Ana', 'department' => 'COMPRAS', 'lines' => [
             ['stock_item_id' => $mouse, 'quantity' => 15],
             ['stock_item_id' => $monitor, 'assets' => [$unit]],
-        ]], 201);
+        ]], 201)['batch'];
+        $label = $this->call('GET', "/api/ui/stock/shipments/$batch");
+        self::assertSame('Filial Teste', $label['branch']);
+        self::assertSame('COMPRAS', $label['department']);
+        self::assertSame('Ana', $label['recipient']);
+        self::assertCount(2, $label['items']);
+        $this->call('GET', '/api/ui/stock/shipments/00000000-0000-0000-0000-000000000000', null, 404);
         $asset = $this->call('GET', "/api/ui/assets/$unit");
         self::assertSame('in_use', $asset['status']);
 

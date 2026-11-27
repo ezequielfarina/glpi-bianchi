@@ -25,6 +25,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
   - Situação da nota: registrada → enviada para lançamento (com data e autor), inclusive em lote. O lançamento é feito por outro setor e não é acompanhado no sistema.
   - Saída para filial, entrada manual (saldo inicial, devolução) e ajuste com motivo; histórico de movimentações e consumo por filial.
   - Anexo de DANFE/XML na nota.
+  - Etiqueta de envio gerada na saída para filial (modelo Entrega_TI: destinatário com código da filial, setor A/C, logo, volumes), no tamanho exato para impressora térmica (Argox); reimpressão pelas movimentações.
 - **Monitoramento de rede (ADR-0013):**
   - Varreduras agendadas: horário fixo nos dias escolhidos ou a cada N horas, via timer systemd `bianchi-scan-scheduler`.
   - Alertas por comparação com a execução anterior: dispositivo novo sem cadastro, MAC trocado num IP (crítico no gateway), portas novas (de risco em destaque), ativo que sumiu, varredura que falhou.

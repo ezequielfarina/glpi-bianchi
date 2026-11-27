@@ -7,6 +7,7 @@ import StockAdjustModal from '../../components/stock/StockAdjustModal.vue'
 import StockInModal from '../../components/stock/StockInModal.vue'
 import StockItemFormModal from '../../components/stock/StockItemFormModal.vue'
 import StockOutModal from '../../components/stock/StockOutModal.vue'
+import ShippingLabelModal from '../../components/stock/ShippingLabelModal.vue'
 import { api } from '../../lib/api'
 import { dateOnly, money } from '../../lib/format'
 import { MOVEMENT_KIND, refreshStockLow } from '../../lib/stock'
@@ -20,12 +21,18 @@ const { data: it, loading, error, reload } = useAsync(() => api.stockItem(Number
 const lookups = ref<Lookups | null>(null)
 const categories = ref<string[]>([])
 const modal = ref<'' | 'edit' | 'out' | 'in' | 'adjust'>('')
+const label = ref<{ batch: string; fresh: boolean } | null>(null)
+const departments = ref<string[]>([])
 const branches = computed(() => (lookups.value?.branches ?? []).map((b) => ({ id: b.id, name: b.name })))
 const asList = computed<StockItem[]>(() => (it.value ? [it.value] : []))
 
 async function open(m: 'edit' | 'out' | 'in' | 'adjust'): Promise<void> {
   lookups.value ??= await api.lookups()
-  if (m === 'edit' && !categories.value.length) categories.value = (await api.stockSummary()).categories
+  if ((m === 'edit' && !categories.value.length) || (m === 'out' && !departments.value.length)) {
+    const s = await api.stockSummary()
+    categories.value = s.categories
+    departments.value = s.departments
+  }
   modal.value = m
 }
 async function done(): Promise<void> { modal.value = ''; await reload(); void refreshStockLow() }
@@ -96,7 +103,7 @@ async function remove(): Promise<void> {
             <div class="panel-head"><h2>Movimentações recentes</h2><RouterLink class="muted small" :to="{ path: '/stock', query: { tab: 'movements' } }">todas</RouterLink></div>
             <div class="table-wrap">
               <table class="table">
-                <thead><tr><th>Data</th><th>Tipo</th><th class="num">Qtd.</th><th>Destino / origem</th><th>Detalhe</th></tr></thead>
+                <thead><tr><th>Data</th><th>Tipo</th><th class="num">Qtd.</th><th>Destino / origem</th><th>Detalhe</th><th><span class="sr-only">Etiqueta</span></th></tr></thead>
                 <tbody>
                   <tr v-for="m in it.movements_recent" :key="m.id">
                     <td class="nowrap">{{ dateOnly(m.occurred_at) }}</td>
@@ -104,7 +111,8 @@ async function remove(): Promise<void> {
                     <td class="num" :class="m.quantity < 0 ? 'neg' : 'pos'">{{ m.quantity > 0 ? `+${m.quantity}` : m.quantity }}</td>
                     <td><RouterLink v-if="m.invoice_id" :to="`/invoices/${m.invoice_id}`">NF {{ m.invoice_number }}</RouterLink><template v-else>{{ m.branch ?? '—' }}</template>
                       <div v-if="m.inventory_numbers.length" class="muted mono small">{{ m.inventory_numbers.join(', ') }}</div></td>
-                    <td class="muted small">{{ [m.recipient, m.reason].filter(Boolean).join(' · ') || '—' }}</td>
+                    <td class="muted small">{{ [m.department, m.recipient, m.reason].filter(Boolean).join(' · ') || '—' }}</td>
+                    <td><button v-if="m.kind === 'out' && m.batch" class="btn btn-icon btn-sm" type="button" title="Etiqueta de envio" :aria-label="`Etiqueta de envio — ${m.branch}`" @click="label = { batch: m.batch, fresh: false }"><AppIcon name="printer" :size="14" /></button></td>
                   </tr>
                 </tbody>
               </table>
@@ -121,7 +129,8 @@ async function remove(): Promise<void> {
         </div>
 
         <StockItemFormModal v-if="modal === 'edit' && lookups" :item="it" :categories="categories" :asset-types="lookups.asset_types" @close="modal = ''" @saved="done" />
-        <StockOutModal v-if="modal === 'out' && lookups" :items="asList" :branches="branches" :preset-item="it.id" @close="modal = ''" @saved="done" />
+        <StockOutModal v-if="modal === 'out' && lookups" :items="asList" :branches="branches" :departments="departments" :preset-item="it.id" @close="modal = ''" @saved="(b) => { label = { batch: b, fresh: true }; void done() }" />
+        <ShippingLabelModal v-if="label" :batch="label.batch" :just-saved="label.fresh" :departments="departments" @close="label = null" />
         <StockInModal v-if="modal === 'in'" :items="asList" :preset-item="it.id" @close="modal = ''" @saved="done" />
         <StockAdjustModal v-if="modal === 'adjust'" :item="it" @close="modal = ''" @saved="done" />
       </template>
@@ -149,5 +158,6 @@ async function remove(): Promise<void> {
 .pos { color: var(--ok); }
 .nowrap { white-space: nowrap; }
 .small { font-size: 12px; }
+.btn-sm { height: 30px; width: 30px; padding: 0; }
 @media (max-width: 1100px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid2 { grid-template-columns: 1fr; } }
 </style>

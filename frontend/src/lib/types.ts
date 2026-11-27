@@ -646,6 +646,7 @@ export interface StockMovement {
   branch_id: number | null
   branch: string | null
   recipient: string | null
+  department: string | null
   reason: string | null
   actor: string
   invoice_id: number | null
@@ -669,6 +670,22 @@ export interface StockSummary {
   to_buy: number
   invoices_pending: number
   categories: string[]
+  departments: string[]
+}
+
+export interface StockShipment {
+  batch: string
+  occurred_at: string
+  branch_id: number | null
+  branch: string | null
+  branch_code: string | null
+  city: string | null
+  state: string | null
+  recipient: string | null
+  department: string | null
+  notes: string | null
+  actor: string
+  items: { item: string; quantity: number; inventory_numbers: string[] }[]
 }
 
 export interface StockConsumption {

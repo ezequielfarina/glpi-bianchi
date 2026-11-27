@@ -105,6 +105,13 @@ final readonly class StockController
         return $this->json($this->query->consumption($from, $to));
     }
 
+    /** Saída para filial (operação) — dados da etiqueta de envio. */
+    #[Route('/shipments/{batch}', name: 'shipment', methods: ['GET'])]
+    public function shipment(string $batch): JsonResponse
+    {
+        return $this->json($this->query->shipment($batch));
+    }
+
     #[Route('/in', name: 'in', methods: ['POST'])]
     public function manualIn(Request $request): JsonResponse
     {
