@@ -10,7 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 /**
  * Nota fiscal de compra simplificada (ADR-0014): número, série, fornecedor, data, total informado
- * e itens. Situação: registrada → enviada para lançamento → lançada.
+ * e itens. Situação: registrada → enviada para lançamento (o lançamento é feito por outro setor).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'invoice')]
@@ -18,7 +18,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(name: 'idx_invoice_issue_date', columns: ['issue_date'])]
 class Invoice
 {
-    public const array STATUSES = ['registered', 'sent', 'posted'];
+    public const array STATUSES = ['registered', 'sent'];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -49,12 +49,6 @@ class Invoice
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $sentBy = null;
-
-    #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE, nullable: true)]
-    private ?\DateTimeImmutable $postedAt = null;
-
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $postedBy = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $notes = null;
@@ -121,16 +115,6 @@ class Invoice
     public function getSentBy(): ?string
     {
         return $this->sentBy;
-    }
-
-    public function getPostedAt(): ?\DateTimeImmutable
-    {
-        return $this->postedAt;
-    }
-
-    public function getPostedBy(): ?string
-    {
-        return $this->postedBy;
     }
 
     public function getNotes(): ?string

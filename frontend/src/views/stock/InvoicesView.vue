@@ -52,7 +52,7 @@ void load()
     <section class="panel">
       <div class="filters">
         <div class="seg" role="group" aria-label="Situação">
-          <button v-for="(s, k) in { '': 'Todas', registered: 'A enviar', sent: 'Enviadas', posted: 'Lançadas' }" :key="k" type="button" class="tchip" :class="{ on: status === k }" @click="status = k">{{ s }}</button>
+          <button v-for="(s, k) in { '': 'Todas', registered: 'A enviar', sent: 'Enviadas' }" :key="k" type="button" class="tchip" :class="{ on: status === k }" @click="status = k">{{ s }}</button>
         </div>
         <input v-model="q" class="input search" type="search" aria-label="Buscar nota" placeholder="Número, fornecedor ou item…" />
         <button v-if="canEdit && selected.length" class="btn btn-primary" type="button" @click="markSent"><AppIcon name="send" :size="15" /> Marcar {{ selected.length }} como enviada(s)</button>

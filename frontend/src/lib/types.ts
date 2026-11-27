@@ -677,7 +677,7 @@ export interface StockConsumption {
   branches: { branch_id: number; branch: string; quantity: number; value: string; items: { item_id: number; item: string; category: string; quantity: number; value: string }[] }[]
 }
 
-export type InvoiceStatus = 'registered' | 'sent' | 'posted'
+export type InvoiceStatus = 'registered' | 'sent'
 
 export interface InvoiceRow {
   id: number
@@ -692,7 +692,6 @@ export interface InvoiceRow {
   status: InvoiceStatus
   status_label: string
   sent_at: string | null
-  posted_at: string | null
   created_at: string
   lines?: number
   units?: number
@@ -703,7 +702,6 @@ export interface InvoiceDetail extends InvoiceRow {
   supplier_tax_id: string | null
   notes: string | null
   sent_by: string | null
-  posted_by: string | null
   created_by: string
   items: { id: number; stock_item_id: number; item: string; category: string; tracked: boolean; quantity: number; unit_price: string; subtotal: string }[]
   assets: { uuid: string; name: string; inventory_number: string | null; serial_number: string | null; status: string; branch: string | null; invoice_item_id: number }[]

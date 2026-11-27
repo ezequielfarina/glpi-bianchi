@@ -10,8 +10,7 @@ export async function refreshStockLow(): Promise<void> {
 
 export const INVOICE_STATUS: Record<string, { label: string; cls: string }> = {
   registered: { label: 'Registrada', cls: 'pill-warn' },
-  sent: { label: 'Enviada para lançamento', cls: 'pill-info' },
-  posted: { label: 'Lançada', cls: 'pill-ok' },
+  sent: { label: 'Enviada para lançamento', cls: 'pill-ok' },
 }
 
 export const MOVEMENT_KIND: Record<string, { label: string; cls: string }> = {

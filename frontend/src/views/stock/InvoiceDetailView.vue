@@ -16,12 +16,12 @@ import { clean, useForm } from '../../components/forms/useForm'
 const props = defineProps<{ id: string }>()
 const router = useRouter()
 const { data: n, loading, error, reload } = useAsync(() => api.invoice(Number(props.id)))
-const STEPS: { k: InvoiceStatus; l: string }[] = [{ k: 'registered', l: 'Registrada' }, { k: 'sent', l: 'Enviada para lançamento' }, { k: 'posted', l: 'Lançada' }]
+const STEPS: { k: InvoiceStatus; l: string }[] = [{ k: 'registered', l: 'Registrada' }, { k: 'sent', l: 'Enviada para lançamento' }]
 const order = (s: InvoiceStatus) => STEPS.findIndex((x) => x.k === s)
 
 async function setStatus(s: InvoiceStatus): Promise<void> {
   await api.setInvoiceStatus(Number(props.id), s)
-  notify('ok', s === 'sent' ? 'Nota marcada como enviada para lançamento' : s === 'posted' ? 'Nota marcada como lançada' : 'Situação revertida')
+  notify('ok', s === 'sent' ? 'Nota marcada como enviada para lançamento' : 'Envio desfeito')
   await reload()
 }
 async function remove(): Promise<void> {
@@ -72,13 +72,11 @@ async function saveHeader(): Promise<void> {
               <span>{{ s.l }}</span>
               <span v-if="s.k === 'registered'" class="muted small">{{ dateTime(n.created_at) }} · {{ n.created_by }}</span>
               <span v-else-if="s.k === 'sent' && n.sent_at" class="muted small">{{ dateTime(n.sent_at) }} · {{ n.sent_by }}</span>
-              <span v-else-if="s.k === 'posted' && n.posted_at" class="muted small">{{ dateTime(n.posted_at) }} · {{ n.posted_by }}</span>
             </li>
           </ol>
           <div class="edit-only status-actions">
             <button v-if="n.status === 'registered'" class="btn btn-primary" type="button" @click="setStatus('sent')"><AppIcon name="send" :size="15" /> Marcar como enviada para lançamento</button>
-            <button v-if="n.status === 'sent'" class="btn btn-primary" type="button" @click="setStatus('posted')"><AppIcon name="check" :size="15" /> Marcar como lançada</button>
-            <button v-if="n.status !== 'registered'" class="btn" type="button" @click="setStatus(n.status === 'posted' ? 'sent' : 'registered')">Voltar etapa</button>
+            <button v-if="n.status === 'sent'" class="btn" type="button" @click="setStatus('registered')">Desfazer envio</button>
           </div>
 
           <dl class="facts">
@@ -160,7 +158,7 @@ async function saveHeader(): Promise<void> {
 .title-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .top p { margin: 6px 0 0; }
 .actions { display: flex; gap: 8px; }
-.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .steps li { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px 10px 40px; border: 1px solid var(--border); border-radius: var(--radius-sm); position: relative; color: var(--text-3); }
 .steps li.done { color: var(--text); }
 .steps li.current { border-color: var(--accent); }

@@ -22,7 +22,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
   - Itens com estoque mínimo e lista "a comprar"; contador no menu (alerta só no sistema).
   - Nota fiscal simplificada (número, série, fornecedor, emissão, itens com valor unitário e total). Registrar a nota dá entrada no estoque; a diferença entre o total e a soma dos itens é exibida.
   - Itens com patrimônio: cada unidade vira um ativo "Em estoque" com patrimônio automático e série opcional; a saída entrega o ativo à filial.
-  - Situação da nota: registrada → enviada para lançamento → lançada (com data e autor), inclusive em lote.
+  - Situação da nota: registrada → enviada para lançamento (com data e autor), inclusive em lote. O lançamento é feito por outro setor e não é acompanhado no sistema.
   - Saída para filial, entrada manual (saldo inicial, devolução) e ajuste com motivo; histórico de movimentações e consumo por filial.
   - Anexo de DANFE/XML na nota.
 - **Monitoramento de rede (ADR-0013):**

@@ -146,7 +146,7 @@ erDiagram
 | Tabela | Descrição | Pontos de atenção |
 |---|---|---|
 | `stock_item` | item do estoque central: nome (único), categoria, `tracked` (patrimônio por unidade) + `asset_type_id`, `min_quantity`, `active` | CHECK `tracked → asset_type_id`; com histórico não se exclui (só desativa, com saldo zero) nem troca `tracked` |
-| `invoice` | nota fiscal simplificada: fornecedor, `number` (sem zeros à esquerda), `series`, `issue_date`, `total` informado, `status` registered/sent/posted + datas/autores | UNIQUE `(supplier_id, number, series)`; fornecedor `RESTRICT`; anexos com `owner_type = invoice` |
+| `invoice` | nota fiscal simplificada: fornecedor, `number` (sem zeros à esquerda), `series`, `issue_date`, `total` informado, `status` registered/sent + data/autor do envio ao lançamento | UNIQUE `(supplier_id, number, series)`; fornecedor `RESTRICT`; anexos com `owner_type = invoice` |
 | `invoice_item` | linha da nota: item, `quantity` > 0, `unit_price` ≥ 0, `position` | CASCADE com a nota; item `RESTRICT`; não editável depois de salvo |
 | `stock_movement` | razão do estoque: `kind` in/out/adjust, `quantity` com sinal, `unit_cost`, `batch` (operação), filial (saída), ativo (unidade com patrimônio), `recipient`, `reason`, `actor`, `occurred_at` | **saldo = SUM(quantity)**; CHECK de sinal por tipo; entrada some com a nota (CASCADE via `invoice_item`); operações travam `stock_item` FOR UPDATE |
 

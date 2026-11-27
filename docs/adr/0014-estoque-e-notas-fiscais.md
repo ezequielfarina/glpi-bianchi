@@ -30,7 +30,9 @@ gera uma nota fiscal que precisa ser registrada e enviada ao setor de lançament
    observações) + itens. Registrar a nota dá entrada no estoque na mesma transação. O total informado pode
    diferir da soma dos itens (frete, desconto, impostos) — a diferença é exibida, não bloqueada.
    UNIQUE `(supplier_id, number, series)` impede registrar a mesma nota duas vezes.
-6. **Situação da nota:** `registered → sent → posted`, com data e autor de cada etapa; pode voltar etapa.
+6. **Situação da nota:** `registered → sent` (enviada para lançamento), com data e autor; o envio pode ser desfeito.
+   O lançamento é feito por outro setor da empresa, então o sistema não acompanha essa etapa
+   (revisão de 2026-11-27: a situação `posted` foi removida — migration `Version20261127140000`).
 7. **Imutabilidade:** itens da nota não são editáveis depois de salvos. Corrigir = excluir a nota, permitido só
    enquanto nada do que ela trouxe saiu do estoque (patrimônio ainda `in_stock` sem movimentação posterior e
    saldo suficiente para os itens por quantidade). A exclusão desfaz as movimentações (CASCADE) e apaga os

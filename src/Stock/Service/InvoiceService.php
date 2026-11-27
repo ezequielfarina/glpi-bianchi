@@ -16,14 +16,14 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Notas fiscais de compra simplificadas (ADR-0014): número, série, fornecedor, data, total e itens.
- * Registrar a nota dá entrada no estoque; a situação acompanha o envio ao setor de lançamento.
+ * Registrar a nota dá entrada no estoque; a situação acompanha o envio ao setor de lançamento (que lança a nota).
  *
  * Itens da nota não são editáveis depois de salvos (já movimentaram estoque e criaram patrimônios):
  * para corrigir, exclui-se a nota — permitido enquanto nada do que ela trouxe saiu do estoque.
  */
 final readonly class InvoiceService
 {
-    public const array STATUS_LABEL = ['registered' => 'Registrada', 'sent' => 'Enviada para lançamento', 'posted' => 'Lançada'];
+    public const array STATUS_LABEL = ['registered' => 'Registrada', 'sent' => 'Enviada para lançamento'];
 
     public function __construct(
         private Connection $db,
@@ -55,7 +55,7 @@ final readonly class InvoiceService
         }
         $w = implode(' AND ', $where);
         $rows = $this->db->fetchAllAssociative(<<<SQL
-            SELECT n.id, n.number, n.series, n.issue_date, n.total, n.status, n.sent_at, n.posted_at, n.created_at,
+            SELECT n.id, n.number, n.series, n.issue_date, n.total, n.status, n.sent_at, n.created_at,
                    s.id AS supplier_id, s.name AS supplier,
                    coalesce(t.items_total, 0) AS items_total, coalesce(t.lines, 0) AS lines, coalesce(t.units, 0) AS units, t.summary
             FROM invoice n
@@ -101,7 +101,6 @@ final readonly class InvoiceService
             'supplier_tax_id' => $r['supplier_tax_id'],
             'notes' => $r['notes'],
             'sent_by' => $r['sent_by'],
-            'posted_by' => $r['posted_by'],
             'created_by' => $r['created_by'],
             'items' => array_map(static fn (array $i): array => [
                 'id' => (int) $i['id'], 'stock_item_id' => (int) $i['stock_item_id'], 'item' => $i['item'], 'category' => $i['category'],
@@ -192,16 +191,10 @@ final readonly class InvoiceService
             throw new ValidationException(['status' => 'Situação inválida.']);
         }
         $now = Refs::now();
-        $n = match ($status) {
-            'registered' => $this->db->executeStatement(
-                'UPDATE invoice SET status = ?, sent_at = NULL, sent_by = NULL, posted_at = NULL, posted_by = NULL, updated_at = ? WHERE id = ?', [$status, $now, $id]),
-            'sent' => $this->db->executeStatement(
-                'UPDATE invoice SET status = ?, sent_at = coalesce(sent_at, ?), sent_by = coalesce(sent_by, ?), posted_at = NULL, posted_by = NULL, updated_at = ? WHERE id = ?',
-                [$status, $now, $actor, $now, $id]),
-            default => $this->db->executeStatement(
-                'UPDATE invoice SET status = ?, sent_at = coalesce(sent_at, ?), sent_by = coalesce(sent_by, ?), posted_at = ?, posted_by = ?, updated_at = ? WHERE id = ?',
-                [$status, $now, $actor, $now, $actor, $now, $id]),
-        };
+        $n = 'sent' === $status
+            ? $this->db->executeStatement('UPDATE invoice SET status = ?, sent_at = coalesce(sent_at, ?), sent_by = coalesce(sent_by, ?), updated_at = ? WHERE id = ?',
+                [$status, $now, $actor, $now, $id])
+            : $this->db->executeStatement('UPDATE invoice SET status = ?, sent_at = NULL, sent_by = NULL, updated_at = ? WHERE id = ?', [$status, $now, $id]);
         if (0 === $n) {
             throw new NotFoundException('Nota fiscal não encontrada.');
         }
@@ -322,7 +315,6 @@ final readonly class InvoiceService
             'status' => $r['status'],
             'status_label' => self::STATUS_LABEL[$r['status']] ?? $r['status'],
             'sent_at' => $r['sent_at'],
-            'posted_at' => $r['posted_at'],
             'created_at' => $r['created_at'],
         ];
     }
