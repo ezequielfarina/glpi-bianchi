@@ -2,22 +2,16 @@
 ## Etiqueta de envio (impressora térmica Argox)
 
 A etiqueta da saída para filial é impressa pelo navegador, no computador de quem registra a saída — o CT não
-precisa enxergar a impressora. Padrão: **100 × 75 mm, paisagem, conteúdo normal** (o modelo `Entrega_TI`).
+precisa enxergar a impressora. **A página não define tamanho de papel**: vale o papel padrão configurado no
+driver da impressora, e o desenho do modelo `Entrega_TI` se ajusta a ele (uma página por volume, centralizado).
 
-1. Driver da Argox (Seagull) → *Preferências de impressão* → *Papel de etiquetas* → **Novo…**: nome
-   `Etiqueta TI`, largura **100 mm**, altura **75 mm** (meça a etiqueta e use o tamanho real dela).
-   O papel `USER 101,6 × 152,4` (4 × 6 pol) **cobre duas etiquetas de 75 mm** — é o que fazia a impressão sair
-   em 2 etiquetas e girada.
-2. Na tela da etiqueta → *Tamanho da etiqueta*: o mesmo tamanho do passo 1 (fica salvo no navegador).
-3. No diálogo de impressão do Chrome/Edge: impressora Argox → **Mais definições** → **Tamanho do papel =
-   Etiqueta TI** (o mesmo do passo 1), **Margens: Nenhuma**, **Escala: Padrão**, sem cabeçalhos e rodapés.
-
-Troubleshooting:
+- Driver da Argox (Seagull) → *Preferências de impressão*: papel e orientação da etiqueta real
+  (ex.: USER 101,6 × 152,4 em **Paisagem** para ocupar a etiqueta toda).
+- No diálogo do Chrome/Edge: **Margens: Nenhuma**, **Escala: Padrão**, sem cabeçalhos e rodapés.
 
 | Sintoma | Causa | Correção |
 |---|---|---|
-| Prévia do Chrome em A4 / erro ao imprimir | tamanho do papel do diálogo ≠ papel do driver | passo 3; o Chrome só casa o `@page` com um papel que o driver tenha |
-| Sai em 2 etiquetas | papel do driver maior que a etiqueta (ex.: 4 × 6 pol) | passo 1: papel com o tamanho real da etiqueta |
-| Etiqueta cortada | escala ≠ 100% ou margens do navegador | Escala: Padrão, Margens: Nenhuma |
-| Saiu girada / de cabeça para baixo | orientação do driver ou sentido da bobina | driver em *Paisagem* (ou *Paisagem 180°*); na tela, conteúdo *Normal* |
+| Desenho pequeno no meio da etiqueta | papel do driver em retrato para um desenho deitado | driver em *Paisagem* |
+| Saiu de cabeça para baixo | sentido da bobina | driver em *Paisagem 180°* |
+| Sai em 2 etiquetas | papel do driver maior que a etiqueta física | papel do driver com o tamanho real da etiqueta |
 | Pula uma etiqueta em branco | sensor de gap não calibrado | calibrar o sensor no driver/painel da Argox |
