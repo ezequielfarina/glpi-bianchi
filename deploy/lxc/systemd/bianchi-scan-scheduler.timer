@@ -1,0 +1,12 @@
+# A cada minuto (o tick é barato: uma consulta quando nada está vencido).
+[Unit]
+Description=GLPI Bianchi - agendador de varreduras (a cada minuto)
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=5s
+Persistent=false
+Unit=bianchi-scan-scheduler.service
+
+[Install]
+WantedBy=timers.target

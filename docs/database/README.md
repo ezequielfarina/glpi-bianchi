@@ -49,6 +49,11 @@ erDiagram
     branch ||--o{ network_scan : ""
     network_scan ||--o{ network_scan_host : ""
     network_scan_host }o--o| asset : "correlação"
+    scan_schedule ||--o{ network_scan : "dispara"
+    scan_schedule ||--o{ network_alert : ""
+    network_scan ||--o{ network_alert : ""
+    network_alert }o--o| asset : ""
+    network_alert }o--o| branch : ""
 ```
 
 ## Dicionário
@@ -123,6 +128,9 @@ erDiagram
 | Tabela | Descrição | Pontos de atenção |
 |---|---|---|
 | `network_scan` | varredura: alvo CIDR, perfil, `status` queued/running/done/failed/cancelled, `phase`/`progress`, `options` (privilegiado, versão do nmap, avisos), quem pediu | CHECK de status/perfil/progresso; filial `SET NULL`; **community SNMP nunca é gravada** |
+| `scan_schedule` | varredura agendada (ADR-0013): alvo, perfil, `frequency` interval/daily, `interval_hours`/`run_at`/`weekdays`, `alerts` (JSONB de flags), `next_run_at` | CHECK de frequência/horário; `snmp_community` **cifrada** (SecretBox); excluir mantém o histórico (`network_scan.schedule_id` → NULL) |
+| `network_alert` | alerta de rede: `kind` (new_device, mac_changed, ip_conflict, new_ports, device_gone, scan_failed, baseline), `severity`, `fingerprint` (SHA-256 tipo+chave), `occurrences`, reconhecimento | deduplica por fingerprint enquanto aberto (em código, sem índice parcial — ver ADR); FKs `SET NULL`; reconhecidos > 180 dias são apagados pelo tick |
+| `notification_channel` | canal de notificação: teams/telegram/slack/webhook, `min_severity`, último status | `target` (URL/token) **cifrado**; só admin |
 | `network_scan_host` | host encontrado: IP, MAC + origem (`arp`/`snmp`/`netbios`), fabricante, nomes, SO, `device_type`, portas e detalhes (JSONB), `asset_id` + `match_by` | UNIQUE `(scan_id, ip)` para upsert em streaming; some com a varredura (CASCADE); ativo excluído → `SET NULL` |
 
 ## Objetos fora do ORM

@@ -143,6 +143,8 @@ descritas em [`CLAUDE.md`](CLAUDE.md): **banco** (`migrations/`, `docs/database/
 - [x] Gestão: fornecedores, contratos, licenças, anexos, patrimônio; matriz e filiais com mapa
 - [x] Login individual (Argon2id), 2FA TOTP, perfis Administrador/Técnico/Leitura, auditoria de acesso, HTTPS
 - [x] Ferramentas: scanner de rede (nmap, SNMP ARP, correlação com inventário) e calculadora de sub-rede
+- [x] Monitoramento: varreduras agendadas, alertas de mudança e conflito de IP/MAC, notificações (Teams/Telegram/Slack/webhook), diagnóstico (ping/MTR/portas/TLS) e consultas (DNS/RDAP/ASN/MAC)
+- [ ] Notificação por e-mail (symfony/mailer + SMTP)
 
 **Fase 2**
 - [ ] Login LDAP/AD e OIDC (Entra ID/Keycloak) com grupos → perfis; permissão por filial

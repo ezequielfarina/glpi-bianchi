@@ -59,6 +59,12 @@ const VIRTUAL_OUI = ['00:50:56', '00:0c:29', '0a:00:27', '00:09:0f', '00:15:5d']
 const isVirtual = (p: { name: string; mac_address: string | null; virtual: boolean }) =>
   p.virtual || VIRTUAL_HINT.test(p.name) || VIRTUAL_OUI.some((o) => p.mac_address?.startsWith(o))
 const ports = computed(() => (a.value?.networkPorts ?? []).filter((p) => showVirtual.value || !isVirtual(p)))
+// IP para o atalho "Diagnosticar" (Ferramentas → ping/traceroute/portas): interface física, atributo manual ou IP de origem do agente
+const diagIp = computed(() => {
+  const v4 = (x: string | null | undefined) => (x && /^\d{1,3}(\.\d{1,3}){3}$/.test(x) && !x.startsWith('127.') && !x.startsWith('169.254.') ? x : null)
+  for (const p of (a.value?.networkPorts ?? []).filter((p) => !isVirtual(p))) for (const ip of p.ips ?? []) if (v4(ip.address)) return ip.address
+  return v4(String(a.value?.attributes?.ip ?? '')) ?? v4(a.value?.agents[0]?.remote_ip) ?? null
+})
 const hiddenPorts = computed(() => (a.value?.networkPorts.length ?? 0) - ports.value.length)
 
 const ATTR_LABELS: Record<string, string> = {
@@ -211,6 +217,7 @@ async function force(deviceId: string, label: string): Promise<void> {
             </p>
           </div>
           <div class="hero-actions">
+          <RouterLink v-if="diagIp" :to="{ path: '/tools/net', query: { tab: 'ping', host: diagIp } }" class="edit-only btn" :title="`Ping, traceroute e portas para ${diagIp}`"><AppIcon name="pulse" :size="16" /> Diagnosticar</RouterLink>
           <RouterLink :to="`/assets/${a.uuid}/edit`" class="edit-only btn"><AppIcon name="edit" :size="16" /> Editar</RouterLink>
           <button class="edit-only btn btn-danger" type="button" @click="removeAsset"><AppIcon name="trash" :size="16" /> Excluir</button>
           <button

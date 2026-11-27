@@ -4,6 +4,7 @@
 import type {
   AgentsResponse, Alerts, AssetDetail, AssetsResponse, Attachment, BranchDetail, BranchRow, ContractDetail, ContractRow, AccountRow, AuditPage, Me, SessionRow, InventoriesResponse, LicenseDetail,
   LicenseRow, Lookups, Overview, SettingsResponse, SupplierDetail, SupplierRow, TypeSummary, WakeupResult, ScannerInfo, ScanRow, ScanDetail,
+  ScanSchedule, AlertFlags, NetworkAlert, AlertCounts, NotificationChannel, ConflictReport, NetInfo, PingResult, TraceResult, PortsResult, DnsResult, AsnResult, RdapResult, MacItem,
 } from './types'
 
 export class ApiError extends Error {
@@ -98,6 +99,30 @@ export const api = {
   audit: (p: { q?: string; event?: string; page?: number }) => request<AuditPage>(`/audit${qs(p)}`),
   // ---------------------------------------------------------------- ferramentas
   scannerInfo: () => request<ScannerInfo>('/tools/scanner'),
+  // monitoramento (ADR-0013)
+  schedules: () => request<{ items: ScanSchedule[]; alert_defaults: AlertFlags }>('/tools/schedules'),
+  saveSchedule: (id: number | null, body: Record<string, unknown>) =>
+    id ? send<{ id: number }>('PUT', `/tools/schedules/${id}`, body) : send<{ id: number }>('POST', '/tools/schedules', body),
+  deleteSchedule: (id: number) => send<{ deleted: boolean }>('DELETE', `/tools/schedules/${id}`),
+  runSchedule: (id: number) => send<{ scan_id: number }>('POST', `/tools/schedules/${id}/run`),
+  networkAlerts: (q: Record<string, string>) => request<{ items: NetworkAlert[]; counts: AlertCounts }>(`/tools/alerts?${new URLSearchParams(q)}`),
+  alertCount: () => request<AlertCounts>('/tools/alerts/count'),
+  ackAlerts: (body: { ids?: number[]; all?: boolean; kind?: string }) => send<{ acknowledged: number }>('POST', '/tools/alerts/ack', body),
+  channels: () => request<{ items: NotificationChannel[] }>('/tools/channels'),
+  saveChannel: (id: number | null, body: Record<string, unknown>) =>
+    id ? send<{ id: number }>('PUT', `/tools/channels/${id}`, body) : send<{ id: number }>('POST', '/tools/channels', body),
+  deleteChannel: (id: number) => send<{ deleted: boolean }>('DELETE', `/tools/channels/${id}`),
+  testChannel: (id: number) => send<{ ok: boolean; error: string | null }>('POST', `/tools/channels/${id}/test`),
+  conflicts: (days: number) => request<ConflictReport>(`/tools/conflicts?days=${days}`),
+  // diagnóstico e consultas
+  netInfo: () => request<NetInfo>('/tools/net'),
+  ping: (host: string, count: number) => send<PingResult>('POST', '/tools/net/ping', { host, count }),
+  trace: (host: string, cycles: number) => send<TraceResult>('POST', '/tools/net/trace', { host, cycles }),
+  ports: (host: string, ports: string, tls: boolean) => send<PortsResult>('POST', '/tools/net/ports', { host, ports, tls }),
+  dns: (name: string, type: string, servers: string[]) => send<DnsResult>('POST', '/tools/net/dns', { name, type, servers }),
+  asn: (query: string) => send<AsnResult>('POST', '/tools/net/asn', { query }),
+  rdap: (query: string) => send<RdapResult>('POST', '/tools/net/rdap', { query }),
+  macs: (macs: string) => send<{ items: MacItem[] }>('POST', '/tools/net/mac', { macs }),
   scans: () => request<{ items: ScanRow[] }>('/tools/scanner/scans'),
   scan: (id: number) => request<ScanDetail>(`/tools/scanner/scans/${id}`),
   createScan: (body: Record<string, unknown>) => send<{ id: number }>('POST', '/tools/scanner/scans', body),

@@ -1,0 +1,18 @@
+# Agendador de varreduras de rede (ADR-0013): dispara os agendamentos vencidos.
+# Ativado a cada minuto por bianchi-scan-scheduler.timer. Instalado pelo install.sh.
+[Unit]
+Description=GLPI Bianchi - agendador de varreduras de rede
+After=postgresql.service valkey-server.service
+
+[Service]
+Type=oneshot
+User=@APP_USER@
+Group=@APP_USER@
+WorkingDirectory=@APP_DIR@
+ExecStart=/usr/bin/php@PHP_VER@ bin/console app:scan:tick --no-interaction
+TimeoutStartSec=120
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ReadWritePaths=@APP_DIR@/var

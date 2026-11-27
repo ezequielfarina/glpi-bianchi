@@ -17,6 +17,7 @@ services:
             string $apiToken: '%env(API_TOKEN)%'
             string $dataEncryptionKey: '%env(DATA_ENCRYPTION_KEY)%'
             string $attachmentsDir: '%env(resolve:ATTACHMENTS_DIR)%'
+            string $publicUrl: '%env(DEFAULT_URI)%'
 
     App\:
         resource: '../src/'

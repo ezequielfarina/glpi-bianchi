@@ -58,15 +58,26 @@ final readonly class ScanService
             }
         }
         $p->check();
+        \assert(null !== $target && null !== $profile);
+
+        return $this->enqueue($target->cidr(), $profile, $gateway, $community, $actor, null);
+    }
+
+    /**
+     * Grava a varredura como "na fila" e despacha para o bianchi-scan-worker. A comunidade SNMP
+     * segue cifrada na mensagem e não é gravada em network_scan.
+     */
+    public function enqueue(string $cidr, string $profile, ?string $gateway, #[\SensitiveParameter] ?string $community, string $actor, ?int $scheduleId): int
+    {
         $pending = (int) $this->db->fetchOne("SELECT count(*) FROM network_scan WHERE status IN ('queued', 'running')");
         if ($pending >= self::MAX_PENDING) {
             throw new ValidationException(['target' => 'Já existem varreduras demais na fila. Aguarde terminarem.']);
         }
-        \assert(null !== $target && null !== $profile);
+        $target = ScanTarget::parse($cidr, $profile);
 
         $id = (int) $this->db->fetchOne(<<<'SQL'
-            INSERT INTO network_scan (target, profile, options, status, progress, hosts_up, requested_by, branch_id, created_at)
-            VALUES (:target, :profile, :options, 'queued', 0, 0, :actor, (
+            INSERT INTO network_scan (target, profile, options, status, progress, hosts_up, requested_by, schedule_id, branch_id, created_at)
+            VALUES (:target, :profile, :options, 'queued', 0, 0, :actor, :schedule, (
                 SELECT b.id FROM branch b CROSS JOIN LATERAL jsonb_array_elements_text(b.networks) n(cidr)
                 WHERE b.active AND (:target::cidr <<= n.cidr::cidr OR n.cidr::cidr <<= :target::cidr)
                 ORDER BY masklen(n.cidr::cidr) DESC LIMIT 1
@@ -76,6 +87,7 @@ final readonly class ScanService
             'profile' => $profile,
             'options' => json_encode(['snmp_gateway' => $gateway, 'addresses' => $target->addresses()]),
             'actor' => $actor,
+            'schedule' => $scheduleId,
         ]);
         $this->bus->dispatch(new RunNetworkScan($id, $gateway, null === $gateway || null === $community ? null : $this->box->encrypt($community)));
 
@@ -86,7 +98,8 @@ final readonly class ScanService
     public function list(): array
     {
         return array_map(self::castScan(...), $this->db->fetchAllAssociative(<<<'SQL'
-            SELECT s.*, b.name AS branch FROM network_scan s LEFT JOIN branch b ON b.id = s.branch_id
+            SELECT s.*, b.name AS branch, sc.name AS schedule FROM network_scan s LEFT JOIN branch b ON b.id = s.branch_id
+            LEFT JOIN scan_schedule sc ON sc.id = s.schedule_id
             ORDER BY s.id DESC LIMIT 30
             SQL));
     }
@@ -94,7 +107,7 @@ final readonly class ScanService
     /** @return array<string, mixed> */
     public function detail(int $id): array
     {
-        $scan = $this->db->fetchAssociative('SELECT s.*, b.name AS branch FROM network_scan s LEFT JOIN branch b ON b.id = s.branch_id WHERE s.id = ?', [$id])
+        $scan = $this->db->fetchAssociative('SELECT s.*, b.name AS branch, sc.name AS schedule FROM network_scan s LEFT JOIN branch b ON b.id = s.branch_id LEFT JOIN scan_schedule sc ON sc.id = s.schedule_id WHERE s.id = ?', [$id])
             ?: throw new NotFoundException('Varredura não encontrada.');
         $hosts = $this->db->fetchAllAssociative(<<<'SQL'
             SELECT h.id, h.ip, h.mac, h.mac_source, h.vendor, h.hostname, h.netbios_name, h.domain, h.os, h.os_accuracy,
@@ -169,6 +182,8 @@ final readonly class ScanService
             'requested_by' => $s['requested_by'],
             'branch_id' => null === $s['branch_id'] ? null : (int) $s['branch_id'],
             'branch' => $s['branch'] ?? null,
+            'schedule_id' => null === ($s['schedule_id'] ?? null) ? null : (int) $s['schedule_id'],
+            'schedule' => $s['schedule'] ?? null,
             'error' => $s['error'],
             'snmp_gateway' => $opt['snmp_gateway'] ?? null,
             'privileged' => $opt['privileged'] ?? null,

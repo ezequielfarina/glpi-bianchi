@@ -1,0 +1,7 @@
+{"objectClassName":"domain","handle":"exemplo.com.br","ldhName":"exemplo.com.br","status":["active"],
+ "entities":[{"objectClassName":"entity","handle":"EXEMP12","roles":["registrant"],
+   "vcardArray":["vcard",[["version",{},"text","4.0"],["fn",{},"text","Exemplo Comercio Ltda"],["adr",{"cc":"BR"},"text",["","","Rua A, 1","Campinas","SP","13000-000","BR"]]]],
+   "entities":[{"objectClassName":"entity","handle":"FUL123","roles":["administrative"],"vcardArray":["vcard",[["version",{},"text","4.0"],["fn",{},"text","Fulano de Tal"],["email",{},"text","fulano@exemplo.com.br"]]]}]}],
+ "nameservers":[{"objectClassName":"nameserver","ldhName":"A.SEC.DNS.BR"},{"objectClassName":"nameserver","ldhName":"b.sec.dns.br"}],
+ "secureDNS":{"delegationSigned":true},
+ "events":[{"eventAction":"registration","eventDate":"2001-04-10T12:00:00Z"},{"eventAction":"last changed","eventDate":"2025-05-02T10:11:12Z"},{"eventAction":"expiration","eventDate":"2027-04-10T12:00:00Z"}]}

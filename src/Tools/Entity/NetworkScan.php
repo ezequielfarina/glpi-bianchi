@@ -55,6 +55,11 @@ class NetworkScan
     #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?Branch $branch = null;
 
+    /** Agendamento que disparou (null = manual) */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?ScanSchedule $schedule = null;
+
     #[ORM\Column(length: 64)]
     private string $requestedBy;
 

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon, { type IconName } from './AppIcon.vue'
 import ToastHost from './ToastHost.vue'
 import { api } from '../lib/api'
+import { alertCounts, refreshAlertCounts } from '../lib/alerts'
 import { canEdit, clearMe, isAdmin, me, ROLE_LABEL } from '../lib/session'
 import { theme, toggleTheme } from '../lib/theme'
 
@@ -11,7 +12,7 @@ const route = useRoute()
 const router = useRouter()
 const search = ref('')
 
-const allNav: { to: string; label: string; icon: IconName; group?: string; admin?: boolean; edit?: boolean }[] = [
+const allNav: { to: string; label: string; icon: IconName; group?: string; admin?: boolean; edit?: boolean; badge?: 'alerts' }[] = [
   { to: '/', label: 'Visão geral', icon: 'home' },
   { to: '/assets', label: 'Ativos', icon: 'assets' },
   { to: '/branches', label: 'Matriz e filiais', icon: 'building' },
@@ -21,6 +22,9 @@ const allNav: { to: string; label: string; icon: IconName; group?: string; admin
   { to: '/agents', label: 'Agentes', icon: 'agents', group: 'Inventário automático' },
   { to: '/inventories', label: 'Inventários recebidos', icon: 'inbox' },
   { to: '/tools/scanner', label: 'Scanner de rede', icon: 'radar', group: 'Ferramentas', edit: true },
+  { to: '/tools/monitor', label: 'Monitoramento', icon: 'bell', edit: true, badge: 'alerts' },
+  { to: '/tools/conflicts', label: 'Conflitos de IP/MAC', icon: 'conflict', edit: true },
+  { to: '/tools/net', label: 'Diagnóstico e consultas', icon: 'pulse', edit: true },
   { to: '/tools/subnet', label: 'Calculadora de sub-rede', icon: 'calculator', group: 'Ferramentas' },
   { to: '/settings', label: 'Configurações', icon: 'settings', group: 'Sistema' },
   { to: '/users', label: 'Usuários', icon: 'user', admin: true },
@@ -37,6 +41,16 @@ const nav = computed(() => {
     return out
   })
 })
+// alertas de rede abertos (badge no menu) — técnico/admin, a cada 60 s
+let alertTimer: number | undefined
+// a sessão (me) carrega depois do mount: liga/desliga conforme o perfil
+watch(canEdit, (can) => {
+  window.clearInterval(alertTimer)
+  if (!can) { alertCounts.value = { critical: 0, warning: 0, info: 0, open: 0 }; return }
+  void refreshAlertCounts()
+  alertTimer = window.setInterval(() => { if (document.visibilityState === 'visible') void refreshAlertCounts() }, 60_000)
+}, { immediate: true })
+onBeforeUnmount(() => window.clearInterval(alertTimer))
 const initials = computed(() => (me.value?.display_name ?? '?').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join(''))
 
 const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.startsWith(to))
@@ -77,6 +91,11 @@ async function logout(): Promise<void> {
           >
             <AppIcon :name="item.icon" />
             <span>{{ item.label }}</span>
+            <span
+              v-if="item.badge === 'alerts' && alertCounts.open > 0"
+              class="nav-badge" :class="{ crit: alertCounts.critical > 0 }"
+              :title="`${alertCounts.open} alerta(s) aberto(s)${alertCounts.critical ? `, ${alertCounts.critical} crítico(s)` : ''}`"
+            >{{ alertCounts.open > 99 ? '99+' : alertCounts.open }}</span>
           </RouterLink>
         </template>
       </nav>
@@ -143,6 +162,8 @@ nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-item:hover { background: var(--panel-hover); color: var(--text); text-decoration: none; }
 .nav-group { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); padding: 14px 12px 4px; }
 .nav-item.active { background: var(--accent-soft); color: var(--accent-text); }
+.nav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; background: var(--warn-soft); color: var(--warn-text); }
+.nav-badge.crit { background: var(--bad-soft); color: var(--bad-text); }
 
 .sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
 .sidebar-foot .btn { justify-content: flex-start; }

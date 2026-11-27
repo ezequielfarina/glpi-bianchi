@@ -29,6 +29,9 @@
   --warn: #f59e0b;
   --warn-text: #fbbf24;
   --warn-soft: rgba(245, 158, 11, 0.14);
+  --bad: #ef4444;
+  --bad-text: #fca5a5;
+  --bad-soft: rgba(239, 68, 68, 0.16);
   --muted-soft: rgba(139, 152, 165, 0.14);
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.02);
   color-scheme: dark;
@@ -53,6 +56,9 @@
   --warn: #c2410c;
   --warn-text: #9a3412;
   --warn-soft: rgba(194, 65, 12, 0.1);
+  --bad: #dc2626;
+  --bad-text: #b91c1c;
+  --bad-soft: rgba(220, 38, 38, 0.1);
   --muted-soft: rgba(91, 104, 120, 0.12);
   --shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
   color-scheme: light;
@@ -137,6 +143,8 @@ table.table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .pill-ok { background: var(--ok-soft); color: var(--ok); }
 .pill-accent { background: var(--accent-soft); color: var(--accent-text); }
 .pill-warn { background: var(--warn-soft); color: var(--warn-text); }
+.pill-bad { background: var(--bad-soft); color: var(--bad-text); }
+.pill-info { background: var(--accent-soft); color: var(--accent-text); }
 .pill-muted { background: var(--muted-soft); color: var(--text-3); }
 .tag {
   display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 11.5px;
@@ -193,3 +201,27 @@ textarea.input { height: auto; min-height: 84px; padding: 10px 12px; resize: ver
 /* Perfis: botões de alteração somem para "Leitura"; de configuração, para quem não é admin.
    (A autorização real é no servidor — security.yaml; isto só evita botões que dariam 403.) */
 .role-viewer .edit-only, .role-viewer .admin-only, .role-editor .admin-only { display: none !important; }
+
+/* ---- componentes compartilhados das Ferramentas (abas, chips, checkboxes) */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.tab {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px;
+  border: 0; background: transparent; color: var(--text-3); cursor: pointer; font: inherit; font-weight: 500;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent-text); border-bottom-color: var(--accent); }
+.tab .count { font-size: 11.5px; padding: 0 7px; border-radius: 99px; background: var(--muted-soft); color: var(--text-2); }
+.tab .count.bad { background: var(--bad-soft); color: var(--bad-text); }
+.check { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 13px; cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.tchip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-2); font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.tchip:hover { background: var(--panel-hover); color: var(--text); }
+.tchip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
+.sev { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; flex: none; }
+.sev-critical { background: var(--bad-soft); color: var(--bad-text); }
+.sev-warning { background: var(--warn-soft); color: var(--warn-text); }
+.sev-info { background: var(--accent-soft); color: var(--accent-text); }

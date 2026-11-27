@@ -80,10 +80,10 @@ workers-restart: ## Reinicia todos os workers (após deploy)
 	systemctl restart 'bianchi-worker@*' bianchi-scan-worker
 
 status: ## Status dos serviços do CT
-	systemctl --no-pager status nginx php8.4-fpm postgresql valkey-server 'bianchi-worker@*' bianchi-scan-worker | grep -E '●|Active:'
+	systemctl --no-pager status nginx php8.4-fpm postgresql valkey-server 'bianchi-worker@*' bianchi-scan-worker bianchi-scan-scheduler.timer | grep -E '●|Active:'
 
 logs: ## Segue os logs dos workers
-	journalctl -f -u 'bianchi-worker@*' -u bianchi-scan-worker
+	journalctl -f -u 'bianchi-worker@*' -u bianchi-scan-worker -u bianchi-scan-scheduler
 
 ## —— Inventário ————————————————————————————————————————————
 agent-sample: ## Envia o inventário de exemplo como se fosse o GLPI Agent

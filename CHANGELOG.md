@@ -17,6 +17,25 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- **Monitoramento de rede (ADR-0013):**
+  - Varreduras agendadas: horário fixo nos dias escolhidos ou a cada N horas, via timer systemd `bianchi-scan-scheduler`.
+  - Alertas por comparação com a execução anterior: dispositivo novo sem cadastro, MAC trocado num IP (crítico no gateway), portas novas (de risco em destaque), ativo que sumiu, varredura que falhou.
+  - Alertas com deduplicação, reconhecimento individual ou em lote e badge com o número de alertas abertos no menu.
+  - Notificações para Microsoft Teams (Workflows), Telegram, Slack/Mattermost/Google Chat ou webhook JSON. Destino cifrado, teste ao salvar, só Administrador.
+- **Conflitos de IP/MAC:**
+  - Conflito real via arp-scan (dois MACs no mesmo IP), com alerta crítico.
+  - IP em uso por outro equipamento (varredura × inventário).
+  - MAC repetido em vários ativos (VM clonada, cadastro duplicado, dock USB).
+  - IP repetido no inventário.
+  - Ignora adaptadores virtuais de VPN e hipervisor (FortiClient, AnyConnect, Npcap, VMnet).
+- **Diagnóstico e consultas** (a partir do servidor):
+  - Ping com jitter e TTL.
+  - Traceroute com estatística por salto (MTR).
+  - Teste de portas TCP com presets (AD, FortiGate, MikroTik, Proxmox…), certificado TLS (validade, SAN, cadeia) e banner.
+  - DNS comparando servidores (split-horizon).
+  - ASN/prefixo BGP (Team Cymru via DNS) e whois por RDAP.
+  - Fabricante de MAC em lote (MA-L/M/S), com onde o MAC aparece no inventário e nas varreduras.
+  - Atalho "Diagnosticar" no detalhe do ativo.
 - **Menu Ferramentas (ADR-0012):**
   - **Scanner de rede:** nmap em worker dedicado (`bianchi-scan-worker`, `CAP_NET_RAW` sem root).
     - Perfis Descoberta/Padrão/Completo e progresso ao vivo.

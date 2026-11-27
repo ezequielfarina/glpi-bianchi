@@ -64,7 +64,7 @@ apt-get install -y -q --no-install-recommends \
     "php${PHP_VER}-mbstring" "php${PHP_VER}-xml" "php${PHP_VER}-zip" "php${PHP_VER}-curl" \
     "php${PHP_VER}-opcache" "php${PHP_VER}-redis" "php${PHP_VER}-apcu" "php${PHP_VER}-snmp" \
     composer \
-    nmap iproute2
+    nmap iproute2 arp-scan bind9-dnsutils mtr-tiny traceroute iputils-ping
 
 timedatectl set-timezone America/Sao_Paulo 2>/dev/null || ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
 
@@ -246,6 +246,17 @@ systemctl daemon-reload
 systemctl enable bianchi-scan-worker
 systemctl reset-failed bianchi-scan-worker 2>/dev/null || true
 systemctl restart bianchi-scan-worker
+# Agendador de varreduras (timer a cada minuto) — ADR-0013
+for f in bianchi-scan-scheduler.service bianchi-scan-scheduler.timer; do
+    sed "s#@APP_DIR@#${APP_DIR}#g; s#@APP_USER@#${APP_USER}#g; s#@PHP_VER@#${PHP_VER}#g" \
+        "$SCRIPT_DIR/systemd/$f" > "/etc/systemd/system/$f"
+done
+systemctl daemon-reload
+systemctl enable --now bianchi-scan-scheduler.timer
+# Diagnóstico (ping sem root para o PHP-FPM): ICMP datagram socket liberado para todos os grupos.
+# No CT LXC o sysctl é por namespace de rede, então vale só dentro do CT.
+echo 'net.ipv4.ping_group_range = 0 2147483647' > /etc/sysctl.d/60-bianchi-ping.conf
+sysctl -q -p /etc/sysctl.d/60-bianchi-ping.conf 2>/dev/null || true
 for i in $(seq 1 "$WORKERS"); do
     systemctl enable "bianchi-worker@${i}"
     # zera o StartLimitBurst de falhas anteriores (ex.: deploy quebrado antes deste)

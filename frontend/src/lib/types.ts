@@ -423,6 +423,8 @@ export interface ScanRow {
   requested_by: string
   branch_id: number | null
   branch: string | null
+  schedule_id: number | null
+  schedule: string | null
   error: string | null
   snmp_gateway: string | null
   privileged: boolean | null
@@ -473,3 +475,127 @@ export interface ScanHost {
 }
 
 export interface ScanDetail extends ScanRow { hosts: ScanHost[] }
+
+// ---------------------------------------------------------------- Monitoramento (ADR-0013)
+export type AlertSeverity = 'info' | 'warning' | 'critical'
+export type AlertKind = 'new_device' | 'device_gone' | 'mac_changed' | 'new_ports' | 'ip_conflict' | 'scan_failed' | 'baseline'
+
+export interface NetworkAlert {
+  id: number
+  kind: AlertKind
+  kind_label: string
+  severity: AlertSeverity
+  title: string
+  detail: Record<string, unknown>
+  ip: string | null
+  mac: string | null
+  occurrences: number
+  scan_id: number | null
+  scan_target: string | null
+  schedule_id: number | null
+  schedule: string | null
+  branch: string | null
+  asset_uuid: string | null
+  asset_name: string | null
+  created_at: string
+  last_seen_at: string
+  notified_at: string | null
+  acknowledged_at: string | null
+  acknowledged_by: string | null
+}
+
+export interface AlertCounts { critical: number; warning: number; info: number; open: number }
+
+export type AlertFlags = Record<'new_device' | 'mac_changed' | 'ip_conflict' | 'new_ports' | 'device_gone', boolean>
+
+export interface ScanSchedule {
+  id: number
+  name: string
+  target: string
+  profile: ScanProfileCode
+  frequency: 'interval' | 'daily'
+  interval_hours: number | null
+  run_at: string | null
+  weekdays: number[]
+  snmp_gateway: string | null
+  has_community: boolean
+  alerts: AlertFlags
+  enabled: boolean
+  next_run_at: string | null
+  last_run_at: string | null
+  last_scan: { id: number; status: ScanStatus; hosts_up: number; error: string | null; finished_at: string | null } | null
+  open_alerts: number
+  created_by: string
+}
+
+export type ChannelKind = 'webhook' | 'slack' | 'teams' | 'telegram'
+export interface NotificationChannel {
+  id: number
+  name: string
+  kind: ChannelKind
+  target_masked: string
+  chat_id: string | null
+  min_severity: AlertSeverity
+  enabled: boolean
+  last_status: 'ok' | 'error' | null
+  last_error: string | null
+  last_sent_at: string | null
+}
+
+export interface AssetRef { uuid: string; name: string; type?: string | null; serial?: string | null; port?: string | null; mac?: string | null; inventory_number?: string | null; last_inventory_at?: string | null }
+
+export interface ConflictReport {
+  days: number
+  last_scan_with_arp: string | null
+  arp: { ip: string; scan_id: number; target: string; seen_at: string; branch: string | null; current: boolean; macs: { mac: string; vendor: string | null; assets: AssetRef[] }[] }[]
+  scan_vs_inventory: {
+    ip: string; scan_id: number; target: string; seen_at: string
+    seen: { mac: string; vendor: string | null; name: string | null; assets: AssetRef[] }
+    inventory: { mac: string; vendor: string | null; asset_uuid: string; asset_name: string; last_inventory_at: string | null }
+  }[]
+  mac_duplicates: { mac: string; vendor: string | null; assets: AssetRef[]; hint: string }[]
+  ip_duplicates: { ip: string; assets: AssetRef[]; likely: boolean; hint: string }[]
+}
+
+// ---------------------------------------------------------------- Diagnóstico e consultas
+export interface NetInfo {
+  tools: Record<'ping' | 'mtr' | 'traceroute' | 'dig' | 'arp_scan' | 'mac_db', boolean>
+  resolvers: string[]
+  dns_types: string[]
+  port_names: Record<string, string>
+}
+export interface PingResult {
+  host: string; ip: string; sent: number; received: number; loss: number
+  rtt: { min: number; avg: number; max: number; mdev: number } | null
+  replies: { seq: number; ttl: number | null; ms: number | null; ok: boolean; text: string | null }[]
+  raw: string
+}
+export interface TraceHop { hop: number; name: string | null; ip: string | null; loss: number; sent: number; last: number | null; avg: number | null; best: number | null; worst: number | null; stdev: number | null }
+export interface TraceResult { host: string; tool: 'mtr' | 'traceroute'; cycles: number; hops: TraceHop[] }
+export interface TlsInfo {
+  subject?: string | null; issuer?: string; valid_from?: string; valid_to?: string; days_left?: number; sans?: string[]
+  self_signed?: boolean; trusted?: boolean; protocol?: string | null; cipher?: string | null; error: string | null
+}
+export interface PortResult { port: number; name: string | null; state: 'open' | 'closed' | 'filtered' | 'skipped'; ms: number | null; error: string | null; tls: TlsInfo | null; banner: string | null }
+export interface PortsResult { host: string; ip: string | null; results: PortResult[] }
+export interface DnsRecord { name: string; ttl: number; type: string; data: string }
+export interface DnsResult {
+  name: string; type: string; divergent: boolean
+  results: { server: string; status: string; flags: string[]; answers: DnsRecord[]; authority: DnsRecord[]; ms: number | null; via: string | null }[]
+}
+export interface AsnResult {
+  ip: string; special: string | null; error?: string
+  asn: { number: number; name: string | null }[] | null
+  prefix?: string | null; country?: string | null; registry?: string | null; allocated?: string | null
+}
+export interface RdapResult {
+  query: string; kind: string; special: string | null; found?: boolean; source?: string | null
+  handle?: string | null; name?: string | null; type?: string | null; country?: string | null; status?: string[]; range?: string | null; cidrs?: string[]
+  parent?: string | null; nameservers?: string[]; dnssec?: boolean | null; registered?: string | null; changed?: string | null; expires?: string | null
+  entities?: { roles: string[]; handle: string | null; name: string | null; org: string | null; email: string | null; country: string | null }[]
+  raw?: string
+}
+export interface MacItem {
+  input: string; mac: string | null; oui: string | null; vendor: string | null; valid: boolean; flags: string[]
+  assets: AssetRef[]; scans: { scan_id: number; ip: string; target: string; at: string }[]
+}

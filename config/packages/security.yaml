@@ -54,6 +54,8 @@ security:
         - { path: ^/api/ui/settings, methods: [POST, PUT, PATCH, DELETE], roles: ROLE_ADMIN }
         - { path: ^/api/ui/lookups, methods: [POST, PUT, PATCH, DELETE], roles: ROLE_EDITOR }
         # ferramentas (scanner de rede etc.): técnico ou admin, inclusive leitura dos resultados
+        # canais de notificação (destino = segredo): só admin
+        - { path: ^/api/ui/tools/channels, roles: ROLE_ADMIN }
         - { path: ^/api/ui/tools, roles: ROLE_EDITOR }
         # ver chave de licença é sensível: técnico ou admin (fica no log)
         - { path: ^/api/ui/licenses/\d+/key$, roles: ROLE_EDITOR }
