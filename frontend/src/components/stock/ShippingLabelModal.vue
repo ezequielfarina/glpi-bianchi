@@ -13,18 +13,18 @@ import type { StockShipment } from '../../lib/types'
  */
 const props = defineProps<{ batch: string; departments?: string[]; justSaved?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
-// v2: padrão passou a ser o papel do driver da Argox (4×6 pol, retrato) com o conteúdo deitado
-const KEY = 'bianchi.label.v2'
+// v3: a bobina é de 100 × 75 mm (o papel 4×6 pol do driver cobria 2 etiquetas e saía girado)
+const KEY = 'bianchi.label.v3'
 type Rotate = 0 | 90 | 270
 type Saved = { sender: string; width: number; height: number; logo: boolean; rotate: Rotate }
-const DEFAULTS: Saved = { sender: 'TI', width: 101.6, height: 152.4, logo: true, rotate: 90 }
+const DEFAULTS: Saved = { sender: 'TI', width: 100, height: 75, logo: true, rotate: 0 }
 const saved: Saved = (() => {
   try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') } } catch { return { ...DEFAULTS } }
 })()
 const PRESETS = [
-  { k: '101.6x152.4', l: '101,6 × 152,4 mm (4 × 6 pol) — retrato', w: 101.6, h: 152.4, r: 90 as Rotate },
-  { k: '101.6x76.2', l: '101,6 × 76,2 mm (4 × 3 pol)', w: 101.6, h: 76.2, r: 0 as Rotate },
   { k: '100x75', l: '100 × 75 mm', w: 100, h: 75, r: 0 as Rotate },
+  { k: '101.6x76.2', l: '101,6 × 76,2 mm (4 × 3 pol)', w: 101.6, h: 76.2, r: 0 as Rotate },
+  { k: '101.6x152.4', l: '101,6 × 152,4 mm (4 × 6 pol) — deitado', w: 101.6, h: 152.4, r: 90 as Rotate },
   { k: '105x75', l: '105 × 75 mm (modelo do LibreOffice)', w: 105, h: 75, r: 0 as Rotate },
 ]
 const ship = ref<StockShipment | null>(null)
@@ -78,8 +78,9 @@ const html = computed(() => {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Etiqueta</title><style>
     @page { size: ${W}mm ${H}mm; margin: 0; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    html, body { margin: 0; padding: 0; background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; }
-    .label { position: relative; width: ${W}mm; height: ${H}mm; overflow: hidden; page-break-after: always; break-after: page; }
+    html, body { margin: 0; padding: 0; background: #fff; }
+    body { color: #000; font-family: Arial, Helvetica, sans-serif; }
+    .label { position: relative; width: ${W}mm; height: ${(H - 0.4).toFixed(1)}mm; overflow: hidden; page-break-after: always; break-after: page; }
     .label:last-child { page-break-after: auto; break-after: auto; }
     .content { position: absolute; top: 0; left: 0; width: ${cw}mm; height: ${ch}mm; transform-origin: top left; transform: ${transform};
       padding: ${(4 * scale).toFixed(1)}mm 3mm 0; text-align: center; }

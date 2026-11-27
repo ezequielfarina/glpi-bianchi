@@ -43,7 +43,7 @@ gera uma nota fiscal que precisa ser registrada e enviada ao setor de lançament
 11. **Etiqueta de envio** (revisão de 2026-11-27, modelo `Entrega_TI.odt`): a saída grava o setor de destino
     (`stock_movement.department`) e abre a etiqueta — remetente, destinatário (filial + código, ex.
     "CHAPECÓ - 08"), "SETOR A/C PESSOA", logo e volume N/M. Gerada no navegador (HTML + `@page` no tamanho exato —
-    padrão 101,6×152,4 mm, o papel do driver da Argox, com o desenho deitado; tamanho e giro ajustáveis) e impressa pelo driver da impressora térmica (Argox): preto puro, logo em P&B,
+    padrão 100×75 mm, conteúdo normal; tamanho e giro ajustáveis) e impressa pelo driver da impressora térmica (Argox): preto puro, logo em P&B,
     sem servidor de impressão nem linguagem PPLA/PPLB. Reimpressão pela lista de movimentações
     (`GET /api/ui/stock/shipments/{batch}`).
 
