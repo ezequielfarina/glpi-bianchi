@@ -30,6 +30,9 @@ final class SchemaExtrasListener
             'gin_asset_name_trgm' => ['name'],
         ],
         'software' => ['gin_software_name_trgm' => ['name']],
+        // ADR-0016: GiST inet_ops para << / >>= no IPAM (migration Version20261128090000)
+        'ipam_prefix' => ['gist_ipam_prefix' => ['prefix']],
+        'ipam_ip_address' => ['gist_ipam_ip_address' => ['address']],
     ];
 
     public function postGenerateSchema(GenerateSchemaEventArgs $args): void

@@ -22,7 +22,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_attachment_owner', columns: ['owner_type', 'owner_id'])]
 class Attachment
 {
-    public const array OWNER_TYPES = ['asset', 'contract', 'supplier', 'license', 'branch', 'invoice'];
+    public const array OWNER_TYPES = ['asset', 'contract', 'supplier', 'license', 'branch', 'invoice', 'location', 'rack', 'device', 'device_type', 'circuit', 'cable'];
     public const string KIND_PHOTO = 'photo';
     public const string KIND_DOCUMENT = 'document';
 

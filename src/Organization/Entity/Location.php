@@ -15,8 +15,12 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * Localização física hierárquica: Site > Prédio > Andar > Sala > Rack.
+ * Localização física hierárquica: Filial > Prédio > Andar > Sala/CPD > Mesa (estação de trabalho).
  * `path` (ltree) mantido por trigger, igual a Organization.
+ *
+ * ADR-0016: `branch` liga a árvore à filial (o "Site" do NetBox) e `kind` classifica o nó
+ * (porta de `dcim.Location`, netbox/dcim/models/sites.py). Racks, equipamentos e terminações de
+ * circuito apontam para cá; os ativos do agente também (asset.location_id).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'location')]
@@ -50,6 +54,17 @@ class Location
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $address = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'RESTRICT')]
+    private ?Branch $branch = null;
+
+    /** building | floor | room | datacenter | workstation | other */
+    #[ORM\Column(length: 16, options: ['default' => 'room'])]
+    private string $kind = 'room';
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $description = null;
 
     #[ORM\Column(type: 'ltree', nullable: true, insertable: false, updatable: false, generated: 'ALWAYS')]
     private ?string $path = null;
@@ -109,6 +124,21 @@ class Location
     public function setAddress(?string $address): void
     {
         $this->address = $address;
+    }
+
+    public function getBranch(): ?Branch
+    {
+        return $this->branch;
+    }
+
+    public function getKind(): string
+    {
+        return $this->kind;
+    }
+
+    public function getDescription(): ?string
+    {
+        return $this->description;
     }
 
     public function getPath(): ?string

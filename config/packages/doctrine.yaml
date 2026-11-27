@@ -5,8 +5,12 @@ doctrine:
         use_savepoints: true
         types:
             ltree: App\Shared\Doctrine\Type\LtreeType
+            inet: App\Shared\Doctrine\Type\InetType
+            cidr: App\Shared\Doctrine\Type\CidrType
         mapping_types:
             ltree: ltree
+            inet: inet
+            cidr: cidr
         # Tabelas fora do ORM (transporte "failed" do Messenger) ficam fora do schema diff
         schema_filter: ~^(?!(messenger_messages|asset_inventory_seq)$)~
     orm:
@@ -90,6 +94,21 @@ doctrine:
                 is_bundle: false
                 dir: '%kernel.project_dir%/src/Audit/Entity'
                 prefix: 'App\Audit\Entity'
+            Dcim:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Dcim/Entity'
+                prefix: 'App\Dcim\Entity'
+            Ipam:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Ipam/Entity'
+                prefix: 'App\Ipam\Entity'
+            Circuit:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Circuit/Entity'
+                prefix: 'App\Circuit\Entity'
         controller_resolver:
             auto_mapping: false
 
