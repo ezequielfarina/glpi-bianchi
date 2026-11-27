@@ -18,6 +18,7 @@ services:
             string $dataEncryptionKey: '%env(DATA_ENCRYPTION_KEY)%'
             string $attachmentsDir: '%env(resolve:ATTACHMENTS_DIR)%'
             string $publicUrl: '%env(DEFAULT_URI)%'
+            string $template: '%kernel.project_dir%/resources/labels/entrega-ti.odt'
 
     App\:
         resource: '../src/'

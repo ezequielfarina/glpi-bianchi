@@ -38,20 +38,22 @@ antes de imprimir. Reimpressão: ícone de impressora em *Movimentações* ou no
 
 ### Impressão na Argox
 
-A etiqueta é impressa pelo navegador, no computador de quem registra a saída (o CT não precisa enxergar a
-impressora). O tamanho da página é o do **papel do driver**: padrão **102,4 × 74,9 mm** (papel `USER` da
-ArgoxBancada), ajustável em *Papel — largura/altura* (fica salvo no navegador).
+**Recomendado — LibreOffice:** na tela da etiqueta, **Baixar etiqueta (LibreOffice)**. O arquivo é o seu modelo
+`Entrega_TI` já preenchido (remetente, filial, setor e A/C, com o mesmo tamanho, fontes e logo). Abra e imprima
+(Ctrl+P) na ArgoxBancada, como já era feito; com mais de um volume, informe o número de cópias no LibreOffice.
 
-1. Driver da Argox (*Preferências de impressão*): papel `USER (102,4 mm × 74,9 mm)`.
-2. Na tela da etiqueta, o mesmo tamanho em *Papel*.
-3. No diálogo do Chrome/Edge: impressora Argox → **Mais definições** → **Tamanho do papel = USER**, **Margens:
-   Nenhuma**, **Escala: Padrão**, sem cabeçalhos e rodapés.
+> O modelo fica em `resources/labels/entrega-ti.odt`. Para trocar o layout, substitua o arquivo mantendo a ordem:
+> parágrafo `REMETENTE: <texto>`, parágrafo `DESTINATÁRIO:`, depois o parágrafo da filial e o de "setor A/C pessoa".
+
+**Alternativa — navegador:** *Imprimir pelo navegador* usa o tamanho em *Papel* (padrão 102,4 × 74,9 mm, o
+papel `USER` do driver). No diálogo: **Tamanho do papel = USER**, **Margens: Nenhuma**, **Escala: Padrão**.
+Mesmo assim o Chrome envia a etiqueta como **paisagem** (ela é mais larga que alta) e o driver da Argox em retrato
+pode girar ou deslocar a impressão — por isso o caminho recomendado é o LibreOffice.
 
 | Sintoma | Causa | Correção |
 |---|---|---|
-| Prévia do Chrome em A4/Carta, sai em 2 etiquetas | tamanho em *Papel* ≠ papel do driver; o Chrome só usa o papel do driver quando a página pede exatamente o mesmo tamanho | igualar *Papel* ao papel `USER` do driver |
-| Etiqueta cortada | escala ≠ 100% ou margens do navegador | Escala: Padrão, Margens: Nenhuma |
-| Saiu de cabeça para baixo | sentido da bobina | driver em *Retrato 180°* |
+| Pelo navegador: saiu girada/deslocada | Chrome manda paisagem; driver em retrato | usar a etiqueta do LibreOffice |
+| Prévia do Chrome em A4/Carta, sai em 2 etiquetas | tamanho em *Papel* ≠ papel do driver | igualar *Papel* ao `USER` do driver |
 | Pula uma etiqueta em branco | sensor de gap não calibrado | calibrar o sensor no driver/painel da Argox |
 
 ## Estoque × Ativos

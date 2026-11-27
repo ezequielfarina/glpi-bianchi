@@ -6,6 +6,7 @@ namespace App\Stock\Controller;
 
 use App\Identity\Security\CurrentActor;
 use App\Stock\Service\InvoiceService;
+use App\Stock\Service\ShippingLabelDocument;
 use App\Stock\Service\StockCatalog;
 use App\Stock\Service\StockLedger;
 use App\Stock\Service\StockQuery;
@@ -35,6 +36,7 @@ final readonly class StockController
         private StockLedger $ledger,
         private InvoiceService $invoices,
         private LoggerInterface $logger,
+        private ShippingLabelDocument $label,
     ) {
     }
 
@@ -110,6 +112,33 @@ final readonly class StockController
     public function shipment(string $batch): JsonResponse
     {
         return $this->json($this->query->shipment($batch));
+    }
+
+    /**
+     * Etiqueta da saída em .odt (modelo Entrega_TI) para imprimir pelo LibreOffice. Os campos da tela da etiqueta
+     * (ajustados pelo usuário) vêm na query; sem eles, usa os dados gravados na saída.
+     */
+    #[Route('/shipments/{batch}/label.odt', name: 'shipment_label', methods: ['GET'])]
+    public function shipmentLabel(string $batch, #[MapQueryParameter] ?string $sender = null, #[MapQueryParameter] ?string $destination = null,
+        #[MapQueryParameter] ?string $department = null, #[MapQueryParameter] ?string $attention = null): Response
+    {
+        $s = $this->query->shipment($batch);
+        $branch = mb_strtoupper((string) $s['branch']);
+        $code = mb_strtoupper((string) ($s['branch_code'] ?? ''));
+        $dest = $destination ?? ('' !== $code && !str_contains($branch, $code) ? "$branch - $code" : $branch);
+        $odt = $this->label->render([
+            'sender' => mb_substr($sender ?? 'TI', 0, 60),
+            'destination' => mb_substr($dest, 0, 80),
+            'department' => mb_substr($department ?? (string) ($s['department'] ?? ''), 0, 64),
+            'attention' => mb_substr($attention ?? (string) ($s['recipient'] ?? ''), 0, 80),
+        ]);
+        $name = 'etiqueta-'.trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower(iconv('UTF-8', 'ASCII//TRANSLIT', $dest) ?: 'filial')), '-').'.odt';
+
+        return new Response($odt, Response::HTTP_OK, [
+            'Content-Type' => 'application/vnd.oasis.opendocument.text',
+            'Content-Disposition' => 'attachment; filename="'.$name.'"',
+            'Cache-Control' => 'no-store',
+        ]);
     }
 
     #[Route('/in', name: 'in', methods: ['POST'])]

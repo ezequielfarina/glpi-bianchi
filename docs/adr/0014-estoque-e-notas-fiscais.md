@@ -39,6 +39,12 @@ gera uma nota fiscal que precisa ser registrada e enviada ao setor de lançament
    ativos criados por ela.
 8. **Custo médio ponderado** calculado das entradas com valor; registrado como `unit_cost` em saídas/ajustes.
 9. **Alerta de mínimo** só na interface: contador no menu (`/api/ui/stock/low-count`) e lista "a comprar".
+13. **Etiqueta em .odt (caminho principal de impressão):** mesmo com o papel `USER` escolhido, o Chrome manda a
+    etiqueta (mais larga que alta) como paisagem e o driver da Argox, configurado em retrato, reposiciona a
+    impressão. O LibreOffice imprime o modelo do usuário corretamente, então `GET /api/ui/stock/shipments/{batch}/label.odt`
+    devolve o **próprio modelo** (`resources/labels/entrega-ti.odt`) com remetente, filial e "setor A/C pessoa"
+    preenchidos (listas suspensas viram texto fixo; estilos, página 10,5 × 7,5 cm e logo do modelo). Sem dependência
+    nova (ZipArchive). A impressão pelo navegador continua como alternativa.
 12. **Estoque separado dos ativos de TI** (revisão de 2026-11-27): equipamento guardado (`status = in_stock`) não
     é ativo em uso. Fica fora da lista de Ativos, dos totais da visão geral, da matriz filial × tipo e dos
     contadores "sem filial"/"sem inventário" — aparece no Estoque (unidades do item). A lista de Ativos tem o filtro

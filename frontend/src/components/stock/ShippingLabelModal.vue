@@ -82,6 +82,12 @@ const html = computed(() => {
 // prévia em escala: largura fixa de 400 px, altura proporcional ao papel
 const frameStyle = computed(() => ({ width: '400px', height: `${Math.round(400 * paper.value.h / paper.value.w)}px` }))
 
+// .odt do modelo Entrega_TI com os campos desta tela — impressão pelo LibreOffice (caminho que funciona na Argox)
+const odtUrl = computed(() => {
+  const p = new URLSearchParams({ sender: f.sender, destination: f.destination, department: f.department, attention: f.attention })
+  return `/api/ui/stock/shipments/${props.batch}/label.odt?${p.toString()}`
+})
+
 function print(): void {
   const win = frame.value?.contentWindow
   if (!win) return
@@ -116,7 +122,8 @@ function print(): void {
           <div class="field"><label for="lb-h">Papel — altura (mm)</label><input id="lb-h" v-model.number="f.height" class="input num" type="number" min="20" max="220" step="0.1" /></div>
         </div>
         <label class="check"><input v-model="f.logo" type="checkbox" /> Imprimir logo</label>
-        <p class="hint">Use <strong>o mesmo tamanho do papel do driver</strong> (Argox: USER 102,4 × 74,9). No diálogo de impressão: <strong>Tamanho do papel = USER</strong>, <strong>Margens: Nenhuma</strong>, <strong>Escala: Padrão</strong>, sem cabeçalhos e rodapés.</p>
+        <p class="hint"><strong>Recomendado:</strong> "Baixar etiqueta (LibreOffice)" gera o seu modelo <em>Entrega_TI</em> já preenchido — abra e imprima (Ctrl+P) na ArgoxBancada; com mais de um volume, informe as cópias no LibreOffice.</p>
+        <p class="hint">Pelo navegador: use <strong>o mesmo tamanho do papel do driver</strong> (Argox: USER 102,4 × 74,9). No diálogo de impressão: <strong>Tamanho do papel = USER</strong>, <strong>Margens: Nenhuma</strong>, <strong>Escala: Padrão</strong>, sem cabeçalhos e rodapés.</p>
         <p class="hint">As alterações valem só para esta impressão; o remetente fica salvo neste navegador.</p>
       </div>
       <div class="preview">
@@ -126,7 +133,8 @@ function print(): void {
     <p v-else class="muted">Carregando…</p>
     <div class="form-actions">
       <button class="btn" type="button" @click="emit('close')">Fechar</button>
-      <button class="btn btn-primary" type="button" :disabled="!ship" @click="print"><AppIcon name="printer" :size="16" /> Imprimir etiqueta</button>
+      <button class="btn" type="button" :disabled="!ship" title="Depende do Chrome casar a página com o papel do driver" @click="print"><AppIcon name="printer" :size="16" /> Imprimir pelo navegador</button>
+      <a class="btn btn-primary" :class="{ disabled: !ship }" :href="ship ? odtUrl : undefined" download><AppIcon name="download" :size="16" /> Baixar etiqueta (LibreOffice)</a>
     </div>
   </AppModal>
 </template>
@@ -140,5 +148,6 @@ function print(): void {
 .small { font-size: 12px; margin: 0; }
 .hint { margin: 0; }
 .err { color: var(--warn-text); }
+a.btn.disabled { opacity: .55; pointer-events: none; }
 @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; } }
 </style>
