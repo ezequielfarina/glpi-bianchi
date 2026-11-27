@@ -254,9 +254,14 @@ done
 systemctl daemon-reload
 systemctl enable --now bianchi-scan-scheduler.timer
 # Diagnóstico (ping sem root para o PHP-FPM): ICMP datagram socket liberado para todos os grupos.
-# No CT LXC o sysctl é por namespace de rede, então vale só dentro do CT.
-echo 'net.ipv4.ping_group_range = 0 2147483647' > /etc/sysctl.d/60-bianchi-ping.conf
-sysctl -q -p /etc/sysctl.d/60-bianchi-ping.conf 2>/dev/null || true
+# O sysctl é por namespace de rede (vale só dentro do CT) e a faixa precisa caber no gid_map do
+# user namespace: em CT unprivileged o máximo é 65535 — "0 2147483647" ali dá EINVAL.
+PING_GID_MAX="$(awk '{e=$1+$3-1; if (e>m) m=e} END {if (m>2147483647) m=2147483647; print m+0}' /proc/self/gid_map)"
+echo "net.ipv4.ping_group_range = 0 ${PING_GID_MAX}" > /etc/sysctl.d/60-bianchi-ping.conf
+if ! sysctl -q -p /etc/sysctl.d/60-bianchi-ping.conf; then
+    echo "AVISO: não foi possível ajustar net.ipv4.ping_group_range; aplicando cap_net_raw no ping" >&2
+    setcap cap_net_raw+ep "$(command -v ping)" || echo "AVISO: setcap falhou — ping do Diagnóstico ficará indisponível" >&2
+fi
 for i in $(seq 1 "$WORKERS"); do
     systemctl enable "bianchi-worker@${i}"
     # zera o StartLimitBurst de falhas anteriores (ex.: deploy quebrado antes deste)

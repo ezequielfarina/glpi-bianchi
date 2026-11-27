@@ -270,7 +270,9 @@ enxerga (útil para validar política entre VLANs no FortiGate). Também há o a
 Se algo falhar no CT:
 
 ```bash
-sysctl net.ipv4.ping_group_range        # deve ser "0 2147483647" (install.sh grava em /etc/sysctl.d/60-bianchi-ping.conf)
+cat /proc/self/gid_map                   # CT unprivileged: "0 100000 65536" → faixa máxima 0..65535
+sysctl net.ipv4.ping_group_range        # deve ser "0 65535" (unprivileged) ou "0 2147483647" (privileged); "1 0" = bloqueado
+sysctl -w net.ipv4.ping_group_range="0 65535"   # correção imediata; install.sh persiste em /etc/sysctl.d/60-bianchi-ping.conf
 sudo -u www-data ping -c1 192.168.110.1
 getcap /usr/bin/mtr-packet              # cap_net_raw=ep
 sudo -u www-data mtr -r -c1 8.8.8.8

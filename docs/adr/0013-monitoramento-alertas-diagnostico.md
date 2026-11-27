@@ -94,7 +94,7 @@ Restrições:
 
   | Ferramenta | Como funciona |
   |---|---|
-  | Ping | `ping -O`; o install.sh libera `net.ipv4.ping_group_range` dentro do CT |
+  | Ping | `ping -O`; o install.sh libera `net.ipv4.ping_group_range` dentro do CT (faixa limitada ao `gid_map`: 0–65535 em CT unprivileged) |
   | Traceroute | `mtr --json` (mtr-packet com `cap_net_raw` do pacote), com fallback para `traceroute` UDP |
   | Teste de portas | `stream_socket_client`: aberta, fechada (RST) ou filtrada (timeout); certificado TLS (validade, SAN, cadeia confiável para o CT) e banner |
   | DNS | `dig`, comparando até 5 servidores lado a lado e sinalizando respostas divergentes (split-horizon) |
