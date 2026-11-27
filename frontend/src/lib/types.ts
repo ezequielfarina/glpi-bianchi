@@ -401,6 +401,26 @@ export interface AuditEvent {
 
 export interface AuditPage { items: AuditEvent[]; total: number; page: number; perPage: number }
 
+/** Trilha de ações (ADR-0015). */
+export interface AuditAction {
+  id: number
+  occurred_at: string
+  actor: string
+  ip: string | null
+  action: string
+  label: string
+  module: string
+  module_label: string
+  method: string
+  path: string
+  entity_type: string | null
+  entity_id: string | null
+  subject: string | null
+  status: number
+  details: { request?: Record<string, unknown>; result?: Record<string, unknown> } & Record<string, unknown>
+}
+export interface AuditActionsPage { items: AuditAction[]; total: number; page: number; perPage: number; modules: Record<string, string>; actors: string[] }
+
 // ---------------------------------------------------------------- ferramentas: scanner de rede
 export type ScanStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled'
 export type ScanProfileCode = 'discovery' | 'standard' | 'full'

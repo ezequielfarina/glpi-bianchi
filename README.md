@@ -144,7 +144,8 @@ descritas em [`CLAUDE.md`](CLAUDE.md): **banco** (`migrations/`, `docs/database/
 - [x] Login individual (Argon2id), 2FA TOTP, perfis Administrador/Técnico/Leitura, auditoria de acesso, HTTPS
 - [x] Ferramentas: scanner de rede (nmap, SNMP ARP, correlação com inventário) e calculadora de sub-rede
 - [x] Monitoramento: varreduras agendadas, alertas de mudança e conflito de IP/MAC, notificações (Teams/Telegram/Slack/webhook), diagnóstico (ping/MTR/portas/TLS) e consultas (DNS/RDAP/ASN/MAC)
-- [x] Estoque central de TI e notas fiscais simplificadas (entrada por nota, patrimônio por unidade, saída para filial, mínimo/"a comprar")
+- [x] Estoque central de TI e notas fiscais simplificadas (entrada por nota, patrimônio por unidade, saída para filial, mínimo/"a comprar", etiqueta de envio para Argox)
+- [x] Auditoria de todas as ações da interface (somente inclusão, sem segredos) + auditoria de acesso
 - [ ] Notificação por e-mail (symfony/mailer + SMTP)
 - [ ] Estoque: importação do XML da NF-e, pedido de compra, aviso de mínimo no Teams/Telegram
 
@@ -162,6 +163,8 @@ descritas em [`CLAUDE.md`](CLAUDE.md): **banco** (`migrations/`, `docs/database/
 |---|---|
 | [docs/adr/](docs/adr/) | decisões de arquitetura (por que reescrever, stack, modelo de dados...) |
 | [docs/tools/scanner-de-rede.md](docs/tools/scanner-de-rede.md) | scanner de rede (capabilities, SNMP, FortiGate) e calculadora |
+| [docs/stock/estoque-e-notas.md](docs/stock/estoque-e-notas.md) | estoque, notas fiscais, saída para filial e etiqueta de envio (impressão na Argox) |
+| [docs/audit/auditoria.md](docs/audit/auditoria.md) | auditoria: ações no sistema e acessos, o que é registrado, consultas SQL |
 | [docs/database/README.md](docs/database/README.md) | modelo de dados, ER, índices, triggers, manutenção |
 | [docs/inventory/protocolo-agente.md](docs/inventory/protocolo-agente.md) | protocolo do GLPI Agent implementado |
 | [docs/inventory/forcar-inventario.md](docs/inventory/forcar-inventario.md) | forçar inventário remoto, frequência, firewall e `httpd-trust` |

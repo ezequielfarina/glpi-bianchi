@@ -13,16 +13,17 @@ import type { StockShipment } from '../../lib/types'
  */
 const props = defineProps<{ batch: string; departments?: string[]; justSaved?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
-// v4: sem tamanho fixo — a impressão usa o papel padrão configurado no driver da impressora
-const KEY = 'bianchi.label.v4'
-type Saved = { sender: string; logo: boolean }
-const DEFAULTS: Saved = { sender: 'TI', logo: true }
+// v5: papel = o do driver da Argox (USER 102,4 × 74,9 mm). O Chrome só usa o papel do driver quando o
+// @page pede exatamente esse tamanho; sem tamanho ele cai no padrão dele (A4/Carta) e divide a etiqueta.
+const KEY = 'bianchi.label.v5'
+type Saved = { sender: string; logo: boolean; width: number; height: number }
+const DEFAULTS: Saved = { sender: 'TI', logo: true, width: 102.4, height: 74.9 }
 const saved: Saved = (() => {
   try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') } } catch { return { ...DEFAULTS } }
 })()
 const ship = ref<StockShipment | null>(null)
 const error = ref<string | null>(null)
-const f = reactive({ sender: saved.sender, destination: '', department: '', attention: '', volumes: 1, logo: saved.logo })
+const f = reactive({ sender: saved.sender, destination: '', department: '', attention: '', volumes: 1, logo: saved.logo, width: saved.width, height: saved.height })
 const frame = ref<HTMLIFrameElement | null>(null)
 
 api.stockShipment(props.batch).then((s) => {
@@ -33,17 +34,19 @@ api.stockShipment(props.batch).then((s) => {
   f.attention = (s.recipient ?? '').toUpperCase()
 }).catch((e) => { error.value = e instanceof Error ? e.message : String(e) })
 
-watch(() => [f.sender, f.logo], () => {
-  try { localStorage.setItem(KEY, JSON.stringify({ sender: f.sender, logo: f.logo })) } catch { /* sem storage */ }
+watch(() => [f.sender, f.logo, f.width, f.height], () => {
+  try { localStorage.setItem(KEY, JSON.stringify({ sender: f.sender, logo: f.logo, width: f.width, height: f.height })) } catch { /* sem storage */ }
 })
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string)
 /*
- * Sem @page size: o navegador usa o papel padrão da impressora (driver da Argox). O desenho do modelo
+ * @page = papel do driver (padrão USER 102,4 × 74,9 mm da Argox). O desenho do modelo
  * (105 × 75) é escalado para caber na página que vier, com --u = 1 "mm do modelo" (vw/vh = página na impressão),
  * e cada etiqueta ocupa exatamente uma página (altura 100vh − folga) — nunca quebra em duas.
  */
+const paper = computed(() => ({ w: Math.min(Math.max(Number(f.width) || 102.4, 30), 120), h: Math.min(Math.max(Number(f.height) || 74.9, 20), 220) }))
 const html = computed(() => {
+  const { w, h } = paper.value
   const vols = Math.min(Math.max(Math.round(f.volumes || 1), 1), 50)
   const dest = f.destination.trim() || '—'
   const ac = [f.department.trim(), f.attention.trim() ? `A/C ${f.attention.trim()}` : (f.department.trim() ? 'A/C' : '')].filter(Boolean).join(' ')
@@ -59,7 +62,7 @@ const html = computed(() => {
       ${f.logo ? `<img class="logo" src="${logo}" alt="">` : ''}
     </div></section>`
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Etiqueta</title><style>
-    @page { margin: 0; }
+    @page { size: ${w}mm ${h}mm; margin: 0; }
     * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     html, body { margin: 0; padding: 0; background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; }
     .label { width: 100vw; height: calc(100vh - 1.5mm); overflow: hidden; display: flex; align-items: center; justify-content: center;
@@ -76,8 +79,8 @@ const html = computed(() => {
     .logo { position: absolute; right: calc(var(--u) * 3); bottom: calc(var(--u) * 3); width: calc(var(--u) * 31); }
   </style></head><body>${Array.from({ length: vols }, (_, i) => page(i + 1)).join('')}</body></html>`
 })
-// prévia: uma etiqueta 105 × 75 em escala (a impressão se ajusta ao papel padrão da impressora)
-const frameStyle = { width: '400px', height: '286px' }
+// prévia em escala: largura fixa de 400 px, altura proporcional ao papel
+const frameStyle = computed(() => ({ width: '400px', height: `${Math.round(400 * paper.value.h / paper.value.w)}px` }))
 
 function print(): void {
   const win = frame.value?.contentWindow
@@ -108,8 +111,12 @@ function print(): void {
           <div class="field"><label for="lb-snd">Remetente</label><input id="lb-snd" v-model="f.sender" class="input" /></div>
           <div class="field"><label for="lb-vol">Volumes</label><input id="lb-vol" v-model.number="f.volumes" class="input num" type="number" min="1" max="50" /></div>
         </div>
+        <div class="row">
+          <div class="field"><label for="lb-w">Papel — largura (mm)</label><input id="lb-w" v-model.number="f.width" class="input num" type="number" min="30" max="120" step="0.1" /></div>
+          <div class="field"><label for="lb-h">Papel — altura (mm)</label><input id="lb-h" v-model.number="f.height" class="input num" type="number" min="20" max="220" step="0.1" /></div>
+        </div>
         <label class="check"><input v-model="f.logo" type="checkbox" /> Imprimir logo</label>
-        <p class="hint">A impressão usa o <strong>papel padrão da impressora</strong> (configurado no driver) e a etiqueta se ajusta a ele — uma página por volume. No diálogo de impressão deixe <strong>Margens: Nenhuma</strong> e desmarque <strong>Cabeçalhos e rodapés</strong>.</p>
+        <p class="hint">Use <strong>o mesmo tamanho do papel do driver</strong> (Argox: USER 102,4 × 74,9). No diálogo de impressão: <strong>Tamanho do papel = USER</strong>, <strong>Margens: Nenhuma</strong>, <strong>Escala: Padrão</strong>, sem cabeçalhos e rodapés.</p>
         <p class="hint">As alterações valem só para esta impressão; o remetente fica salvo neste navegador.</p>
       </div>
       <div class="preview">

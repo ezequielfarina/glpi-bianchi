@@ -62,6 +62,7 @@ erDiagram
     invoice_item ||--o{ stock_movement : "entrada"
     stock_movement }o--o| branch : "saída"
     stock_movement }o--o| asset : "unidade"
+    app_account ||--o{ audit_log : ""
 ```
 
 ## Dicionário
@@ -141,6 +142,12 @@ erDiagram
 | `notification_channel` | canal de notificação: teams/telegram/slack/webhook, `min_severity`, último status | `target` (URL/token) **cifrado**; só admin |
 | `network_scan_host` | host encontrado: IP, MAC + origem (`arp`/`snmp`/`netbios`), fabricante, nomes, SO, `device_type`, portas e detalhes (JSONB), `asset_id` + `match_by` | UNIQUE `(scan_id, ip)` para upsert em streaming; some com a varredura (CASCADE); ativo excluído → `SET NULL` |
 
+### Auditoria (ADR-0015)
+
+| Tabela | Descrição | Pontos de atenção |
+|---|---|---|
+| `audit_log` | uma linha por ação bem-sucedida na interface: `actor`, `ip`, `action` (`invoice.deleted`, `stock.out`…), `module`, `method`/`path`, `entity_type`/`entity_id`, `subject` (descrição legível, lida antes da ação), `status`, `details` (JSONB: corpo sem segredos + ids devolvidos) | **somente inclusão**: trigger `trg_audit_log_guard` (função `audit_log_guard()`) bloqueia UPDATE/DELETE, exceto o `SET NULL` de `account_id` ao excluir a conta; sem retenção automática; índices por data, objeto, usuário e ação |
+
 ### Estoque e notas fiscais (ADR-0014)
 
 | Tabela | Descrição | Pontos de atenção |
@@ -162,6 +169,7 @@ erDiagram
 | `chk_branch_*` | 180000 | `kind`, UF `^[A-Z]{2}$`, coordenadas em par e na faixa, `networks` é array |
 
 Esses índices são registrados em `src/Shared/Doctrine/SchemaExtrasListener.php`; sem isso, o `make diff` tentaria removê-los.
+- `audit_log_guard()` + trigger `trg_audit_log_guard` (BEFORE UPDATE OR DELETE em `audit_log`): trilha somente inclusão (ADR-0015).
 
 ## Consultas úteis
 

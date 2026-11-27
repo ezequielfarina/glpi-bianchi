@@ -18,6 +18,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- **Auditoria de ações (ADR-0015):** tudo que é feito pela interface fica registrado (cadastros, alterações, exclusões, movimentações de estoque, notas, ferramentas, monitoramento, usuários, configurações, exibição de chave de licença) com usuário, IP, objeto (lido antes da exclusão) e o que foi enviado — sem segredos. Somente inclusão (o banco bloqueia alteração e exclusão). Tela *Auditoria* com abas *Ações no sistema* e *Acessos e contas*.
 - **Estoque central de TI e notas fiscais (ADR-0014):**
   - Itens com estoque mínimo e lista "a comprar"; contador no menu (alerta só no sistema).
   - Nota fiscal simplificada (número, série, fornecedor, emissão, itens com valor unitário e total). Registrar a nota dá entrada no estoque; a diferença entre o total e a soma dos itens é exibida.
@@ -25,7 +26,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
   - Situação da nota: registrada → enviada para lançamento (com data e autor), inclusive em lote. O lançamento é feito por outro setor e não é acompanhado no sistema.
   - Saída para filial, entrada manual (saldo inicial, devolução) e ajuste com motivo; histórico de movimentações e consumo por filial.
   - Anexo de DANFE/XML na nota.
-  - Etiqueta de envio gerada na saída para filial (modelo Entrega_TI: destinatário com código da filial, setor A/C, logo, volumes), no tamanho exato para impressora térmica (Argox); reimpressão pelas movimentações.
+  - Etiqueta de envio gerada na saída para filial (modelo Entrega_TI: destinatário com código da filial, setor A/C, logo, volumes), no tamanho do papel do driver da impressora térmica (Argox, padrão 102,4 × 74,9 mm); reimpressão pelas movimentações.
 - **Monitoramento de rede (ADR-0013):**
   - Varreduras agendadas: horário fixo nos dias escolhidos ou a cada N horas, via timer systemd `bianchi-scan-scheduler`.
   - Alertas por comparação com a execução anterior: dispositivo novo sem cadastro, MAC trocado num IP (crítico no gateway), portas novas (de risco em destaque), ativo que sumiu, varredura que falhou.

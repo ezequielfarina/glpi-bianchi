@@ -41,6 +41,31 @@ Paginação: `?page=2&itemsPerPage=100` (máximo 500).
 | POST | `/api/ui/branches/{id}/assets` | `{"assets": [uuid, …]}` move em lote; `{id}` = `0` remove o vínculo |
 | GET | `/api/ui/assets?branch={id}` · `?branch=none` | ativos da filial / sem filial |
 
+### Estoque e notas fiscais (`/api/ui/stock`, mesmo token — ADR-0014)
+
+| Método | Rota | Uso |
+|---|---|---|
+| GET | `/api/ui/stock/summary` · `/low-count` | resumo (itens, valor, abaixo do mínimo, notas a enviar, categorias, setores) · nº abaixo do mínimo |
+| GET · POST | `/api/ui/stock/items` | lista (`q`, `category`, `low=1`, `inactive=1`) · cria `{name, category, min_quantity, tracked, type}` |
+| GET · PUT · DELETE | `/api/ui/stock/items/{id}` | detalhe (unidades em estoque, movimentações, consumo) · altera · exclui (sem histórico) ou desativa (saldo zero) |
+| POST | `/api/ui/stock/in` | entrada manual `{reason, occurred_at?, lines: [{stock_item_id, quantity, unit_cost?, serials?}]}` |
+| POST | `/api/ui/stock/out` | saída `{branch_id, department?, recipient?, occurred_at?, notes?, lines: [{stock_item_id, quantity} ou {stock_item_id, assets: [uuid]}]}` → `{batch}` |
+| GET | `/api/ui/stock/shipments/{batch}` | dados da etiqueta de envio de uma saída |
+| POST | `/api/ui/stock/adjust` | `{stock_item_id, quantity, reason}` ou `{stock_item_id, assets, asset_status, reason}` |
+| GET | `/api/ui/stock/movements` · `/consumption` | razão (`item`, `branch`, `kind`, `from`, `to`) · consumo por filial |
+| GET · POST | `/api/ui/stock/invoices` | lista (`status`, `q`, `supplier`) · registra `{supplier_id, number, series?, issue_date, received_at?, total, notes?, items: [{stock_item_id, quantity, unit_price, serials?}]}` |
+| GET · PUT · DELETE | `/api/ui/stock/invoices/{id}` | detalhe · altera cabeçalho · exclui (se nada saiu do estoque) |
+| POST | `/api/ui/stock/invoices/{id}/status` | `{status: "registered"}` ou `{status: "sent"}` |
+
+### Auditoria (`/api/ui/audit`, só Administrador — ADR-0015)
+
+| Método | Rota | Uso |
+|---|---|---|
+| GET | `/api/ui/audit/actions` | trilha de ações: `q`, `module`, `actor`, `entity_type`, `entity_id`, `from`, `to`, `page` (50 por página) |
+| GET | `/api/ui/audit` | acessos (`auth_event`): `q`, `event`, `page` |
+
+Toda escrita feita pela API com token também entra na trilha, com o nome do token/usuário em `actor`.
+
 ## Exemplos
 
 ```bash

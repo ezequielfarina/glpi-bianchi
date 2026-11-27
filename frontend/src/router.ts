@@ -34,7 +34,7 @@ export const router = createRouter({
     { path: '/tools/subnet', name: 'subnet', component: () => import('./views/tools/SubnetCalculatorView.vue'), meta: { title: 'Calculadora de sub-rede' } },
     { path: '/account', name: 'account', component: () => import('./views/AccountView.vue'), meta: { title: 'Minha conta' } },
     { path: '/users', name: 'users', component: () => import('./views/UsersView.vue'), meta: { title: 'Usuários', admin: true } },
-    { path: '/audit', name: 'audit', component: () => import('./views/AuditView.vue'), meta: { title: 'Auditoria de acesso', admin: true } },
+    { path: '/audit', name: 'audit', component: () => import('./views/AuditView.vue'), meta: { title: 'Auditoria', admin: true } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
   scrollBehavior: () => ({ top: 0 }),

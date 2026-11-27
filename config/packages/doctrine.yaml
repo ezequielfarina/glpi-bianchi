@@ -85,6 +85,11 @@ doctrine:
                 is_bundle: false
                 dir: '%kernel.project_dir%/src/Stock/Entity'
                 prefix: 'App\Stock\Entity'
+            Audit:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Audit/Entity'
+                prefix: 'App\Audit\Entity'
         controller_resolver:
             auto_mapping: false
 

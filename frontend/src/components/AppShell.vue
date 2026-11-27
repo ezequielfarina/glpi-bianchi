@@ -31,7 +31,7 @@ const allNav: { to: string; label: string; icon: IconName; group?: string; admin
   { to: '/tools/subnet', label: 'Calculadora de sub-rede', icon: 'calculator', group: 'Ferramentas' },
   { to: '/settings', label: 'Configurações', icon: 'settings', group: 'Sistema' },
   { to: '/users', label: 'Usuários', icon: 'user', admin: true },
-  { to: '/audit', label: 'Auditoria de acesso', icon: 'history', admin: true },
+  { to: '/audit', label: 'Auditoria', icon: 'history', admin: true },
 ]
 const nav = computed(() => {
   const items = allNav.filter((i) => (!i.admin || isAdmin.value) && (!i.edit || canEdit.value))

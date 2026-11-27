@@ -6,6 +6,7 @@ import type {
   LicenseRow, Lookups, Overview, SettingsResponse, SupplierDetail, SupplierRow, TypeSummary, WakeupResult, ScannerInfo, ScanRow, ScanDetail,
   ScanSchedule, AlertFlags, NetworkAlert, AlertCounts, NotificationChannel, ConflictReport, NetInfo, PingResult, TraceResult, PortsResult, DnsResult, AsnResult, RdapResult, MacItem,
   StockItem, StockItemDetail, StockMovement, StockSummary, StockConsumption, StockShipment, InvoiceRow, InvoiceDetail, InvoiceStatus,
+  AuditActionsPage,
 } from './types'
 
 export class ApiError extends Error {
@@ -98,6 +99,8 @@ export const api = {
   userSessions: (id: number) => request<{ items: SessionRow[] }>(`/users/${id}/sessions`),
   revokeUserSessions: (id: number) => send<{ revoked: number }>('DELETE', `/users/${id}/sessions`),
   audit: (p: { q?: string; event?: string; page?: number }) => request<AuditPage>(`/audit${qs(p)}`),
+  auditActions: (p: { q?: string; module?: string; actor?: string; entity_type?: string; entity_id?: string; from?: string; to?: string; page?: number }) =>
+    request<AuditActionsPage>(`/audit/actions${qs(p)}`),
   // ---------------------------------------------------------------- ferramentas
   scannerInfo: () => request<ScannerInfo>('/tools/scanner'),
   // monitoramento (ADR-0013)
