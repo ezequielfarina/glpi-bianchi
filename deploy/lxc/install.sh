@@ -122,20 +122,24 @@ fi
 
 # ----------------------------------------------------------------------------
 log "4/9 PostgreSQL ${PG_VER}"
-# Restart só quando a configuração muda: um restart incondicional derruba (FATAL 57P01) as conexões
-# dos workers e mata a varredura que estiver em andamento.
+# Sem restart incondicional: ele derruba (FATAL 57P01) as conexões dos workers e mata a varredura
+# em andamento. Config nova → reload; restart só se algum parâmetro alterado exigir (pending_restart).
 PG_CONF="/etc/postgresql/${PG_VER}/main/conf.d/bianchi.conf"
 PG_CHANGED=0
 cmp -s "$SCRIPT_DIR/postgresql/bianchi.conf" "$PG_CONF" || PG_CHANGED=1
 install -m 0644 "$SCRIPT_DIR/postgresql/bianchi.conf" "$PG_CONF"
 systemctl enable --now "postgresql@${PG_VER}-main"
 if [[ "$PG_CHANGED" == 1 ]]; then
-    if [[ -n "$(runuser -u postgres -- psql -qAt -c "SELECT 1 FROM pg_stat_activity WHERE query LIKE '%network_scan%' AND state <> 'idle' LIMIT 1" 2>/dev/null)" ]]; then
-        echo "AVISO: há varredura em andamento; ela será interrompida pelo restart do PostgreSQL" >&2
-    fi
-    systemctl restart "postgresql@${PG_VER}-main"
-else
     systemctl reload "postgresql@${PG_VER}-main"
+    sleep 1
+    PG_PENDING="$(runuser -u postgres -- psql -qAt -c "SELECT string_agg(name, ', ') FROM pg_settings WHERE pending_restart" 2>/dev/null || true)"
+    if [[ -n "$PG_PENDING" ]]; then
+        if [[ -n "$(runuser -u postgres -- psql -qAt -c "SELECT 1 FROM pg_stat_activity WHERE query ILIKE '%network_scan%' AND state <> 'idle' LIMIT 1" 2>/dev/null)" ]]; then
+            echo "AVISO: há varredura em andamento; ela será interrompida pelo restart do PostgreSQL" >&2
+        fi
+        echo "PostgreSQL: restart necessário por ${PG_PENDING}"
+        systemctl restart "postgresql@${PG_VER}-main"
+    fi
 fi
 
 sudo_pg() { runuser -u postgres -- psql -v ON_ERROR_STOP=1 -qAt "$@"; }
