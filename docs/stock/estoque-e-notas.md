@@ -38,6 +38,11 @@ antes de imprimir. Reimpressão: ícone de impressora em *Movimentações* ou no
 
 ### Impressão na Argox
 
+**Prévia antes de imprimir:** a tela *Saída para filial* mostra ao lado a etiqueta exatamente como vai sair,
+atualizada enquanto você escolhe a filial, o setor, o A/C e os volumes. Embaixo da prévia aparece a impressora em uso
+(*Impressora: 192.168.0.253:9100 · PPLA*); o Administrador troca o IP, a porta ou a linguagem ali mesmo em
+**Alterar** (o mesmo valor de *Configurações*).
+
 **Automática (recomendado):** com a impressora configurada, ao registrar a saída a etiqueta sai sozinha na Argox —
 uma por volume (`VOLUME 1/3`, `2/3`…). Na saída, informe **Volumes** e deixe marcado *Imprimir etiqueta na
 impressora*. Reimpressão: ícone de impressora em *Movimentações* → **Imprimir na impressora**. A tela da etiqueta

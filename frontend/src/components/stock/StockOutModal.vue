@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import AppIcon from '../AppIcon.vue'
 import AppModal from '../AppModal.vue'
 import UnitPicker from './UnitPicker.vue'
 import { api } from '../../lib/api'
 import { labelPrinter, loadLabelPrinter, today } from '../../lib/stock'
+import LabelPrinterChip from './LabelPrinterChip.vue'
 import type { StockItem, StockUnit } from '../../lib/types'
 import { useForm } from '../forms/useForm'
 
 // Saída para filial: várias linhas; item com patrimônio → escolhe as unidades.
-const props = defineProps<{ items: StockItem[]; branches: { id: number; name: string }[]; presetItem?: number; departments?: string[] }>()
+const props = defineProps<{ items: StockItem[]; branches: { id: number; name: string; code?: string | null }[]; presetItem?: number; departments?: string[] }>()
 const emit = defineEmits<{ close: []; saved: [batch: string, opts: { print: boolean; volumes: number }] }>()
 const { saving, errors, submit } = useForm()
 type Line = { key: number; stock_item_id: number | ''; quantity: number; assets: string[]; units: StockUnit[] | null }
@@ -49,12 +50,30 @@ async function save(): Promise<void> {
   const r = await submit(() => api.stockOut(body), 'Saída registrada')
   if (r) emit('saved', r.batch, { print: !!labelPrinter.value?.configured && label.print, volumes: Math.max(1, Math.min(50, label.volumes || 1)) })
 }
+// prévia da etiqueta ao lado, antes de registrar (atualiza 400 ms depois da última digitação)
+const destination = computed(() => {
+  const b = props.branches.find((x) => x.id === f.branch_id)
+  if (!b) return ''
+  const name = b.name.toUpperCase()
+  const code = (b.code ?? '').toUpperCase()
+  return code && !name.includes(code) ? `${name} - ${code}` : name
+})
+const previewUrl = ref('')
+let pTimer: number | undefined
+watch(() => [destination.value, f.department, f.recipient, label.volumes], () => {
+  window.clearTimeout(pTimer)
+  pTimer = window.setTimeout(() => {
+    const q = new URLSearchParams({ destination: destination.value, department: f.department, attention: f.recipient, volumes: String(label.volumes || 1) })
+    previewUrl.value = `/api/ui/stock/label/preview.png?${q.toString()}`
+  }, 400)
+}, { immediate: true })
 void addLine(props.presetItem ?? '')
 </script>
 
 <template>
-  <AppModal title="Saída para filial" wide @close="emit('close')">
-    <form novalidate @submit.prevent="save">
+  <AppModal title="Saída para filial" xwide @close="emit('close')">
+    <form novalidate class="out-layout" @submit.prevent="save">
+      <div class="out-main">
       <div class="form-grid">
         <div class="field">
           <label for="so-branch">Filial de destino *</label>
@@ -100,9 +119,16 @@ void addLine(props.presetItem ?? '')
       </div>
       <button class="link-btn add" type="button" @click="addLine()"><AppIcon name="plus" :size="13" /> Adicionar item</button>
 
-      <div class="form-actions">
+      </div>
+      <aside class="out-preview" aria-label="Prévia da etiqueta">
+        <h3 class="sub">Prévia da etiqueta{{ label.volumes > 1 ? ` (1 de ${label.volumes})` : '' }}</h3>
+        <img v-if="previewUrl" :src="previewUrl" alt="Prévia da etiqueta de envio" class="label-png" />
+        <p class="muted small">É exatamente o que sai na impressora. {{ destination ? '' : 'Escolha a filial para ver o destinatário.' }}</p>
+        <LabelPrinterChip />
+      </aside>
+      <div class="form-actions full-row">
         <button class="btn" type="button" @click="emit('close')">Cancelar</button>
-        <button class="btn btn-primary" type="submit" :disabled="saving || !ready">{{ saving ? 'Registrando…' : 'Registrar saída e gerar etiqueta' }}</button>
+        <button class="btn btn-primary" type="submit" :disabled="saving || !ready">{{ saving ? 'Registrando…' : (labelPrinter?.configured && label.print ? 'Registrar saída e imprimir etiqueta' : 'Registrar saída e gerar etiqueta') }}</button>
       </div>
     </form>
   </AppModal>
@@ -116,6 +142,12 @@ void addLine(props.presetItem ?? '')
 .qty { width: 130px; }
 .rm { flex: none; }
 .label-opt { justify-content: flex-end; }
+.out-layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 24px; align-items: start; }
+.out-preview { position: sticky; top: 0; display: flex; flex-direction: column; gap: 10px; }
+.out-preview .sub { margin: 0; }
+.label-png { width: 100%; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); image-rendering: pixelated; }
+.full-row { grid-column: 1 / -1; }
+@media (max-width: 1000px) { .out-layout { grid-template-columns: 1fr; } .out-preview { position: static; } }
 .add { margin-top: 8px; }
 .small { font-size: 12px; }
 .err { font-size: 12px; color: var(--warn-text); }

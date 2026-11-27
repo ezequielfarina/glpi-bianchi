@@ -33,7 +33,7 @@ async function onOutSaved(batch: string, o: { print: boolean; volumes: number })
   label.value = { batch, fresh: true, volumes: o.volumes }
 }
 const departments = ref<string[]>([])
-const branches = computed(() => (lookups.value?.branches ?? []).map((b) => ({ id: b.id, name: b.name })))
+const branches = computed(() => (lookups.value?.branches ?? []).map((b) => ({ id: b.id, name: b.name, code: b.code })))
 const asList = computed<StockItem[]>(() => (it.value ? [it.value] : []))
 
 async function open(m: 'edit' | 'out' | 'in' | 'adjust'): Promise<void> {

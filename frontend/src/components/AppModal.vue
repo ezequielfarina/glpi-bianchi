@@ -10,7 +10,7 @@ import AppIcon from './AppIcon.vue'
 // Diálogo acessível: foco preso dentro, ESC fecha, devolve o foco ao fechar.
 // Empilhável (ex.: gerenciar categorias de dentro do formulário de licença):
 // só o diálogo do topo reage a teclado; renderizado no <body> via Teleport.
-defineProps<{ title: string; wide?: boolean }>()
+defineProps<{ title: string; wide?: boolean; xwide?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 const box = ref<HTMLElement | null>(null)
 let previous: HTMLElement | null = null
@@ -47,7 +47,7 @@ onBeforeUnmount(() => {
 <template>
   <Teleport to="body">
   <div class="backdrop" :style="{ zIndex: 40 + depth * 2 }" @mousedown.self="emit('close')">
-    <div ref="box" class="modal panel" :class="{ wide }" role="dialog" aria-modal="true" :aria-label="title">
+    <div ref="box" class="modal panel" :class="{ wide, xwide }" role="dialog" aria-modal="true" :aria-label="title">
       <header class="panel-head">
         <h2>{{ title }}</h2>
         <button class="btn btn-icon" type="button" aria-label="Fechar" @click="emit('close')"><AppIcon name="close" :size="16" /></button>
@@ -62,5 +62,6 @@ onBeforeUnmount(() => {
 .backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(2, 6, 12, 0.6); display: grid; place-items: center; padding: 20px; overflow-y: auto; }
 .modal { width: min(560px, 100%); max-height: calc(100vh - 40px); display: flex; flex-direction: column; }
 .modal.wide { width: min(880px, 100%); }
+.modal.xwide { width: min(1240px, 100%); }
 .modal-body { padding: 0 20px 20px; overflow-y: auto; }
 </style>

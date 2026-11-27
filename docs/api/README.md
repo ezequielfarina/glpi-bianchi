@@ -53,6 +53,7 @@ Paginação: `?page=2&itemsPerPage=100` (máximo 500).
 | POST | `/api/ui/stock/out` | saída `{branch_id, department?, recipient?, occurred_at?, notes?, lines: [{stock_item_id, quantity} ou {stock_item_id, assets: [uuid]}]}` → `{batch}` |
 | GET | `/api/ui/stock/shipments/{batch}` | dados da etiqueta de envio de uma saída |
 | POST | `/api/ui/stock/shipments/{batch}/print` | imprime direto na impressora de etiquetas: `{volumes, sender?, destination?, department?, attention?}` → `{printed, printer, bytes, ms}`; 422 com `errors.printer` se a impressora não responder |
+| GET | `/api/ui/stock/label/preview.png` | prévia antes de registrar a saída: `destination`, `department`, `attention`, `sender`, `volumes` |
 | GET | `/api/ui/stock/shipments/{batch}/label.png` | prévia exata (PNG 1 bit) do que vai para a impressora (mesmos parâmetros, na query) |
 | GET · POST | `/api/ui/stock/label-printer` · `/label-printer/test` | configuração da impressora de etiquetas · etiqueta de teste |
 | GET | `/api/ui/stock/shipments/{batch}/label.odt` | etiqueta em .odt (modelo Entrega_TI) — `sender`, `destination`, `department`, `attention` opcionais sobrescrevem os dados da saída |

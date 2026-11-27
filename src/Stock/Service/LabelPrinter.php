@@ -118,14 +118,15 @@ final readonly class LabelPrinter
         if ('A/C' === $ac) {
             $ac = '';
         }
+        // tamanhos em "mm do modelo" (altura da fonte); cabeçalho grande como no modelo do LibreOffice
         $margin = 3 * $u;
         $maxW = $w - 2 * $margin;
-        $y = 4 * $u;
-        $y = $this->centered($img, $font, 3.9 * $u, "REMETENTE: $sender", $y, $w, $maxW, $black);
-        $y = $this->centered($img, $font, 3.9 * $u, 'DESTINATÁRIO:', $y + 0.6 * $u, $w, $maxW, $black);
-        $y = $this->centered($img, $font, 10.6 * $u, $dest, $y + 3.5 * $u, $w, $maxW, $black);
+        $y = 3 * $u;
+        $y = $this->centered($img, $font, 7.2 * $u, "REMETENTE: $sender", $y, $w, $maxW, $black);
+        $y = $this->centered($img, $font, 7.2 * $u, 'DESTINATÁRIO:', $y + 0.4 * $u, $w, $maxW, $black);
+        $y = $this->centered($img, $font, 11.5 * $u, $dest, $y + 2.6 * $u, $w, $maxW, $black);
         if ('' !== $ac) {
-            $this->centered($img, $font, 6.0 * $u, $ac, $y + 1.2 * $u, $w, $maxW, $black);
+            $this->centered($img, $font, 7.2 * $u, $ac, $y + 1.4 * $u, $w, $maxW, $black);
         }
         if (null !== $volume) {
             imagettftext($img, self::pt(3.2 * $u), 0, (int) $margin, (int) ($h - $margin), $black, $font, $volume);

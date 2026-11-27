@@ -106,7 +106,7 @@ async function afterChange(): Promise<void> {
   await loadItems()
   if (tab.value !== 'balance') await loadTab()
 }
-const branches = computed(() => (lookups.value?.branches ?? []).map((b) => ({ id: b.id, name: b.name })))
+const branches = computed(() => (lookups.value?.branches ?? []).map((b) => ({ id: b.id, name: b.name, code: b.code })))
 const assetTypes = computed(() => lookups.value?.asset_types ?? [])
 
 function qtyLabel(m: StockMovement): string { return m.quantity > 0 ? `+${m.quantity}` : String(m.quantity) }

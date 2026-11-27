@@ -5,6 +5,7 @@ import AppModal from '../AppModal.vue'
 import { api } from '../../lib/api'
 import { dateOnly } from '../../lib/format'
 import { labelPrinter, loadLabelPrinter, printShipmentLabel } from '../../lib/stock'
+import LabelPrinterChip from './LabelPrinterChip.vue'
 import type { StockShipment } from '../../lib/types'
 
 /**
@@ -57,8 +58,8 @@ const html = computed(() => {
   const page = (i: number) => `<section class="label"><div class="content">
       <p class="sm"><b>REMETENTE:</b> ${esc(f.sender.trim().toUpperCase())}</p>
       <p class="sm sm2"><b>DESTINATÁRIO:</b></p>
-      <p class="dest" style="font-size:${fit(dest, 10.6, 0.74)}">${esc(dest)}</p>
-      ${ac ? `<p class="ac" style="font-size:${fit(ac, 6, 0.62)}">${esc(ac)}</p>` : ''}
+      <p class="dest" style="font-size:${fit(dest, 11.5, 0.74)}">${esc(dest)}</p>
+      ${ac ? `<p class="ac" style="font-size:${fit(ac, 7.2, 0.62)}">${esc(ac)}</p>` : ''}
       ${vols > 1 ? `<p class="vol">VOLUME ${i}/${vols}</p>` : ''}
       ${f.logo ? `<img class="logo" src="${logo}" alt="">` : ''}
     </div></section>`
@@ -70,10 +71,10 @@ const html = computed(() => {
       page-break-after: always; break-after: page; page-break-inside: avoid; break-inside: avoid;
       --u: min(calc((100vw - 2mm) / 105), calc((100vh - 3mm) / 75)); }
     .label:last-child { page-break-after: auto; break-after: auto; }
-    .content { position: relative; width: calc(var(--u) * 105); height: calc(var(--u) * 75); padding: calc(var(--u) * 4) calc(var(--u) * 3) 0; text-align: center; }
+    .content { position: relative; width: calc(var(--u) * 105); height: calc(var(--u) * 75); padding: calc(var(--u) * 3) calc(var(--u) * 3) 0; text-align: center; }
     p { margin: 0; line-height: 1.15; }
-    .sm { font-size: calc(var(--u) * 3.9); font-weight: 700; }
-    .sm2 { margin-bottom: calc(var(--u) * 3.5); }
+    .sm { font-size: calc(var(--u) * 7.2); font-weight: 700; line-height: 1.05; }
+    .sm2 { margin-bottom: calc(var(--u) * 2.6); }
     .dest { font-family: "Arial Black", "Archivo Black", Arial, sans-serif; font-weight: 900; white-space: nowrap; letter-spacing: 0.01em; }
     .ac { margin-top: calc(var(--u) * 0.8); white-space: nowrap; }
     .vol { position: absolute; left: calc(var(--u) * 3); bottom: calc(var(--u) * 3); font-size: calc(var(--u) * 3.2); font-weight: 700; }
@@ -151,6 +152,7 @@ function print(): void {
         <p class="hint">Pelo navegador: use <strong>o mesmo tamanho do papel do driver</strong> (Argox: USER 102,4 × 74,9). No diálogo de impressão: <strong>Tamanho do papel = USER</strong>, <strong>Margens: Nenhuma</strong>, <strong>Escala: Padrão</strong>, sem cabeçalhos e rodapés.</p>
         </template>
         <p v-if="labelPrinter?.configured" class="hint">A prévia é exatamente o que vai para a impressora ({{ labelPrinter.printer }}, {{ labelPrinter.width_mm }} × {{ labelPrinter.height_mm }} mm, {{ labelPrinter.dpi }} dpi).</p>
+        <LabelPrinterChip />
         <p class="hint">As alterações valem só para esta impressão; o remetente fica salvo neste navegador.</p>
       </div>
       <div class="preview">

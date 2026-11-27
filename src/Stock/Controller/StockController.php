@@ -170,6 +170,21 @@ final readonly class StockController
         return $this->json($this->printer->print($this->labelFields($batch, $b), $volumes) + ['batch' => $batch]);
     }
 
+    /**
+     * Prévia da etiqueta antes de existir a saída (tela "Saída para filial"): campos na query.
+     */
+    #[Route('/label/preview.png', name: 'label_preview', methods: ['GET'])]
+    public function labelPreview(Request $request): Response
+    {
+        $q = $request->query->all();
+        $s = static fn (string $k, int $max): string => \is_string($q[$k] ?? null) ? mb_substr(trim($q[$k]), 0, $max) : '';
+        $vol = (int) ($q['volumes'] ?? 1);
+
+        return new Response($this->printer->png(['sender' => $s('sender', 40), 'destination' => $s('destination', 80),
+            'department' => $s('department', 64), 'attention' => $s('attention', 80)], $vol > 1 ? "VOLUME 1/$vol" : null),
+            Response::HTTP_OK, ['Content-Type' => 'image/png', 'Cache-Control' => 'no-store']);
+    }
+
     /** Prévia exata (PNG 1 bit) do que vai para a impressora. */
     #[Route('/shipments/{batch}/label.png', name: 'shipment_label_png', methods: ['GET'])]
     public function shipmentPng(string $batch, Request $request): Response
