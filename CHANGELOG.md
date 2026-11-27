@@ -18,6 +18,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- Menu lateral em **seções recolhíveis** (Estoque, Gestão, Inventário automático, Ferramentas, Sistema): estado salvo no navegador, a seção da página atual abre sozinha, seção fechada mostra o total de alertas/itens a comprar; a lista rola e o rodapé (tema/sair) fica fixo — os últimos itens não ficam mais cortados.
 - Saída para filial com **prévia da etiqueta ao lado** (exatamente o que sai na impressora) e troca rápida do IP/porta/linguagem da impressora pelo Administrador; cabeçalho da etiqueta (REMETENTE/DESTINATÁRIO) maior, como no modelo.
 - **Etiqueta impressa direto na Argox pela rede (porta 9100):** ao registrar a saída, uma etiqueta por volume sai automaticamente, desenhada no servidor (layout do modelo, acentos e logo) e enviada em PPLA, PPLB ou PPLZ/ZPL (a ArgoxBancada usa PPLA — sem trocar a emulação). Configuração e etiqueta de teste em *Configurações*; prévia exata na tela da etiqueta; falha de conexão mostra o erro e as alternativas (.odt e navegador). `install.sh` instala `php-gd` e `fonts-liberation2`.
 - Etiqueta de envio em **.odt a partir do modelo Entrega_TI** para imprimir pelo LibreOffice na Argox (pelo navegador o Chrome envia a etiqueta como paisagem e o driver em retrato desloca a impressão).
