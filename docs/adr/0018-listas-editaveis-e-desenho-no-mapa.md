@@ -28,6 +28,7 @@ O mapa da rede (ADR-0017) desenhava todo nó como esfera ou círculo; a leitura 
    (portas, LEDs, baias de disco, tomadas, disjuntores). No 3D, equipamento de rack vira **caixa** com a frente
    como textura, sempre em ¾ para a câmera (frente legível, topo e lateral visíveis); os demais são sprites.
    No 2D, o mesmo desenho via `drawImage` de canvas em cache. Força de colisão (`d3-force-3d`) evita sobreposição.
+5. **Cabos como fita de LED** (`lib/ledCable.ts`): curva cúbica com caimento/desvio/torção estáveis por ligação; no 3D, `TubeGeometry` com `ShaderMaterial` (LEDs + trens de pulso nos dois sentidos, blending aditivo) e halo; no 2D, a mesma curva e os mesmos pulsos em canvas (`autoPauseRedraw(false)`). Geometria refeita só enquanto a simulação anda; o brilho anima por uniform de tempo.
 
 ## Alternativas consideradas
 

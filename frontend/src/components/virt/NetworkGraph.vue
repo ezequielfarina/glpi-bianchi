@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ASPECT, ICON_PAD, iconCanvas, iconOf, RACK_ICONS, type NetIcon } from '../../lib/netIcons'
+import { createLedCable, drawLedCable2D, hitCable2D, type LedCable3D } from '../../lib/ledCable'
 import type { TopoLink, TopoNode, Topology } from '../../lib/virt'
 
 // Grafo da rede (ADR-0017/0018). Cada nó é o desenho do equipamento (lib/netIcons):
@@ -21,7 +22,9 @@ const KIND_COLOR: Record<string, string> = { circuit: '#a855f7', cloud: '#0ea5e9
 const LINK_COLOR: Record<string, string> = { power: '#facc15', console: '#94a3b8', member: '#f97316', virtual: '#c084fc', provider: '#38bdf8' }
 const idOf = (x: string | TopoNode) => (typeof x === 'string' ? x : x.id)
 const nodeColor = (n: TopoNode) => (n.kind === 'device' ? `#${n.color && /^[0-9a-f]{6}$/i.test(n.color) ? n.color : '64748b'}` : KIND_COLOR[n.kind] ?? '#64748b')
-const linkColor = (l: TopoLink) => LINK_COLOR[l.kind] ?? (l.color ? `#${l.color}` : '#60a5fa')
+// cabo preto/marrom escuro some no fundo: LED usa um cinza-azulado no lugar
+const visible = (hex: string) => { const n = parseInt(hex, 16); return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) < 45 ? '94a3b8' : hex }
+const linkColor = (l: TopoLink) => LINK_COLOR[l.kind] ?? (l.color && /^[0-9a-f]{6}$/i.test(l.color) ? `#${visible(l.color)}` : '#60a5fa')
 const icon = (n: TopoNode): NetIcon => iconOf(n.kind, n.icon, n.role)
 /** altura do desenho em unidades do mapa */
 function height(n: TopoNode, i = icon(n)): number {
@@ -57,6 +60,17 @@ function index(): void {
 // --- 3D: objetos por nó, para destacar/apagar sem reconstruir
 interface Obj3 { box: { quaternion: { copy: (q: unknown) => { multiply: (q: unknown) => void } } } | null; mats: { opacity: number; transparent: boolean }[]; halo: { visible: boolean; material: { opacity: number } } }
 const objs = new Map<string, Obj3>()
+const cables = new Map<TopoLink, LedCable3D>()
+type KL = TopoLink & { __k: string }
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+/** estado do cabo conforme o foco: [opacidade, realce] */
+function cableState(l: TopoLink): [number, number] {
+  const f = hover ?? selected
+  if (!f) return [1, 0]
+  const a = idOf(l.source); const b = idOf(l.target)
+  if (a === f.id || b === f.id) return [1, 1]
+  return dimmed(a) && dimmed(b) ? [0.1, 0] : [0.45, 0]
+}
 
 async function build(): Promise<void> {
   destroy()
@@ -64,7 +78,7 @@ async function build(): Promise<void> {
   index()
   // passivos sem nenhuma ligação (organizador de cabos, painel cego) só poluem o mapa
   const linked = new Set(props.data.links.flatMap((l) => [idOf(l.source), idOf(l.target)]))
-  const data = { nodes: props.data.nodes.filter((n) => !n.passive || linked.has(n.id)).map((n) => ({ ...n })), links: props.data.links.map((l) => ({ ...l })) }
+  const data = { nodes: props.data.nodes.filter((n) => !n.passive || linked.has(n.id)).map((n) => ({ ...n })), links: props.data.links.map((l, i) => ({ ...l, __k: `${idOf(l.source)}>${idOf(l.target)}#${i}` })) }
   const { forceCollide, forceX, forceY, forceZ } = await import('d3-force-3d')
   const k = props.dim === '2d' ? 1.25 : 1
   const collide = forceCollide<TopoNode>((n) => width(n) * 0.55 * k + 4).strength(0.9)
@@ -110,6 +124,7 @@ async function build(): Promise<void> {
     const metal = new THREE.MeshStandardMaterial({ color: 0x2a3446, metalness: 0.35, roughness: 0.45 })
     const tilt = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.32, -0.5, 0))
 
+    const timeU = { value: 0 }
     const g = new ForceGraph3D(el.value, { controlType: 'orbit' }) as unknown as G
     g.backgroundColor!(bg)
       .showNavInfo!(false)
@@ -141,14 +156,10 @@ async function build(): Promise<void> {
         objs.set(n.id, { box, mats, halo: halo as unknown as Obj3['halo'] })
         return group
       })
-      .linkColor!((l: TopoLink) => linkColor(l))
-      .linkWidth!((l: TopoLink) => (l.kind === 'member' || l.kind === 'virtual' ? 0.35 : l.kind === 'provider' ? 1 : 1.2))
-      .linkOpacity!(0.7)
-      .linkCurvature!((l: TopoLink) => (l.kind === 'virtual' ? 0.25 : 0.06))
-      .linkDirectionalParticles!((l: TopoLink) => (l.kind === 'data' && l.active ? 3 : l.kind === 'provider' ? 4 : 0))
-      .linkDirectionalParticleWidth!(1.8)
-      .linkDirectionalParticleSpeed!(0.006)
-      .linkDirectionalParticleColor!((l: TopoLink) => linkColor(l))
+      // cabos: fita de LED em tubo curvo (lib/ledCable)
+      .linkThreeObjectExtend!(false)
+      .linkThreeObject!((l: KL) => { const c = createLedCable(THREE, l, linkColor(l), l.__k, timeU); cables.set(l, c); return c.object })
+      .linkPositionUpdate!((_o: unknown, p: { start: { x: number; y: number; z: number }; end: { x: number; y: number; z: number } }, l: TopoLink) => { cables.get(l)?.update(p.start, p.end); return true })
       .linkLabel!((l: TopoLink) => linkTip(l))
       .onNodeHover!((n: TopoNode | null) => { hover = n; el.value!.style.cursor = n ? 'pointer' : 'grab'; paint3d() })
       .onNodeClick!((n: TopoNode & { x: number; y: number; z: number }) => { selected = n; emit('select', n); flyTo(n); paint3d() })
@@ -171,7 +182,12 @@ async function build(): Promise<void> {
     scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x475569, size: 1.6, transparent: true, opacity: 0.5 })))
     // caixas sempre em ¾ para a câmera: frente legível, topo e lateral visíveis
     const cam = g.camera!() as unknown as { quaternion: unknown }
-    const loop = () => { for (const o of objs.values()) o.box?.quaternion.copy(cam.quaternion).multiply(tilt); raf = requestAnimationFrame(loop) }
+    const t0 = performance.now()
+    const loop = () => {
+      for (const o of objs.values()) o.box?.quaternion.copy(cam.quaternion).multiply(tilt)
+      if (!reduced) timeU.value = (performance.now() - t0) / 1000
+      raf = requestAnimationFrame(loop)
+    }
     loop()
     graph = g
   } else {
@@ -205,13 +221,16 @@ async function build(): Promise<void> {
         const h = height(n) * 1.25; const w = h * ASPECT[icon(n)]
         ctx.fillStyle = c; ctx.fillRect(n.x - w / 2, n.y - h / 2, w, h + 6)
       })
-      .linkColor!((l: TopoLink) => (dimmed(idOf(l.source)) && dimmed(idOf(l.target)) ? 'rgba(100,116,139,.15)' : linkColor(l)))
-      .linkWidth!((l: TopoLink) => (l.kind === 'member' || l.kind === 'virtual' ? 0.6 : 2))
-      .linkLineDash!((l: TopoLink) => (l.kind === 'virtual' || l.kind === 'member' || l.active === false || l.complete === false ? [4, 3] : null))
-      .linkCurvature!((l: TopoLink) => (l.kind === 'virtual' ? 0.2 : 0.05))
-      .linkDirectionalParticles!((l: TopoLink) => (l.kind === 'data' && l.active ? 2 : l.kind === 'provider' ? 3 : 0))
-      .linkDirectionalParticleWidth!(3)
-      .linkDirectionalParticleSpeed!(0.006)
+      .linkCanvasObjectMode!(() => 'replace')
+      .linkCanvasObject!((l: KL & { source: TopoNode; target: TopoNode }, ctx: CanvasRenderingContext2D, scale: number) => {
+        if (l.source.x === undefined || l.target.x === undefined) return
+        const [o, b] = cableState(l)
+        drawLedCable2D(ctx, l, l.__k, l.source.x, l.source.y!, l.target.x, l.target.y!, linkColor(l), scale, reduced ? 0 : performance.now() / 1000, o, b)
+      })
+      .linkPointerAreaPaint!((l: KL & { source: TopoNode; target: TopoNode }, c: string, ctx: CanvasRenderingContext2D, scale: number) => {
+        if (l.source.x !== undefined && l.target.x !== undefined) hitCable2D(ctx, l, l.__k, l.source.x, l.source.y!, l.target.x, l.target.y!, c, scale)
+      })
+      .autoPauseRedraw!(reduced)
       .linkLabel!((l: TopoLink) => linkTip(l))
       .onNodeHover!((n: TopoNode | null) => { hover = n; el.value!.style.cursor = n ? 'pointer' : 'grab' })
       .onNodeClick!((n: TopoNode & { x: number; y: number }) => { selected = n; emit('select', n); g.centerAt!(n.x, n.y, 600); g.zoom!(3, 600) })
@@ -235,7 +254,7 @@ function paint3d(): void {
     o.halo.visible = selected?.id === id || hover?.id === id
     o.halo.material.opacity = selected?.id === id ? 0.9 : 0.55
   }
-  graph?.linkColor!((l: TopoLink) => (dimmed(idOf(l.source)) && dimmed(idOf(l.target)) ? 'rgba(100,116,139,.12)' : linkColor(l)))
+  for (const [l, c] of cables) c.setState(...cableState(l))
 }
 function flyTo(n: { x?: number; y?: number; z?: number }): void {
   if (!graph || props.dim !== '3d') return
@@ -249,6 +268,7 @@ function resize(): void {
 function destroy(): void {
   cancelAnimationFrame(raf)
   objs.clear()
+  cables.clear()
   graph?._destructor?.()
   graph = null
   if (el.value) el.value.innerHTML = ''

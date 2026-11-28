@@ -99,10 +99,11 @@ const kindLabel: Record<string, string> = { device: 'Equipamento', circuit: 'Cir
         <div v-for="[r, u] in roles" :key="r" class="lg"><img :src="u" alt="" />{{ r }}</div>
         <div v-for="[r, u] in fixed" :key="r" class="lg"><img :src="u" alt="" />{{ r }}</div>
         <div class="lg-t">Ligações</div>
-        <div class="lg"><b class="ln" style="background:#60a5fa" />cabo (cor real)</div>
-        <div class="lg"><b class="ln" style="background:#facc15" />energia</div>
-        <div class="lg"><b class="ln dash" />VM / host / planejado</div>
-        <div class="lg muted">● partículas = cabo ativo</div>
+        <div class="lg"><b class="ln" style="--c:#60a5fa" />cabo de rede (cor real)</div>
+        <div class="lg"><b class="ln" style="--c:#facc15" />energia</div>
+        <div class="lg"><b class="ln thin" style="--c:#c084fc" />VM no host / host no cluster</div>
+        <div class="lg"><b class="ln off" style="--c:#64748b" />planejado (sem tráfego)</div>
+        <div class="lg muted">pulsos que correm = tráfego nos dois sentidos</div>
       </aside>
 
       <Transition name="slide">
@@ -192,8 +193,14 @@ const kindLabel: Record<string, string> = { device: 'Equipamento', circuit: 'Cir
 .lg-t { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: #64748b; margin-top: 4px; }
 .lg { display: flex; align-items: center; gap: 8px; }
 .lg img { height: 15px; width: 46px; object-fit: contain; object-position: left center; flex: none; }
-.ln { width: 18px; height: 3px; border-radius: 2px; }
-.ln.dash { background: repeating-linear-gradient(90deg, #c084fc 0 4px, transparent 4px 7px); }
+.ln { position: relative; width: 26px; height: 5px; border-radius: 3px; flex: none; overflow: hidden;
+  background: color-mix(in srgb, var(--c) 30%, transparent); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 60%, transparent); }
+.ln::before { content: ''; position: absolute; inset: 1px 0; background: radial-gradient(circle, var(--c) 0 1.2px, transparent 1.6px) 0 50% / 4px 3px repeat-x; }
+.ln::after { content: ''; position: absolute; inset: 0; width: 8px; background: linear-gradient(90deg, transparent, #fff, transparent); animation: led 1.6s linear infinite; }
+.ln.thin { height: 3px; }
+.ln.off::after { display: none; }
+@keyframes led { from { transform: translateX(-10px); } to { transform: translateX(30px); } }
+@media (prefers-reduced-motion: reduce) { .ln::after { animation: none; display: none; } }
 .side { position: absolute; top: 14px; right: 14px; bottom: 14px; width: min(400px, calc(100% - 28px)); padding: 18px; overflow: auto; display: flex; flex-direction: column; gap: 10px;
   background: color-mix(in srgb, var(--panel) 90%, transparent); }
 .side h2 { margin: 0; font-size: 20px; }

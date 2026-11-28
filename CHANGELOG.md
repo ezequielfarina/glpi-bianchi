@@ -22,6 +22,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ### Adicionado
 - **Listas editáveis nos campos (ADR-0018)**: sistema operacional, função, plataforma e grupo do cluster e tipo de circuito abrem uma lista **logo abaixo do campo**, no visual do projeto, com busca e teclado; dá para **cadastrar, renomear e excluir** itens ali mesmo (exclusão só sem uso; renomear SO atualiza as VMs). A função também define **cor e desenho** no mapa.
+- **Cabos do mapa como fita de LED**: curvas maleáveis com caimento e profundidade (tubo 3D com brilho), LEDs na cor real do cabo e pulsos de tráfego nos dois sentidos; planejado fica apagado; respeita *reduzir movimento*.
 - **Mapa da rede com desenho dos equipamentos**: switch com portas e LEDs, firewall, servidor/host com baias, patch panel, DIO, PDU com tomadas, quadro, ONT, AP, computador, VM, cluster, circuito e nuvem da operadora — caixas 3D em ¾ no modo 3D e o mesmo desenho no 2D e na legenda.
 - **Virtualização e mapa da rede (ADR-0017)** — menu *Virtualização* e *Infraestrutura → Mapa da rede*:
   - **Clusters** Proxmox VE, ESXi, Hyper-V, XCP-ng, KVM, AHV com hosts físicos (equipamentos do rack) e anéis de consumo × capacidade; capacidade do host lida do inventário do GLPI Agent quando não informada.

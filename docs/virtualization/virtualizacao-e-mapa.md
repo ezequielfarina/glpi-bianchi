@@ -46,8 +46,7 @@ continuação) é sinalizado em amarelo.
 | VMs | mostra clusters e VMs ligados aos hosts |
 | Busca | nome ou IP — voa até o nó e abre o painel |
 
-Cada nó é o **desenho do equipamento** (switch com portas, firewall, servidor com baias, patch panel, ONT, AP…): no 3D, equipamento de rack é uma caixa em ¾ com a frente desenhada. O desenho vem da função (*Função → editar → desenho*; em branco = deduzido pelo nome). Cores: nó = cor da **função**; ligação = **cor real do cabo** (energia em amarelo, console em
-cinza, VM/host tracejado); partículas = cabo ativo. Clique no nó: modelo, rack/U, IP, portas conectadas, VMs e o
+Cada nó é o **desenho do equipamento** (switch com portas, firewall, servidor com baias, patch panel, ONT, AP…): no 3D, equipamento de rack é uma caixa em ¾ com a frente desenhada. O desenho vem da função (*Função → editar → desenho*; em branco = deduzido pelo nome). Cores: nó = cor da **função**; ligação = **fita de LED** na **cor real do cabo**, curva com caimento e torção (energia em amarelo, VM/host fina e lilás); os pulsos que correm nos dois sentidos indicam cabo ativo — cabo planejado fica com os LEDs apagados. Com *reduzir movimento* ligado no sistema, a animação para. Clique no nó: modelo, rack/U, IP, portas conectadas, VMs e o
 caminho até a internet sem sair do mapa. Passivos sem ligação (organizador de cabos) não entram no mapa.
 
 ## Consultas úteis
