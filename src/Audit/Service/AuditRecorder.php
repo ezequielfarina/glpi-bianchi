@@ -60,6 +60,7 @@ final readonly class AuditRecorder
             'location' === $type && $isInt => "SELECT l.name || coalesce(' — ' || b.name, '') FROM location l LEFT JOIN branch b ON b.id = l.branch_id WHERE l.id = ?",
             'rack' === $type && $isInt => "SELECT r.name || ' — ' || b.name FROM dcim_rack r JOIN branch b ON b.id = r.branch_id WHERE r.id = ?",
             'device_role' === $type && $isInt => 'SELECT name FROM dcim_device_role WHERE id = ?',
+            'platform' === $type && $isInt => 'SELECT name FROM dcim_platform WHERE id = ?',
             'device_type' === $type && $isInt => "SELECT m.name || ' ' || t.model FROM dcim_device_type t JOIN manufacturer m ON m.id = t.manufacturer_id WHERE t.id = ?",
             'port_template' === $type && $isInt => "SELECT t.model || ' — ' || p.name FROM dcim_port_template p JOIN dcim_device_type t ON t.id = p.device_type_id WHERE p.id = ?",
             'device' === $type && $isInt => "SELECT d.name || ' — ' || b.name FROM dcim_device d JOIN branch b ON b.id = d.branch_id WHERE d.id = ?",

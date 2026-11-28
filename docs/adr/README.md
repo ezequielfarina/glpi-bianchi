@@ -22,3 +22,4 @@ Para uma nova decisão, copie [`0000-template.md`](0000-template.md) usando o pr
 | [0015](0015-auditoria-de-acoes.md) | Trilha de auditoria de todas as ações da interface, somente inclusão | aceito |
 | [0016](0016-dcim-ipam-cabeamento.md) | DCIM, cabeamento com trace ponta a ponta, circuitos e IPAM no modelo do NetBox | aceito |
 | [0017](0017-virtualizacao-e-mapa.md) | Virtualização (clusters, hosts, VMs), caminho até a internet e mapa 3D da rede | aceito |
+| [0018](0018-listas-editaveis-e-desenho-no-mapa.md) | Listas editáveis nos campos (SO, função…) e desenho do equipamento no mapa | aceito |

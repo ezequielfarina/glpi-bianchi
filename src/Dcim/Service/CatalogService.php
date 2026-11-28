@@ -32,7 +32,8 @@ final readonly class CatalogService
     public function roles(): array
     {
         return $this->db->fetchAllAssociative(
-            'SELECT r.id, r.name, r.color, r.description, (SELECT count(*) FROM dcim_device d WHERE d.role_id = r.id) AS devices FROM dcim_device_role r ORDER BY r.name',
+            'SELECT r.id, r.name, r.color, r.icon, r.description, (SELECT count(*) FROM dcim_device d WHERE d.role_id = r.id) AS devices,
+                    (SELECT count(*) FROM virt_machine v WHERE v.role_id = r.id) AS vms FROM dcim_device_role r ORDER BY r.name',
         );
     }
 
@@ -46,6 +47,10 @@ final readonly class CatalogService
             $p->error('color', 'Cor inválida (hex, ex.: 2196f3).');
         }
         $description = $p->string('description', 255);
+        $icon = $p->string('icon', 20);
+        if (null !== $icon && !isset(DcimChoices::ROLE_ICONS[$icon])) {
+            $p->error('icon', 'Desenho inválido.');
+        }
         if (null !== $name && false !== $this->db->fetchOne('SELECT 1 FROM dcim_device_role WHERE lower(name) = lower(?) AND id <> ?', [$name, $id ?? 0])) {
             $p->error('name', 'Já existe uma função com esse nome.');
         }
@@ -53,12 +58,18 @@ final readonly class CatalogService
             throw new NotFoundException('Função não encontrada.');
         }
         $p->check();
-        $row = ['name' => $name, 'color' => $color, 'description' => $description];
         if (null === $id) {
             return (int) $this->db->fetchOne(
-                'INSERT INTO dcim_device_role (name, color, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?) RETURNING id',
-                [$name, $color, $description, Refs::now(), Refs::now()],
+                'INSERT INTO dcim_device_role (name, color, icon, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
+                [$name, $color, $icon, $description, Refs::now(), Refs::now()],
             );
+        }
+        // edição parcial (renomear na lista do campo) não apaga cor/desenho/descrição
+        $row = ['name' => $name];
+        foreach (['color' => $color, 'icon' => $icon, 'description' => $description] as $k => $v) {
+            if ($p->has($k)) {
+                $row[$k] = $v;
+            }
         }
         $this->db->update('dcim_device_role', $row + ['updated_at' => Refs::now()], ['id' => $id]);
 
@@ -68,12 +79,64 @@ final readonly class CatalogService
     public function deleteRole(int $id): void
     {
         $used = (int) $this->db->fetchOne('SELECT count(*) FROM dcim_device WHERE role_id = ?', [$id]);
-        if ($used > 0) {
-            throw new ValidationException(['id' => \sprintf('Função usada por %d equipamento(s).', $used)]);
+        $vms = (int) $this->db->fetchOne('SELECT count(*) FROM virt_machine WHERE role_id = ?', [$id]);
+        if ($used + $vms > 0) {
+            throw new ValidationException(['id' => \sprintf('Função em uso: %d equipamento(s) e %d VM(s). Troque a função deles antes de excluir.', $used, $vms)]);
         }
         if (0 === $this->db->executeStatement('DELETE FROM dcim_device_role WHERE id = ?', [$id])) {
             throw new NotFoundException('Função não encontrada.');
         }
+    }
+
+    // ------------------------------------------------------------------ plataformas / sistemas operacionais (ADR-0018)
+
+    /** @return list<array<string, mixed>> */
+    public function platforms(): array
+    {
+        return Num::rows($this->db->fetchAllAssociative(
+            'SELECT p.id, p.name, p.description, (SELECT count(*) FROM virt_machine v WHERE v.platform = p.name) AS vms FROM dcim_platform p ORDER BY lower(p.name)',
+        ), [], ['vms']);
+    }
+
+    /** @param array<string, mixed> $data */
+    public function savePlatform(?int $id, array $data): int
+    {
+        $p = new Payload($data);
+        $name = $p->string('name', 100, required: true);
+        $description = $p->string('description', 255);
+        if (null !== $name && false !== $this->db->fetchOne('SELECT 1 FROM dcim_platform WHERE lower(name) = lower(?) AND id <> ?', [$name, $id ?? 0])) {
+            $p->error('name', 'Já existe na lista.');
+        }
+        $old = null === $id ? null : $this->db->fetchOne('SELECT name FROM dcim_platform WHERE id = ?', [$id]);
+        if (false === $old) {
+            throw new NotFoundException('Plataforma não encontrada.');
+        }
+        $p->check();
+        if (null === $id) {
+            return (int) $this->db->fetchOne('INSERT INTO dcim_platform (name, description, created_at, updated_at) VALUES (?, ?, ?, ?) RETURNING id',
+                [$name, $description, Refs::now(), Refs::now()]);
+        }
+        $row = ['name' => $name, 'updated_at' => Refs::now()] + ($p->has('description') ? ['description' => $description] : []);
+        $this->db->update('dcim_platform', $row, ['id' => $id]);
+        // renomear na lista renomeia nas VMs (o campo da VM é texto)
+        if ($old !== $name) {
+            $this->db->executeStatement('UPDATE virt_machine SET platform = ?, updated_at = ? WHERE platform = ?', [$name, Refs::now(), $old]);
+        }
+
+        return $id;
+    }
+
+    public function deletePlatform(int $id): void
+    {
+        $name = $this->db->fetchOne('SELECT name FROM dcim_platform WHERE id = ?', [$id]);
+        if (false === $name) {
+            throw new NotFoundException('Plataforma não encontrada.');
+        }
+        $vms = (int) $this->db->fetchOne('SELECT count(*) FROM virt_machine WHERE platform = ?', [$name]);
+        if ($vms > 0) {
+            throw new ValidationException(['id' => \sprintf('Usada por %d VM(s). Troque o sistema delas antes de excluir.', $vms)]);
+        }
+        $this->db->executeStatement('DELETE FROM dcim_platform WHERE id = ?', [$id]);
     }
 
     // ------------------------------------------------------------------ tipos de equipamento

@@ -34,6 +34,10 @@ class DeviceRole
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $description = null;
 
+    /** Desenho do equipamento no mapa da rede (ADR-0018): switch, firewall, server… */
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $icon = null;
+
     public function __construct(string $name)
     {
         $this->name = $name;
@@ -57,5 +61,10 @@ class DeviceRole
     public function getDescription(): ?string
     {
         return $this->description;
+    }
+
+    public function getIcon(): ?string
+    {
+        return $this->icon;
     }
 }

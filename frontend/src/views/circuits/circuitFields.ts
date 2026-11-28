@@ -1,11 +1,11 @@
 import type { FieldSpec } from '../../components/dcim/SpecForm.vue'
 
 type Opt = { value: number | string; label: string }
-export function circuitFields(suppliers: Opt[], types: Opt[], contracts: Opt[], status: Opt[]): FieldSpec[] {
+export function circuitFields(suppliers: Opt[], _types: Opt[], contracts: Opt[], status: Opt[]): FieldSpec[] {
   return [
     { key: 'supplier_id', label: 'Operadora (fornecedor)', type: 'select', required: true, options: suppliers },
     { key: 'cid', label: 'Designação / ID do circuito', required: true, mono: true, placeholder: 'como aparece na fatura/contrato' },
-    { key: 'type_id', label: 'Tipo', type: 'select', required: true, options: types },
+    { key: 'type_id', label: 'Tipo', type: 'lookup', source: 'circuit_types', required: true, placeholder: 'Internet dedicada, MPLS…' },
     { key: 'status', label: 'Situação', type: 'select', required: true, options: status },
     { key: 'commit_mbps', label: 'Banda contratada (Mbps)', type: 'number' },
     { key: 'contract_id', label: 'Contrato', type: 'select', options: contracts },

@@ -72,7 +72,8 @@ Leitura para qualquer perfil; escrita para Técnico/Administrador; toda escrita 
 | GET | `/api/ui/dcim/choices` | opções (tipos de porta e físicos, tipos/cores de cabo, status, compatibilidade, funções) |
 | GET · POST · PUT · DELETE | `/api/ui/dcim/locations[/{id}]` | árvore (`branch`) · detalhe (racks, equipamentos, ativos, fotos) · `{name, kind, branch_id \| parent_id, code, description}` |
 | GET · POST · PUT · DELETE | `/api/ui/dcim/racks[/{id}]` | lista (`branch`, `location`, `q`) · detalhe com `devices` (elevação) e `unracked` |
-| GET · POST · PUT · DELETE | `/api/ui/dcim/roles[/{id}]` · `/device-types[/{id}]` | funções · tipos (com `templates`) |
+| GET · POST · PUT · DELETE | `/api/ui/dcim/roles[/{id}]` · `/device-types[/{id}]` | funções `{name, color, icon}` (`icon` ∈ `choices.role_icons`; PUT parcial preserva o que não veio) · tipos (com `templates`) |
+| GET · POST · PUT · DELETE | `/api/ui/dcim/platforms[/{id}]` | sistemas operacionais `{name, description}` com `vms` (uso); renomear propaga para as VMs; excluir em uso → 422 |
 | POST · PUT · DELETE | `/api/ui/dcim/device-types/{id}/templates` · `/port-templates/{id}` | portas do modelo em lote: `{kind, name: "Gi1/0/[1-48]", type, …}`; `kind: "pair"` cria frontal+traseira mapeadas |
 | GET · POST · PUT · DELETE | `/api/ui/dcim/devices[/{id}]` | lista (`q`, `branch`, `location`, `rack`, `role`, `type`, `status`) · detalhe com portas, *link peers*, destino do caminho, IPs, energia · `{name, device_type_id, role_id?, branch_id, location_id?, rack_id?, position?, face?, asset_uuid?, copy_interfaces?}` |
 | GET | `/api/ui/dcim/asset-candidates` · `/assets/{uuid}/device` | ativos sem equipamento (`q`) · posição física e conexões do ativo |

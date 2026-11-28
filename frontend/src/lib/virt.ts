@@ -55,7 +55,7 @@ export interface TopoNode {
   rack?: string | null; position?: number | null; device_type?: string; status?: string; primary_ip?: string | null; passive?: boolean; external?: boolean
   connected?: number; ports?: number; photo?: string | null; asset_uuid?: string | null; device_id?: number; circuit_id?: number; provider?: string; cid?: string
   type?: string; commit_rate_kbps?: number | null; cluster_id?: number; vm_id?: number; vms?: number; vcpus?: number | null; memory_mb?: number | null; disk_gb?: number | null
-  platform?: string | null; management_url?: string | null; id_num?: never
+  platform?: string | null; management_url?: string | null; icon?: string | null; u_height?: number | null
   // campos do force-graph
   x?: number; y?: number; z?: number
 }

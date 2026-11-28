@@ -2,12 +2,14 @@
 import { computed, reactive, ref, watch } from 'vue'
 import AppModal from '../AppModal.vue'
 import HelpTip from '../HelpTip.vue'
+import LookupSelect from '../LookupSelect.vue'
 import AppIcon from '../AppIcon.vue'
 import { api } from '../../lib/api'
 import { dcim, dcimChoices, type AssetCandidate, type DcimChoices, type DeviceDetail, type DeviceTypeRow, type LocationRow, type RackRow } from '../../lib/dcim'
 import type { BranchRow } from '../../lib/types'
 import { clean, useForm } from '../forms/useForm'
 import { virt, type ClusterRow } from '../../lib/virt'
+import { lookupState } from '../../lib/lookups'
 
 // Cadastro/edição de equipamento: tipo (portas vêm do modelo), função, filial/local/rack/U/face e vínculo opcional com o ativo.
 const props = defineProps<{ device?: DeviceDetail | null; preset?: { branch_id?: number; location_id?: number | null; rack_id?: number; position?: number; face?: string; asset?: AssetCandidate } }>()
@@ -27,7 +29,7 @@ const f = reactive({
 const memGb = ref<string>(d?.memory_mb ? String(+(d.memory_mb / 1024).toFixed(1)) : '')
 const clusters = ref<ClusterRow[]>([])
 void virt.clusters().then((r) => { clusters.value = r.items })
-const roleName = computed(() => choices.value?.roles.find((r) => r.id === f.role_id)?.name ?? '')
+const roleName = computed(() => lookupState('roles').items.find((r) => r.id === f.role_id)?.name ?? '')
 const showVirt = computed(() => !!f.cluster_id || /virtualiza|servidor|host/i.test(roleName.value))
 const choices = ref<DcimChoices | null>(null)
 const types = ref<DeviceTypeRow[]>([])
@@ -97,7 +99,7 @@ async function save(): Promise<void> {
         <span v-if="errors.device_type_id" class="err">{{ errors.device_type_id }}</span>
         <span v-else-if="!d && type" class="hint">Cria {{ type.interfaces }} interface(s), {{ type.front_ports }} frontal(is), {{ type.rear_ports }} traseira(s), {{ type.power_ports }} de energia, {{ type.console_ports }} de console.</span></div>
       <div class="field"><label for="dv-role">Função *<HelpTip ctx="device" k="role_id" label="Função" /></label>
-        <select id="dv-role" v-model="f.role_id" class="input" :aria-invalid="!!errors.role_id"><option value="">—</option><option v-for="r in choices?.roles ?? []" :key="r.id" :value="r.id">{{ r.name }}</option></select>
+        <LookupSelect v-model="f.role_id" source="roles" input-id="dv-role" required :invalid="!!errors.role_id" placeholder="Switch, Firewall, Servidor…" />
         <span v-if="errors.role_id" class="err">{{ errors.role_id }}</span></div>
       <div class="field"><label for="dv-status">Situação<HelpTip ctx="device" k="status" label="Situação" /></label>
         <select id="dv-status" v-model="f.status" class="input"><option v-for="o in choices?.device_status ?? []" :key="o.value" :value="o.value">{{ o.label }}</option></select></div>

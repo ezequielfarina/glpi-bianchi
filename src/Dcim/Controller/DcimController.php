@@ -148,6 +148,32 @@ final readonly class DcimController
         return $this->json(['deleted' => true]);
     }
 
+    #[Route('/platforms', name: 'platforms', methods: ['GET'])]
+    public function platforms(): JsonResponse
+    {
+        return $this->json(['items' => $this->catalog->platforms()]);
+    }
+
+    #[Route('/platforms', name: 'platform_create', methods: ['POST'])]
+    public function platformCreate(Request $request): JsonResponse
+    {
+        return $this->json(['id' => $this->catalog->savePlatform(null, $this->body($request))], Response::HTTP_CREATED);
+    }
+
+    #[Route('/platforms/{id}', name: 'platform_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
+    public function platformUpdate(int $id, Request $request): JsonResponse
+    {
+        return $this->json(['id' => $this->catalog->savePlatform($id, $this->body($request))]);
+    }
+
+    #[Route('/platforms/{id}', name: 'platform_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
+    public function platformDelete(int $id): JsonResponse
+    {
+        $this->catalog->deletePlatform($id);
+
+        return $this->json(['deleted' => true]);
+    }
+
     #[Route('/device-types', name: 'types', methods: ['GET'])]
     public function types(#[MapQueryParameter] ?string $q = null): JsonResponse
     {

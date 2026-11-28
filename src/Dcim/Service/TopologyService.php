@@ -32,7 +32,7 @@ final class TopologyService
     public function graph(?int $branchId, string $mode = 'logical', bool $withVms = true): array
     {
         $devices = Num::rows($this->db->fetchAllAssociative(<<<'SQL'
-            SELECT d.id, d.name, d.status, r.name AS role, r.color, b.id AS branch_id, b.name AS branch, l.name AS location, k.name AS rack, d.position::float8 AS position,
+            SELECT d.id, d.name, d.status, r.name AS role, r.color, r.icon, t.u_height::float8 AS u_height, b.id AS branch_id, b.name AS branch, l.name AS location, k.name AS rack, d.position::float8 AS position,
                    m.name || ' ' || t.model AS device_type, d.cluster_id, a.uuid AS asset_uuid,
                    (SELECT host(ip.address) FROM ipam_ip_address ip WHERE ip.id = d.primary_ip_id) AS primary_ip,
                    NOT EXISTS (SELECT 1 FROM dcim_port p WHERE p.device_id = d.id AND p.kind NOT IN ('front', 'rear')) AS passive,
@@ -46,7 +46,7 @@ final class TopologyService
             JOIN branch b ON b.id = d.branch_id
             LEFT JOIN location l ON l.id = d.location_id LEFT JOIN dcim_rack k ON k.id = d.rack_id LEFT JOIN asset a ON a.id = d.asset_id
             WHERE CAST(:branch AS int) IS NULL OR d.branch_id = :branch
-            SQL, ['branch' => $branchId]), ['position'], ['connected', 'ports']);
+            SQL, ['branch' => $branchId]), ['position', 'u_height'], ['connected', 'ports']);
         $nodes = [];
         foreach ($devices as $d) {
             if ('logical' === $mode && $d['passive']) {

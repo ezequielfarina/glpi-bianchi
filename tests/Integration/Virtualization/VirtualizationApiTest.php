@@ -95,6 +95,31 @@ final class VirtualizationApiTest extends WebTestCase
         self::assertNull($this->db->fetchOne('SELECT device_id FROM virt_machine WHERE id = ?', [$vm]));
     }
 
+    public function testEditablePlatformListAndRoleIcon(): void
+    {
+        $pve = (int) $this->db->fetchOne("SELECT id FROM virt_cluster_type WHERE name = 'Proxmox VE'");
+        $cluster = $this->id('POST', '/api/ui/virtualization/clusters', ['name' => 'PVE-P', 'type_id' => $pve]);
+        $os = $this->id('POST', '/api/ui/dcim/platforms', ['name' => 'Alpine 3.20']);
+        $this->call('POST', '/api/ui/dcim/platforms', ['name' => 'alpine 3.20'], 422);
+        $vm = $this->id('POST', '/api/ui/virtualization/vms', ['name' => 'VM-P', 'cluster_id' => $cluster, 'platform' => 'Alpine 3.20']);
+
+        // renomear na lista renomeia nas VMs; excluir em uso é recusado
+        $this->call('PUT', "/api/ui/dcim/platforms/$os", ['name' => 'Alpine Linux 3.20']);
+        self::assertSame('Alpine Linux 3.20', $this->db->fetchOne('SELECT platform FROM virt_machine WHERE id = ?', [$vm]));
+        $this->call('DELETE', "/api/ui/dcim/platforms/$os", null, 422);
+        $this->call('DELETE', "/api/ui/virtualization/vms/$vm");
+        $this->call('DELETE', "/api/ui/dcim/platforms/$os");
+
+        // função: desenho do mapa validado; renomear não apaga cor/desenho
+        $this->call('POST', '/api/ui/dcim/roles', ['name' => 'Tanque', 'icon' => 'tank'], 422);
+        $role = $this->id('POST', '/api/ui/dcim/roles', ['name' => 'Câmera IP', 'color' => '78909c', 'icon' => 'camera']);
+        $this->call('PUT', "/api/ui/dcim/roles/$role", ['name' => 'Câmera']);
+        self::assertSame(['camera', '78909c'], array_values((array) $this->db->fetchAssociative('SELECT icon, color FROM dcim_device_role WHERE id = ?', [$role])));
+        $vmRole = (int) $this->db->fetchOne("SELECT id FROM dcim_device_role WHERE name = 'Máquina virtual'");
+        $this->id('POST', '/api/ui/virtualization/vms', ['name' => 'VM-R', 'cluster_id' => $cluster]);
+        $this->call('DELETE', "/api/ui/dcim/roles/$vmRole", null, 422);
+    }
+
     public function testViewerCannotWrite(): void
     {
         $this->loginAs($this->client, 'viewer');

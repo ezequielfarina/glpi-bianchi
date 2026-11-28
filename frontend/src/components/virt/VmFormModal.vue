@@ -3,6 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import AppModal from '../AppModal.vue'
 import AppIcon from '../AppIcon.vue'
 import HelpTip from '../HelpTip.vue'
+import LookupSelect from '../LookupSelect.vue'
 import { dcimChoices, type DcimChoices } from '../../lib/dcim'
 import { platformBadge, virt, type ClusterHost, type ClusterRow, type VirtChoices, type VmAssetCandidate, type VmDetail } from '../../lib/virt'
 import { clean, useForm } from '../forms/useForm'
@@ -31,8 +32,6 @@ watch(() => f.cluster_id, async (c, old) => {
   if (!f.device_id && hosts.value.length === 1) f.device_id = hosts.value[0]!.id
 }, { immediate: true })
 const cluster = computed(() => clusters.value.find((c) => c.id === f.cluster_id))
-const PLATFORMS = ['Windows Server 2025', 'Windows Server 2022', 'Windows Server 2019', 'Windows 11', 'Ubuntu 24.04 LTS', 'Ubuntu 22.04 LTS', 'Debian 13', 'Debian 12',
-  'Rocky Linux 9', 'Oracle Linux 9', 'pfSense', 'OPNsense', 'FortiGate-VM', 'MikroTik CHR', 'Zabbix Appliance', 'TrueNAS']
 const hostFree = (h: ClusterHost) => [h.cpu_threads ? `${+(h.cpu_threads - h.used_vcpus).toFixed(1)} vCPU livres` : null,
   h.memory_mb ? `${+((h.memory_mb - h.used_memory_mb) / 1024).toFixed(0)} GB RAM livres` : null].filter(Boolean).join(' · ')
 
@@ -92,10 +91,10 @@ async function save(): Promise<void> {
           <span v-if="v?.disks.length" class="hint">Soma dos {{ v.disks.length }} disco(s) virtuais.</span></div>
       </fieldset>
       <div class="field"><label for="vm-os">Sistema operacional<HelpTip ctx="vm" k="platform" label="Sistema operacional" /></label>
-        <input id="vm-os" v-model="f.platform" class="input" list="vm-os-list" placeholder="Windows Server 2022" /><datalist id="vm-os-list"><option v-for="o in PLATFORMS" :key="o" :value="o" /></datalist></div>
+        <LookupSelect v-model="f.platform" source="platforms" by="name" free input-id="vm-os" placeholder="Windows Server 2022" /></div>
       <div class="field"><label for="vm-vmid">ID no hipervisor<HelpTip ctx="vm" k="vmid" label="ID no hipervisor" /></label><input id="vm-vmid" v-model="f.vmid" class="input mono" placeholder="101" /></div>
       <div class="field"><label for="vm-role">Função<HelpTip ctx="device" k="role_id" label="Função" /></label>
-        <select id="vm-role" v-model="f.role_id" class="input"><option value="">Máquina virtual</option><option v-for="r in dch?.roles ?? []" :key="r.id" :value="r.id">{{ r.name }}</option></select></div>
+        <LookupSelect v-model="f.role_id" source="roles" input-id="vm-role" placeholder="Máquina virtual (padrão)" /></div>
       <div class="field full"><label for="vm-asset">Ativo do inventário (opcional)<HelpTip ctx="vm" k="asset" label="Ativo" /></label>
         <div v-if="linked" class="linked"><AppIcon name="pc" :size="15" /> <RouterLink :to="`/assets/${linked.uuid}`" target="_blank">{{ linked.name }}</RouterLink>
           <button type="button" class="btn btn-icon" aria-label="Desvincular ativo" @click="linked = null; f.asset_uuid = ''"><AppIcon name="close" :size="14" /></button></div>

@@ -14,6 +14,8 @@ interfaces, discos), com o host físico sendo um **equipamento** do DCIM.
 4. Na VM: **interfaces** (`net0`, bridge `vmbr0`, MAC, VLAN acesso/tronco), **IPs** (marque *primário*),
    **discos** (`scsi0` 100 GB em `local-lvm` — o total da VM passa a ser a soma), capturas de tela e documentos.
 
+Sistema operacional, função e plataforma são **listas editáveis**: digite para filtrar, *Cadastrar “…”* para incluir; passe o mouse num item para renomear (✎) ou excluir (🗑, só sem uso).
+
 Todo campo tem o **!** ao lado do rótulo: passe o mouse ou toque para ver como preencher, com exemplo.
 
 ## Caminho até a internet (reverso)
@@ -44,7 +46,7 @@ continuação) é sinalizado em amarelo.
 | VMs | mostra clusters e VMs ligados aos hosts |
 | Busca | nome ou IP — voa até o nó e abre o painel |
 
-Cores: nó = cor da **função** do equipamento; ligação = **cor real do cabo** (energia em amarelo, console em
+Cada nó é o **desenho do equipamento** (switch com portas, firewall, servidor com baias, patch panel, ONT, AP…): no 3D, equipamento de rack é uma caixa em ¾ com a frente desenhada. O desenho vem da função (*Função → editar → desenho*; em branco = deduzido pelo nome). Cores: nó = cor da **função**; ligação = **cor real do cabo** (energia em amarelo, console em
 cinza, VM/host tracejado); partículas = cabo ativo. Clique no nó: modelo, rack/U, IP, portas conectadas, VMs e o
 caminho até a internet sem sair do mapa. Passivos sem ligação (organizador de cabos) não entram no mapa.
 

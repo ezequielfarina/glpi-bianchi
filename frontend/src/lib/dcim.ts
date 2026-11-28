@@ -10,7 +10,7 @@ type Body = Record<string, unknown>
 export interface DcimChoices {
   port_kinds: Opt[]; port_types: Record<string, Opt[]>; non_connectable: string[]; compatible: Record<string, string[]>
   cable_types: Opt[]; cable_status: Opt[]; length_units: Opt[]; colors: Opt[]; device_status: Opt[]; rack_status: Opt[]
-  location_kinds: Opt[]; rack_widths: number[]; roles: DeviceRole[]
+  location_kinds: Opt[]; rack_widths: number[]; roles: DeviceRole[]; role_icons: Opt[]
 }
 export interface IpamChoices {
   prefix_status: Opt[]; range_status: Opt[]; ip_status: Opt[]; ip_roles: Opt[]; vlan_status: Opt[]; vrfs: Vrf[]; vlan_groups: VlanGroup[]
@@ -41,7 +41,8 @@ export interface RackDetail {
   branch_id: number; branch: string; location_id: number | null; location: string | null
   devices: RackDevice[]; unracked: RackDevice[]; used_u: number; utilization: number; attachments: Attachment[]
 }
-export interface DeviceRole { id: number; name: string; color: string; description: string | null; devices: number }
+export interface DeviceRole { id: number; name: string; color: string; icon: string | null; description: string | null; devices: number; vms?: number }
+export interface Platform { id: number; name: string; description: string | null; vms: number }
 export interface DeviceTypeRow {
   id: number; model: string; part_number: string | null; u_height: number; is_full_depth: boolean; description: string | null; manufacturer: string
   default_role_id: number | null; default_role: string | null; color: string | null; devices: number; interfaces: number; front_ports: number; rear_ports: number
@@ -171,6 +172,9 @@ export const dcim = {
   roles: () => get<{ items: DeviceRole[] }>('/dcim/roles'),
   saveRole: (id: number | null, b: Body) => save('/dcim/roles', id, b),
   deleteRole: (id: number) => del('/dcim/roles', id),
+  platforms: () => get<{ items: Platform[] }>('/dcim/platforms'),
+  savePlatform: (id: number | null, b: Body) => save('/dcim/platforms', id, b),
+  deletePlatform: (id: number) => del('/dcim/platforms', id),
   types: (q?: string) => get<{ items: DeviceTypeRow[] }>(`/dcim/device-types${qs({ q })}`),
   type: (id: number) => get<DeviceTypeDetail>(`/dcim/device-types/${id}`),
   saveType: (id: number | null, b: Body) => save('/dcim/device-types', id, b),
@@ -246,7 +250,8 @@ export const circuits = {
 
 let cached: Promise<DcimChoices> | null = null
 /** Opções do DCIM (carregadas uma vez por sessão de página). */
-export function dcimChoices(): Promise<DcimChoices> {
+export function dcimChoices(force = false): Promise<DcimChoices> {
+  if (force) cached = null
   cached ??= dcim.choices().catch((e) => { cached = null; throw e })
   return cached
 }

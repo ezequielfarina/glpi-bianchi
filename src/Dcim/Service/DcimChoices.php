@@ -104,6 +104,14 @@ final class DcimChoices
 
     public const array RACK_WIDTHS = [10, 19, 21, 23];
 
+    /** Desenho do equipamento no mapa da rede (ADR-0018). */
+    public const array ROLE_ICONS = [
+        'switch' => 'Switch', 'router' => 'Roteador', 'firewall' => 'Firewall', 'server' => 'Servidor', 'hypervisor' => 'Host de virtualização',
+        'storage' => 'Storage / NAS', 'patch_panel' => 'Patch panel', 'dio' => 'DIO (fibra)', 'jack' => 'Ponto de rede (tomada)', 'pdu' => 'PDU / régua',
+        'power_panel' => 'Quadro de energia', 'ups' => 'Nobreak', 'ont' => 'Modem / ONT', 'ap' => 'Access point', 'workstation' => 'Computador',
+        'printer' => 'Impressora', 'phone' => 'Telefone IP', 'camera' => 'Câmera / NVR', 'organizer' => 'Organizador', 'vm' => 'Máquina virtual', 'generic' => 'Genérico',
+    ];
+
     /** @return array<string, mixed> tudo que a interface precisa para montar os formulários */
     public static function all(): array
     {
@@ -122,6 +130,7 @@ final class DcimChoices
             'rack_status' => $map(self::RACK_STATUS),
             'location_kinds' => $map(self::LOCATION_KINDS),
             'rack_widths' => self::RACK_WIDTHS,
+            'role_icons' => $map(self::ROLE_ICONS),
         ];
     }
 

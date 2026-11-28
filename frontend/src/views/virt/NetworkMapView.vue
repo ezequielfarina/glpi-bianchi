@@ -7,6 +7,7 @@ import PathToInternet from '../../components/virt/PathToInternet.vue'
 import { api } from '../../lib/api'
 import { DEVICE_STATUS, dcim, hex, onColor, speed, uLabel, type DeviceDetail } from '../../lib/dcim'
 import type { BranchRow } from '../../lib/types'
+import { iconOf, iconUrl } from '../../lib/netIcons'
 import { gb, num, platformBadge, virt, VM_STATUS, type TopoNode, type Topology, type VmDetail } from '../../lib/virt'
 
 // Mapa da rede (ADR-0017 §3): 3D/2D, lógico (passivos colapsados) ou físico (cabo a cabo), clique para detalhes.
@@ -48,11 +49,13 @@ const stats = computed(() => {
   return { devices: n.filter((x) => x.kind === 'device').length, vms: n.filter((x) => x.kind === 'vm').length, links: data.value?.links.filter((l) => ['data', 'power', 'console'].includes(l.kind)).length ?? 0,
     circuits: n.filter((x) => x.kind === 'circuit').length }
 })
+// legenda com o próprio desenho de cada função presente no mapa
 const roles = computed(() => {
   const m = new Map<string, string>()
-  for (const n of data.value?.nodes ?? []) if (n.kind === 'device' && n.role) m.set(n.role, hex(n.color))
+  for (const n of data.value?.nodes ?? []) if (n.kind === 'device' && n.role && !m.has(n.role)) m.set(n.role, iconUrl(iconOf('device', n.icon, n.role), hex(n.color), 16))
   return [...m.entries()]
 })
+const fixed = [['Cluster', iconUrl('cluster', '#f97316', 16)], ['VM', iconUrl('vm', '#a855f7', 16)], ['Circuito', iconUrl('circuit', '#a855f7', 16)], ['Operadora', iconUrl('cloud', '#0ea5e9', 16)]] as const
 function search(): void {
   const t = q.value.trim().toLowerCase()
   const n = data.value?.nodes.find((x) => x.name.toLowerCase() === t) ?? data.value?.nodes.find((x) => x.name.toLowerCase().includes(t) || (x.primary_ip ?? '').startsWith(t))
@@ -93,11 +96,8 @@ const kindLabel: Record<string, string> = { device: 'Equipamento', circuit: 'Cir
 
       <aside class="legend glass" aria-label="Legenda">
         <div class="lg-t">Legenda</div>
-        <div v-for="[r, c] in roles" :key="r" class="lg"><i :style="{ background: c }" />{{ r }}</div>
-        <div class="lg"><i class="sq" style="background:#f97316" />Cluster</div>
-        <div class="lg"><i style="background:#c084fc" />VM</div>
-        <div class="lg"><i class="sq" style="background:#a855f7" />Circuito</div>
-        <div class="lg"><i style="background:#0ea5e9" />Operadora</div>
+        <div v-for="[r, u] in roles" :key="r" class="lg"><img :src="u" alt="" />{{ r }}</div>
+        <div v-for="[r, u] in fixed" :key="r" class="lg"><img :src="u" alt="" />{{ r }}</div>
         <div class="lg-t">Ligações</div>
         <div class="lg"><b class="ln" style="background:#60a5fa" />cabo (cor real)</div>
         <div class="lg"><b class="ln" style="background:#facc15" />energia</div>
@@ -191,8 +191,7 @@ const kindLabel: Record<string, string> = { device: 'Equipamento', circuit: 'Cir
   background: rgba(15, 23, 42, .7); border-color: rgba(148, 163, 184, .2); }
 .lg-t { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: #64748b; margin-top: 4px; }
 .lg { display: flex; align-items: center; gap: 8px; }
-.lg i { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
-.lg i.sq { border-radius: 3px; }
+.lg img { height: 15px; width: 46px; object-fit: contain; object-position: left center; flex: none; }
 .ln { width: 18px; height: 3px; border-radius: 2px; }
 .ln.dash { background: repeating-linear-gradient(90deg, #c084fc 0 4px, transparent 4px 7px); }
 .side { position: absolute; top: 14px; right: 14px; bottom: 14px; width: min(400px, calc(100% - 28px)); padding: 18px; overflow: auto; display: flex; flex-direction: column; gap: 10px;

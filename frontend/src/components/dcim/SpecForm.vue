@@ -1,8 +1,12 @@
 <script lang="ts">
+import type { LookupSource } from '../../lib/lookups'
 export interface FieldSpec {
   key: string
   label: string
-  type?: 'text' | 'number' | 'textarea' | 'select' | 'check' | 'color' | 'date'
+  type?: 'text' | 'number' | 'textarea' | 'select' | 'check' | 'color' | 'date' | 'lookup'
+  /** lista editável (type: 'lookup') */
+  source?: LookupSource
+  by?: 'id' | 'name'
   options?: { value: string | number | null; label: string }[]
   required?: boolean
   placeholder?: string
@@ -21,6 +25,7 @@ export interface FieldSpec {
 import { reactive } from 'vue'
 import AppModal from '../AppModal.vue'
 import HelpTip from '../HelpTip.vue'
+import LookupSelect from '../LookupSelect.vue'
 import { clean, useForm } from '../forms/useForm'
 
 // Formulário genérico (modal) dirigido por especificação de campos — cadastros simples do DCIM/IPAM.
@@ -54,7 +59,9 @@ const id = (f: FieldSpec) => `sf-${f.key}`
         <label v-if="f.type === 'check' && visible(f)" class="check" :class="{ full: f.full }"><input v-model="v[f.key]" type="checkbox" /> {{ f.label }}<HelpTip :ctx="ctx" :k="f.key" :text="f.help" :example="f.example" :label="f.label" /></label>
         <div v-else-if="visible(f)" class="field" :class="{ full: f.full || f.type === 'textarea' }">
           <label :for="id(f)">{{ f.label }}{{ f.required ? ' *' : '' }}<HelpTip :ctx="ctx" :k="f.key" :text="f.help" :example="f.example" :label="f.label" /></label>
-          <select v-if="f.type === 'select'" :id="id(f)" v-model="v[f.key]" class="input" :aria-invalid="!!errors[f.key]">
+          <LookupSelect v-if="f.type === 'lookup' && f.source" v-model="v[f.key] as string | number" :source="f.source" :by="f.by ?? 'id'" :free="f.by === 'name'" :input-id="id(f)"
+            :required="f.required" :invalid="!!errors[f.key]" :placeholder="f.placeholder" />
+          <select v-else-if="f.type === 'select'" :id="id(f)" v-model="v[f.key]" class="input" :aria-invalid="!!errors[f.key]">
             <option v-if="!f.required" :value="''">—</option>
             <option v-for="o in f.options ?? []" :key="String(o.value)" :value="o.value ?? ''">{{ o.label }}</option>
           </select>
