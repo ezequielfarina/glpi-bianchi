@@ -169,6 +169,8 @@ descritas em [`CLAUDE.md`](CLAUDE.md): **banco** (`migrations/`, `docs/database/
 | [docs/tools/scanner-de-rede.md](docs/tools/scanner-de-rede.md) | scanner de rede (capabilities, SNMP, FortiGate) e calculadora |
 | [docs/dcim/infraestrutura.md](docs/dcim/infraestrutura.md) | locais, racks, equipamentos, cabos e rastreamento, circuitos, energia, IPAM — passo a passo e convenções |
 | [docs/virtualization/virtualizacao-e-mapa.md](docs/virtualization/virtualizacao-e-mapa.md) | clusters, hosts, VMs, caminho até a internet e mapa da rede |
+| [docs/security/auditoria-2026-11.md](docs/security/auditoria-2026-11.md) | auditoria de segurança e testes de invasão (achados, correções, ações) |
+| [docs/security/criptografia.md](docs/security/criptografia.md) | criptografia: chaves, rotação, backup cifrado, ZFS no host, agentes com credencial |
 | [docs/stock/estoque-e-notas.md](docs/stock/estoque-e-notas.md) | estoque, notas fiscais, saída para filial e etiqueta de envio (impressão na Argox) |
 | [docs/audit/auditoria.md](docs/audit/auditoria.md) | auditoria: ações no sistema e acessos, o que é registrado, consultas SQL |
 | [docs/database/README.md](docs/database/README.md) | modelo de dados, ER, índices, triggers, manutenção |

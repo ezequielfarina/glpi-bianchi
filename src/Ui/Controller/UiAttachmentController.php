@@ -10,12 +10,12 @@ use App\Ui\Write\NotFoundException;
 use App\Ui\Write\Refs;
 use App\Ui\Write\ValidationException;
 use Doctrine\DBAL\Connection;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -70,18 +70,27 @@ final readonly class UiAttachmentController
     public function download(string $uuid, Request $request): Response
     {
         $file = $this->storage->locate($uuid) ?? throw new NotFoundException('Anexo não encontrado.');
-        $response = new BinaryFileResponse($file['path']);
+        // decifra em fluxo (ADR-0019); sem Range: o conteúdo não está em claro no disco
+        $storage = $this->storage;
+        $response = new StreamedResponse(static function () use ($storage, $file): void {
+            $storage->stream($file, static function (string $chunk): void {
+                echo $chunk;
+                flush();
+            });
+        });
+        $response->headers->set('Content-Length', (string) $file['size']);
         $inline = str_starts_with($file['mime'], 'image/') || 'application/pdf' === $file['mime'];
-        $response->setContentDisposition(
+        $response->headers->set('Content-Disposition', $response->headers->makeDisposition(
             $inline && !$request->query->getBoolean('download') ? ResponseHeaderBag::DISPOSITION_INLINE : ResponseHeaderBag::DISPOSITION_ATTACHMENT,
             $file['filename'],
             (string) preg_replace('/[^\x20-\x7e]/', '_', $file['filename']),
-        );
+        ));
         $response->headers->set('Content-Type', $file['mime']);
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         // nada executa dentro do arquivo servido (PDF/SVG/HTML embutido)
         $response->headers->set('Content-Security-Policy', "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox");
-        $response->headers->set('Cache-Control', 'private, max-age=3600');
+        // documento (NF, contrato) não fica no cache em disco do navegador; foto pode (miniaturas)
+        $response->headers->set('Cache-Control', str_starts_with($file['mime'], 'image/') ? 'private, max-age=3600' : 'private, no-store');
 
         return $response;
     }

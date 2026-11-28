@@ -104,6 +104,12 @@ Leitura para qualquer perfil; escrita para Técnico/Administrador; toda escrita 
 
 IP de VM: `POST /api/ui/ipam/ip-addresses` com `vm_interface_id` (e `make_primary`).
 
+### Endpoint do GLPI Agent (`/`, `/inventory`, `/front/inventory.php`)
+
+Público por natureza (protocolo do agente), mas desde a auditoria 2026-11: só aceita origem em `AGENT_ALLOWED_NETWORKS`
+(403), exige HTTP Basic se `AGENT_BASIC_AUTH` estiver definido (401) e limita `AGENT_MAX_REQUESTS_PER_5MIN` por IP (429).
+No painel, parâmetro de URL inválido para o tipo do banco responde **400** `{"code": "bad_parameter"}`.
+
 ### Auditoria (`/api/ui/audit`, só Administrador — ADR-0015)
 
 | Método | Rota | Uso |

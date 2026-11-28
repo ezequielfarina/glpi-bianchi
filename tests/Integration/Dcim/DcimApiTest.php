@@ -114,7 +114,7 @@ final class DcimApiTest extends WebTestCase
         $vrf = $this->id('POST', '/api/ui/ipam/vrfs', ['name' => 'TESTE']);
         $prefix = $this->id('POST', '/api/ui/ipam/prefixes', ['prefix' => '172.30.5.9/24', 'vrf_id' => $vrf, 'branch_id' => $this->branch]);
         $this->call('POST', '/api/ui/ipam/prefixes', ['prefix' => '172.30.5.0/24', 'vrf_id' => $vrf], 422);
-        $this->call('POST', '/api/ui/ipam/ranges', ['start_address' => '172.30.5.1', 'end_address' => '172.30.5.10', 'vrf_id' => $vrf], 201);
+        $range = $this->id('POST', '/api/ui/ipam/ranges', ['start_address' => '172.30.5.1', 'end_address' => '172.30.5.10', 'vrf_id' => $vrf]);
         self::assertSame('172.30.5.11/24', $this->call('GET', "/api/ui/ipam/prefixes/$prefix/next-ip")['address']);
 
         $dev = $this->id('POST', '/api/ui/dcim/devices', ['name' => 'FW-T', 'device_type_id' => $this->type('Switch 24 portas + 4 SFP+'), 'branch_id' => $this->branch]);
@@ -124,8 +124,10 @@ final class DcimApiTest extends WebTestCase
         $this->call('POST', '/api/ui/ipam/ip-addresses', ['address' => '172.30.5.11/24', 'vrf_id' => $vrf], 422);
         $this->call('POST', '/api/ui/ipam/ip-addresses', ['address' => '172.30.5.255/24', 'vrf_id' => $vrf], 422);
         self::assertSame('172.30.5.12/24', $this->call('GET', "/api/ui/ipam/prefixes/$prefix/next-ip")['address']);
-        $detail = $this->call('GET', "/api/ui/ipam/prefixes/$prefix");
-        self::assertEqualsWithDelta(round(100 * 11 / 254, 1), $detail['utilization'], 0.01);
+        // como no NetBox (Prefix.get_utilization): a faixa só conta inteira se marcada como utilizada
+        self::assertEqualsWithDelta(round(100 * 1 / 254, 1), $this->call('GET', "/api/ui/ipam/prefixes/$prefix")['utilization'], 0.01);
+        $this->call('PUT', "/api/ui/ipam/ranges/$range", ['start_address' => '172.30.5.1', 'end_address' => '172.30.5.10', 'vrf_id' => $vrf, 'mark_utilized' => true]);
+        self::assertEqualsWithDelta(round(100 * 11 / 254, 1), $this->call('GET', "/api/ui/ipam/prefixes/$prefix")['utilization'], 0.01);
     }
 
     public function testViewerCannotWrite(): void

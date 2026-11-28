@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { safeHref } from '../../lib/safeUrl'
 import { computed, ref, watch } from 'vue'
 import AppIcon from '../AppIcon.vue'
 import TraceView from '../dcim/TraceView.vue'
@@ -45,7 +46,7 @@ const meters = (m: number | null) => (m === null ? '' : m >= 1000 ? `${(m / 1000
       <div class="card">
         <div class="k">Virtualizador</div>
         <RouterLink :to="`/virtualization/clusters/${vm.cluster_id}`" class="dc-strong">{{ vm.cluster }}</RouterLink> <span class="muted">{{ vm.cluster_type }}</span>
-        <a v-if="vm.management_url" :href="vm.management_url" target="_blank" rel="noopener" class="console"><AppIcon name="external" :size="13" /> Abrir console</a>
+        <a v-if="vm.management_url" :href="safeHref(vm.management_url)" target="_blank" rel="noopener" class="console"><AppIcon name="external" :size="13" /> Abrir console</a>
       </div>
     </li>
     <li v-if="vm || deviceId" class="step" :class="{ missing: !deviceId }">

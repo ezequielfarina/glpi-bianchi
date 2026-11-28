@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Ui\ReadModel;
 
+use App\Shared\Doctrine\Type\SealedJsonType;
 use Doctrine\DBAL\Connection;
 
 /** Agentes e inventários recebidos, para as telas de operação. */
@@ -53,8 +54,14 @@ final readonly class AgentQuery
         if (!ctype_digit($id)) {
             return null;
         }
-        $payload = $this->db->fetchOne('SELECT jsonb_pretty(payload) FROM raw_inventory WHERE id = :id', ['id' => $id]);
+        $row = $this->db->fetchAssociative('SELECT payload_sealed, jsonb_pretty(payload_legacy) AS legacy FROM raw_inventory WHERE id = :id', ['id' => $id]);
+        if (false === $row) {
+            return null;
+        }
+        if (null !== $row['payload_sealed']) {
+            return json_encode(SealedJsonType::open((string) $row['payload_sealed']), \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR);
+        }
 
-        return false === $payload ? null : (string) $payload;
+        return null === $row['legacy'] ? null : (string) $row['legacy'];
     }
 }

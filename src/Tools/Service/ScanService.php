@@ -89,7 +89,7 @@ final readonly class ScanService
             'actor' => $actor,
             'schedule' => $scheduleId,
         ]);
-        $this->bus->dispatch(new RunNetworkScan($id, $gateway, null === $gateway || null === $community ? null : $this->box->encrypt($community)));
+        $this->bus->dispatch(new RunNetworkScan($id, $gateway, null === $gateway || null === $community ? null : $this->box->encrypt($community, 'scan.community')));
 
         return $id;
     }

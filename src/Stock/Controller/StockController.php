@@ -281,7 +281,8 @@ final readonly class StockController
     #[Route('/invoices/{id}/status', name: 'invoice_status', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function invoiceStatus(int $id, Request $request): JsonResponse
     {
-        $status = (string) ($this->body($request)['status'] ?? '');
+        $raw = $this->body($request)['status'] ?? '';
+        $status = \is_string($raw) ? $raw : '';
         $this->invoices->setStatus($id, $status, $this->actor->name());
         $this->audit('invoice.status', ['id' => $id, 'status' => $status]);
 

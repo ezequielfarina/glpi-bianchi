@@ -62,7 +62,7 @@ final readonly class LicenseWriter
         $p->check();
 
         if (false !== $key) {
-            $row['license_key'] = null === $key ? null : $this->secretBox->encrypt($key);
+            $row['license_key'] = null === $key ? null : $this->secretBox->encrypt($key, 'license.key');
         }
 
         if (null === $id) {
@@ -148,7 +148,7 @@ final readonly class LicenseWriter
             return null;
         }
         try {
-            return $this->secretBox->decrypt((string) $enc);
+            return $this->secretBox->decrypt((string) $enc, 'license.key');
         } catch (\RuntimeException $e) {
             // chave de criptografia trocada/ausente: erro explicável, não 500
             throw new ValidationException(['license_key' => $e->getMessage().' Cadastre a chave novamente na edição da licença.']);

@@ -7,6 +7,7 @@ doctrine:
             ltree: App\Shared\Doctrine\Type\LtreeType
             inet: App\Shared\Doctrine\Type\InetType
             cidr: App\Shared\Doctrine\Type\CidrType
+            sealed_json: App\Shared\Doctrine\Type\SealedJsonType
         mapping_types:
             ltree: ltree
             inet: inet

@@ -1,8 +1,12 @@
+# Profiler só com debug ligado (APP_DEBUG=1) — no CT o FPM força APP_DEBUG=0 mesmo em --env=dev,
+# então o painel web nunca coleta perfis (eles guardam cookies, cabeçalhos e variáveis de ambiente).
+# Acesso a /_profiler, /_wdt e /_error: só loopback (ProfilerGuardListener + nginx). Ver docs/security/auditoria-2026-11.md.
 when@dev:
     web_profiler:
-        toolbar: true
+        toolbar: '%kernel.debug%'
     framework:
         profiler:
+            enabled: '%kernel.debug%'
             collect_serializer_data: true
 
 when@test:

@@ -26,7 +26,7 @@ final readonly class ChannelService
     {
         return array_map(function (array $r): array {
             try {
-                $masked = self::mask((string) $r['kind'], $this->box->decrypt((string) $r['target']));
+                $masked = self::mask((string) $r['kind'], $this->box->decrypt((string) $r['target'], 'channel.target'));
             } catch (\Throwable) {
                 $masked = '(ilegível — DATA_ENCRYPTION_KEY mudou?)';
             }
@@ -70,7 +70,7 @@ final readonly class ChannelService
         }
         $p->check();
         $params = ['name' => $name, 'kind' => $kind, 'chat' => $chatId, 'min' => $min, 'enabled' => $enabled ? 'true' : 'false',
-            'target' => null === $target ? $current['target'] : $this->box->encrypt($target)];
+            'target' => null === $target ? $current['target'] : $this->box->encrypt($target, 'channel.target')];
         if (null === $id) {
             return (int) $this->db->fetchOne(
                 'INSERT INTO notification_channel (name, kind, target, chat_id, min_severity, enabled, created_at, updated_at)

@@ -164,7 +164,7 @@ final readonly class ScheduleService
     /** @param array<string, mixed> $sc */
     private function launch(array $sc, string $requestedBy): int
     {
-        $community = null === $sc['snmp_community'] ? null : $this->box->decrypt((string) $sc['snmp_community']);
+        $community = null === $sc['snmp_community'] ? null : $this->box->decrypt((string) $sc['snmp_community'], 'scan.community');
 
         return $this->scans->enqueue((string) $sc['target'], (string) $sc['profile'], $sc['snmp_gateway'], $community, mb_substr($requestedBy, 0, 64), (int) $sc['id']);
     }
@@ -211,7 +211,7 @@ final readonly class ScheduleService
             } elseif (!$this->snmp->available()) {
                 $p->error('snmp_gateway', 'Extensão php-snmp não instalada no servidor.');
             } elseif (null !== $community) {
-                $storedCommunity = $this->box->encrypt($community);
+                $storedCommunity = $this->box->encrypt($community, 'scan.community');
             } elseif (null !== ($current['snmp_community'] ?? null) && $gateway === $current['snmp_gateway']) {
                 $storedCommunity = $current['snmp_community']; // em branco na edição = mantém
             } else {

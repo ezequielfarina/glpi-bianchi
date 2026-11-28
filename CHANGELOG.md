@@ -4,6 +4,15 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Unreleased]
 
+### Segurança (auditoria 2026-11 — docs/security/auditoria-2026-11.md)
+- **Crítico:** com `APP_ENV=dev`, `/_profiler` expunha sem login os segredos (`API_TOKEN`, `DATA_ENCRYPTION_KEY`, senha do banco) e cookies de sessão. Agora `/_profiler`, `/_wdt` e `/_error` só respondem a loopback (aplicação + nginx) e o painel web roda sempre com `APP_DEBUG=0`. **Gire os segredos:** `sudo bash deploy/lxc/rotate-secrets.sh`.
+- Endpoint do GLPI Agent: só redes permitidas (`AGENT_ALLOWED_NETWORKS`), credencial Basic opcional (`AGENT_BASIC_AUTH`) e limite por IP — impede inventário falso sobrescrevendo ativos.
+- **Criptografia em repouso (ADR-0019):** XChaCha20-Poly1305 com contexto e rotação de chave (`app:crypto:rotate`); anexos cifrados em disco (chave por arquivo); inventário bruto cifrado; backup diário cifrado com `age` (`deploy/lxc/backup.sh`); guia de ZFS cifrado no host.
+- XSS armazenado por link `javascript:` (site do fornecedor) bloqueado no backend e neutralizado no frontend.
+- Bloqueio de login por login+IP (5) e global (25): ninguém trava a conta do administrador de outra máquina; troca de senha e desligar 2FA com o mesmo limite.
+- Respostas do painel com `Cache-Control: no-store` (nada fica no cache em disco do navegador); log do PostgreSQL sem valores de parâmetros.
+- Erros 500 → 400/422: senha vazia, número gigante na URL, array no lugar de texto (inclusive no endpoint público do agente).
+
 ### Corrigido
 - Mapa/caminho: cache de vizinhos do `TopologyService` não sobrevive mais entre chamadas (resultado velho em processo longo).
 - Anexar arquivo em **filial** ou **nota fiscal** dava erro 500 (tabela fora da lista de validação).

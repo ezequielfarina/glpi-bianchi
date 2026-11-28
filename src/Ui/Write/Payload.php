@@ -93,7 +93,12 @@ final class Payload
         if (\is_int($v) || \is_float($v)) {
             return number_format((float) $v, 2, '.', '');
         }
-        $s = trim((string) $v);
+        if (!\is_string($v)) {
+            $this->errors[$key] = 'Valor inválido.';
+
+            return null;
+        }
+        $s = trim($v);
         if (str_contains($s, ',')) {
             $s = str_replace(['.', ','], ['', '.'], $s);
         }
@@ -150,6 +155,30 @@ final class Payload
         $v = $this->string($key, 320);
         if (null !== $v && false === filter_var($v, \FILTER_VALIDATE_EMAIL)) {
             $this->errors[$key] = 'E-mail inválido.';
+
+            return null;
+        }
+
+        return $v;
+    }
+
+    /**
+     * URL clicável na interface: só http(s) com host. Bloqueia `javascript:`, `data:`, `vbscript:`…
+     * (auditoria 2026-11: XSS armazenado pelo site do fornecedor). "empresa.com.br" vira "https://empresa.com.br".
+     */
+    public function url(string $key, int $max = 255): ?string
+    {
+        $v = $this->string($key, $max);
+        if (null === $v) {
+            return null;
+        }
+        if (1 !== preg_match('#^[a-z][a-z0-9+.-]*:#i', $v)) {
+            $v = 'https://'.$v;
+        }
+        $scheme = strtolower((string) parse_url($v, \PHP_URL_SCHEME));
+        $host = (string) parse_url($v, \PHP_URL_HOST);
+        if (!\in_array($scheme, ['http', 'https'], true) || '' === $host || 1 === preg_match('/[\s<>"\'`]/', $v)) {
+            $this->errors[$key] = 'Informe um endereço http(s), ex.: https://empresa.com.br';
 
             return null;
         }

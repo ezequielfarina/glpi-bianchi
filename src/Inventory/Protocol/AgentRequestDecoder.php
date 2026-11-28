@@ -54,6 +54,10 @@ final readonly class AgentRequestDecoder
 
         // "action" (protocolo JSON) tem precedência sobre "query" (compat); padrão: inventory
         $action = $data['action'] ?? $data['query'] ?? 'inventory';
+        // endpoint público: tipo errado é erro de protocolo (400), não warning/500 (auditoria 2026-11)
+        if (!\is_string($action) || (isset($data['deviceid']) && !\is_string($data['deviceid']))) {
+            throw new ProtocolException('Invalid "action" or "deviceid" type.');
+        }
 
         return new AgentRequest(
             format: PayloadFormat::Json,

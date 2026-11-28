@@ -1,0 +1,10 @@
+[Unit]
+Description=GLPI Bianchi - backup cifrado diário
+
+[Timer]
+OnCalendar=*-*-* 02:17:00
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

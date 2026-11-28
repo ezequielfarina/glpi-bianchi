@@ -6,6 +6,7 @@ namespace App\Identity\Service;
 
 use App\Identity\Entity\Account;
 use App\Identity\Security\AuthAudit;
+use App\Identity\Security\LoginThrottle;
 use App\Identity\Security\PasswordHasher;
 use App\Identity\Security\PasswordPolicy;
 use App\Identity\Security\SessionManager;
@@ -39,7 +40,22 @@ final readonly class AccountService
         private SessionManager $sessions,
         private AuthAudit $audit,
         private SecretBox $box,
+        private LoginThrottle $throttle,
     ) {
+    }
+
+    /**
+     * Quem tem uma sessão roubada não pode adivinhar a senha atual sem limite
+     * (trocar senha / desligar 2FA): mesmo bloqueio do login. Auditoria 2026-11.
+     *
+     * @param array<string, mixed> $acc
+     */
+    private function guardGuessing(array $acc, ?Request $request): void
+    {
+        $wait = $this->throttle->retryAfter((string) $acc['username'], $request?->getClientIp());
+        if ($wait > 0) {
+            throw new ValidationException(['current_password' => \sprintf('Muitas tentativas. Tente de novo em %d minuto(s).', (int) ceil($wait / 60))]);
+        }
     }
 
     // ------------------------------------------------------------------ administração
@@ -189,6 +205,7 @@ final readonly class AccountService
     public function changeOwnPassword(int $id, #[\SensitiveParameter] string $current, #[\SensitiveParameter] string $new, string $keepSessionId, ?Request $request = null): void
     {
         $acc = $this->require($id);
+        $this->guardGuessing($acc, $request);
         if (!$this->hasher->verify((string) $acc['password_hash'], $current)) {
             $this->audit->log('login_failed', $id, (string) $acc['username'], $request, details: ['reason' => 'bad_current_password']);
             throw new ValidationException(['current_password' => 'Senha atual incorreta.']);
@@ -215,7 +232,7 @@ final readonly class AccountService
             throw new ValidationException(['mfa' => 'A verificação em duas etapas já está ativa.']);
         }
         $secret = Totp::generateSecret();
-        $this->db->executeStatement('UPDATE app_account SET totp_secret = ?, totp_last_step = NULL, updated_at = now() WHERE id = ?', [$this->box->encrypt($secret), $id]);
+        $this->db->executeStatement('UPDATE app_account SET totp_secret = ?, totp_last_step = NULL, updated_at = now() WHERE id = ?', [$this->box->encrypt($secret, 'account.totp:'.$id), $id]);
 
         return ['secret' => $secret, 'uri' => Totp::uri($secret, (string) $acc['username'])];
     }
@@ -226,7 +243,7 @@ final readonly class AccountService
         if (null !== $acc['totp_enabled_at'] || null === $acc['totp_secret']) {
             throw new ValidationException(['code' => 'Gere o QR code novamente.']);
         }
-        $step = Totp::verify($this->box->decrypt((string) $acc['totp_secret']), $code, null);
+        $step = Totp::verify($this->box->decrypt((string) $acc['totp_secret'], 'account.totp:'.$id), $code, null);
         if (null === $step) {
             throw new ValidationException(['code' => 'Código inválido. Confira a hora do celular e tente o código atual.']);
         }
@@ -240,11 +257,12 @@ final readonly class AccountService
         if (null === $acc['totp_enabled_at']) {
             return;
         }
+        $this->guardGuessing($acc, $request);
         $errors = [];
         if (!$this->hasher->verify((string) $acc['password_hash'], $password)) {
             $errors['password'] = 'Senha incorreta.';
         }
-        $step = Totp::verify($this->box->decrypt((string) $acc['totp_secret']), $code, null === $acc['totp_last_step'] ? null : (int) $acc['totp_last_step']);
+        $step = Totp::verify($this->box->decrypt((string) $acc['totp_secret'], 'account.totp:'.$id), $code, null === $acc['totp_last_step'] ? null : (int) $acc['totp_last_step']);
         if (null === $step) {
             $errors['code'] = 'Código inválido.';
         }

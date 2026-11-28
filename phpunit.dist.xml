@@ -8,6 +8,8 @@
          bootstrap="tests/bootstrap.php"
          cacheDirectory=".phpunit.cache">
     <php>
+        <!-- mesmo fuso do CT (deploy/lxc/php/99-bianchi.ini): datas "hoje" batem com as da aplicação -->
+        <ini name="date.timezone" value="America/Sao_Paulo"/>
         <ini name="display_errors" value="1"/>
         <ini name="error_reporting" value="-1"/>
         <server name="APP_ENV" value="test" force="true"/>

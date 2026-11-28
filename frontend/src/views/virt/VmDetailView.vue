@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { safeHref } from '../../lib/safeUrl'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../../components/AppIcon.vue'
@@ -67,7 +68,7 @@ async function removeIp(id: number): Promise<void> {
             <p class="muted">{{ [v.platform, v.primary_ip, v.description].filter(Boolean).join(' · ') }}</p>
           </div>
           <div class="actions">
-            <a v-if="v.management_url" :href="v.management_url" target="_blank" rel="noopener" class="btn"><AppIcon name="external" :size="15" /> Console</a>
+            <a v-if="v.management_url" :href="safeHref(v.management_url)" target="_blank" rel="noopener" class="btn"><AppIcon name="external" :size="15" /> Console</a>
             <button class="edit-only btn" type="button" @click="editing = true"><AppIcon name="edit" :size="15" /> Editar</button>
             <button class="edit-only btn btn-icon" type="button" aria-label="Excluir VM" @click="remove"><AppIcon name="trash" :size="15" /></button>
           </div>

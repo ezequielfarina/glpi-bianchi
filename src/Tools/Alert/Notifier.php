@@ -80,7 +80,7 @@ final readonly class Notifier
     {
         $error = null;
         try {
-            $target = $this->box->decrypt((string) $ch['target']);
+            $target = $this->box->decrypt((string) $ch['target'], 'channel.target');
             [$url, $payload] = self::request((string) $ch['kind'], $target, $ch['chat_id'], $context, $alerts, $this->link());
             $resp = $this->http->request('POST', $url, ['json' => $payload, 'timeout' => 8, 'max_duration' => 15, 'max_redirects' => 0]);
             $code = $resp->getStatusCode();

@@ -195,6 +195,7 @@ erDiagram
 |---|---|---|
 | `location` (+colunas) | `branch_id` (filial), `kind` (building/floor/room/datacenter/workstation/other), `description` | filho herda a filial (serviço); trocar filial bloqueado se há rack/equipamento na subárvore |
 | `dcim_device_role` | função do equipamento com cor hex e `icon` (desenho no mapa — ADR-0018) | seed: Switch, Patch panel, Ponto de rede, DIO, PDU…; exclusão bloqueada se usada por equipamento ou VM |
+| `attachment` (+) / `raw_inventory` (+) | `encryption_key` (chave do arquivo cifrada — ADR-0019); `payload_sealed` (inventário cifrado) e `payload_legacy` (JSONB antigo, esvaziado por `app:crypto:rotate`) | |
 | `dcim_platform` | lista editável de sistemas operacionais/plataformas (ADR-0018) | UNIQUE nome; renomear propaga para `virt_machine.platform` (texto); exclusão bloqueada se em uso |
 | `dcim_device_type` | fabricante (`manufacturer`) + modelo, `u_height` (passo 0,5), `is_full_depth`, função padrão | UNIQUE `(manufacturer_id, model)`; anexos `device_type` (foto do modelo) |
 | `dcim_port_template` | portas do modelo: `kind`, nome, tipo físico, `positions` (traseira), `rear_port_template_id` + `rear_position` (frontal) | instanciadas ao criar o equipamento |

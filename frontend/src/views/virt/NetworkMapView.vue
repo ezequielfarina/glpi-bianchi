@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { safeHref } from '../../lib/safeUrl'
 import { computed, ref, watch } from 'vue'
 import AppIcon from '../../components/AppIcon.vue'
 import AuthImage from '../../components/AuthImage.vue'
@@ -152,7 +153,7 @@ const kindLabel: Record<string, string> = { device: 'Equipamento', circuit: 'Cir
           <template v-else-if="sel.kind === 'cluster'">
             <dl class="dc-kv"><dt>Plataforma</dt><dd>{{ sel.type }}</dd><dt>VMs</dt><dd>{{ sel.vms }}</dd></dl>
             <div class="acts"><RouterLink :to="`/virtualization/clusters/${sel.cluster_id}`" class="btn btn-primary"><AppIcon name="external" :size="14" /> Abrir cluster</RouterLink>
-              <a v-if="sel.management_url" :href="sel.management_url" target="_blank" rel="noopener" class="btn">Console</a></div>
+              <a v-if="sel.management_url" :href="safeHref(sel.management_url)" target="_blank" rel="noopener" class="btn">Console</a></div>
           </template>
           <template v-else-if="sel.kind === 'circuit'">
             <dl class="dc-kv"><dt>Operadora</dt><dd>{{ sel.provider }}</dd><dt>Designação</dt><dd class="mono">{{ sel.cid }}</dd><dt>Tipo</dt><dd>{{ sel.type }}</dd><dt>Banda</dt><dd>{{ speed(sel.commit_rate_kbps) }}</dd></dl>

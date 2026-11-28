@@ -95,7 +95,7 @@ final readonly class RunNetworkScanHandler
             }
 
             // 1. ARP do gateway (SNMP)
-            $community = null === $message->encryptedCommunity ? null : $this->box->decrypt($message->encryptedCommunity);
+            $community = null === $message->encryptedCommunity ? null : $this->box->decrypt($message->encryptedCommunity, 'scan.community');
             $arp = [];
             if (null !== $message->snmpGateway && null !== $community) {
                 $this->phase($id, 'Lendo a tabela ARP do gateway via SNMP', null);

@@ -27,7 +27,7 @@ final readonly class SupplierWriter
             'tax_id' => self::digits($p->string('tax_id', 32)),
             'email' => $p->email('email'),
             'phone' => $p->string('phone', 64),
-            'website' => $p->string('website', 255),
+            'website' => $p->url('website'),
             'address' => $p->string('address', 2000),
             'notes' => $p->string('notes', 5000),
             'active' => $p->bool('active', true),

@@ -41,7 +41,8 @@ final class PasswordHasher
 
     public function verify(string $hash, #[\SensitiveParameter] string $password): bool
     {
-        if (\strlen($password) > self::MAX_BYTES || !str_starts_with($hash, '$argon2id$')) {
+        // senha vazia: libsodium emite warning "empty password" (virava erro 500 — auditoria 2026-11)
+        if ('' === $password || \strlen($password) > self::MAX_BYTES || !str_starts_with($hash, '$argon2id$')) {
             return false;
         }
 

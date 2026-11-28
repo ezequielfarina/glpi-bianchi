@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { safeHref } from '../lib/safeUrl'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
@@ -57,7 +58,7 @@ async function remove(): Promise<void> {
           <dl class="facts">
             <div><dt>E-mail</dt><dd><a v-if="s.email" :href="`mailto:${s.email}`">{{ s.email }}</a><template v-else>—</template></dd></div>
             <div><dt>Telefone</dt><dd>{{ s.phone ?? '—' }}</dd></div>
-            <div><dt>Site / portal</dt><dd><a v-if="s.website" :href="s.website" target="_blank" rel="noopener noreferrer">{{ s.website }}</a><template v-else>—</template></dd></div>
+            <div><dt>Site / portal</dt><dd><a v-if="s.website" :href="safeHref(s.website)" target="_blank" rel="noopener noreferrer">{{ s.website }}</a><template v-else>—</template></dd></div>
             <div><dt>Endereço</dt><dd style="white-space: pre-line">{{ s.address ?? '—' }}</dd></div>
           </dl>
           <p v-if="s.notes" class="notes">{{ s.notes }}</p>

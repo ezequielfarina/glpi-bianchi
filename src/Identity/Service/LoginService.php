@@ -106,7 +106,7 @@ final readonly class LoginService
             return ['status' => 'expired'];
         }
         $accountId = (int) $s['account_id'];
-        $step = Totp::verify($this->box->decrypt((string) $s['totp_secret']), $code, null === $s['totp_last_step'] ? null : (int) $s['totp_last_step']);
+        $step = Totp::verify($this->box->decrypt((string) $s['totp_secret'], 'account.totp:'.$s['account_id']), $code, null === $s['totp_last_step'] ? null : (int) $s['totp_last_step']);
         if (null === $step) {
             $failures = $this->sessions->countMfaFailure($s['session_id']);
             // conta também para o bloqueio por login/IP

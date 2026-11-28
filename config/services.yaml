@@ -16,6 +16,7 @@ services:
             int $maxPayloadBytes: '%app.inventory.max_payload_bytes%'
             string $apiToken: '%env(API_TOKEN)%'
             string $dataEncryptionKey: '%env(DATA_ENCRYPTION_KEY)%'
+            string $dataEncryptionKeysOld: '%env(DATA_ENCRYPTION_KEYS_OLD)%'
             string $attachmentsDir: '%env(resolve:ATTACHMENTS_DIR)%'
             string $publicUrl: '%env(DEFAULT_URI)%'
             string $template: '%kernel.project_dir%/resources/labels/entrega-ti.odt'
@@ -41,6 +42,10 @@ services:
 
     # Conversor/validador oficial do formato de inventário (MIT, glpi-project/inventory_format)
     Glpi\Inventory\Converter: ~
+
+    # público: o Kernel injeta no tipo Doctrine sealed_json (ADR-0019)
+    App\Shared\Security\SecretBox:
+        public: true
 
 # Testes: Argon2id com custo mínimo (o de produção, 64 MiB × 3, deixaria a suíte lenta)
 when@test:

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { safeHref } from '../../lib/safeUrl'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../../components/AppIcon.vue'
@@ -71,7 +72,7 @@ const pct = (u: number, t: number | null) => (t ? Math.min(100, Math.round((100 
             <p v-if="c.description" class="muted">{{ c.description }}</p>
           </div>
           <div class="actions">
-            <a v-if="c.management_url" :href="c.management_url" target="_blank" rel="noopener" class="btn btn-primary"><AppIcon name="external" :size="15" /> Abrir console</a>
+            <a v-if="c.management_url" :href="safeHref(c.management_url)" target="_blank" rel="noopener" class="btn btn-primary"><AppIcon name="external" :size="15" /> Abrir console</a>
             <button class="edit-only btn" type="button" @click="newVm = {}"><AppIcon name="plus" :size="15" /> VM</button>
             <button class="edit-only btn" type="button" @click="editing = true"><AppIcon name="edit" :size="15" /> Editar</button>
             <button class="edit-only btn btn-icon" type="button" aria-label="Excluir cluster" @click="remove"><AppIcon name="trash" :size="15" /></button>

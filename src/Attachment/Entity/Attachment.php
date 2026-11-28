@@ -59,6 +59,10 @@ class Attachment
     #[ORM\Column(length: 255)]
     private string $storagePath;
 
+    /** chave do arquivo cifrada pela chave mestra (ADR-0019); nulo = anexo legado ainda em claro */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $encryptionKey = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
@@ -95,4 +99,9 @@ class Attachment
     public function getDescription(): ?string { return $this->description; }
     public function getCreatedBy(): ?string { return $this->createdBy; }
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
+
+    public function isEncrypted(): bool
+    {
+        return null !== $this->encryptionKey;
+    }
 }

@@ -11,6 +11,7 @@ use App\Inventory\Protocol\AgentResponse;
 use App\Inventory\Protocol\Compression;
 use App\Inventory\Protocol\PayloadFormat;
 use App\Inventory\Protocol\ProtocolException;
+use App\Inventory\Security\AgentAccessGuard;
 use App\Inventory\Service\AgentRegistry;
 use App\Inventory\Service\InventoryReceiver;
 use App\Settings\Service\Settings;
@@ -18,8 +19,8 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
@@ -49,6 +50,7 @@ final readonly class AgentController
         private AgentRegistry $agents,
         private InventoryReceiver $receiver,
         private Settings $settings,
+        private AgentAccessGuard $guard,
         #[Autowire(service: 'monolog.logger.inventory')]
         private LoggerInterface $logger,
     ) {
@@ -72,6 +74,15 @@ final readonly class AgentController
 
         $format = PayloadFormat::Json;
         $compression = Compression::fromContentType($request->headers->get('Content-Type'));
+        if (null !== ($denied = $this->guard->deny($request))) {
+            $this->logger->warning('Agent request denied', ['reason' => $denied[1], 'ip' => $request->getClientIp()]);
+            $response = $this->error($denied[1], $denied[0], $format, $compression)->toHttpResponse();
+            if (401 === $denied[0]) {
+                $response->headers->set('WWW-Authenticate', 'Basic realm="glpi-bianchi agent"');
+            }
+
+            return $response;
+        }
 
         try {
             $agentRequest = $this->decoder->decode($request);

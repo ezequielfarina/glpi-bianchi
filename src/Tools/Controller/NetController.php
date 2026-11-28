@@ -56,7 +56,7 @@ final readonly class NetController
         $b = $this->body($request);
         $this->audit('ping', $b['host'] ?? null);
 
-        return $this->json($this->diag->ping((string) ($b['host'] ?? ''), (int) ($b['count'] ?? 4)));
+        return $this->json($this->diag->ping(self::str($b['host'] ?? null, ''), is_numeric($b['count'] ?? null) ? (int) $b['count'] : 4));
     }
 
     #[Route('/net/trace', name: 'trace', methods: ['POST'])]
@@ -65,7 +65,7 @@ final readonly class NetController
         $b = $this->body($request);
         $this->audit('trace', $b['host'] ?? null);
 
-        return $this->json($this->diag->trace((string) ($b['host'] ?? ''), (int) ($b['cycles'] ?? 3)));
+        return $this->json($this->diag->trace(self::str($b['host'] ?? null, ''), is_numeric($b['cycles'] ?? null) ? (int) $b['cycles'] : 3));
     }
 
     #[Route('/net/ports', name: 'ports', methods: ['POST'])]
@@ -74,7 +74,7 @@ final readonly class NetController
         $b = $this->body($request);
         $this->audit('ports', $b['host'] ?? null, ['ports' => $b['ports'] ?? null]);
 
-        return $this->json($this->diag->ports((string) ($b['host'] ?? ''), (string) ($b['ports'] ?? ''), true === ($b['tls'] ?? false)));
+        return $this->json($this->diag->ports(self::str($b['host'] ?? null, ''), self::str($b['ports'] ?? null, ''), true === ($b['tls'] ?? false)));
     }
 
     #[Route('/net/dns', name: 'dns', methods: ['POST'])]
@@ -82,7 +82,7 @@ final readonly class NetController
     {
         $b = $this->body($request);
 
-        return $this->json($this->lookup->dns((string) ($b['name'] ?? ''), (string) ($b['type'] ?? 'A'), array_map('strval', (array) ($b['servers'] ?? []))));
+        return $this->json($this->lookup->dns(self::str($b['name'] ?? null), self::str($b['type'] ?? null, 'A'), array_values(array_filter((array) ($b['servers'] ?? []), 'is_string'))));
     }
 
     #[Route('/net/asn', name: 'asn', methods: ['POST'])]
@@ -113,5 +113,11 @@ final readonly class NetController
     private function audit(string $tool, mixed $host, array $extra = []): void
     {
         $this->logger->info('Network diagnostic', ['tool' => $tool, 'host' => \is_string($host) ? mb_substr($host, 0, 253) : null] + $extra);
+    }
+
+    /** Campo texto do corpo: array/objeto/número no lugar de texto vira o padrão (não erro 500 — auditoria 2026-11). */
+    private static function str(mixed $v, string $default = ''): string
+    {
+        return \is_string($v) ? $v : $default;
     }
 }

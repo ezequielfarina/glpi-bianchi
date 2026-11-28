@@ -63,7 +63,7 @@ apt-get install -y -q --no-install-recommends \
     "php${PHP_VER}-fpm" "php${PHP_VER}-cli" "php${PHP_VER}-pgsql" "php${PHP_VER}-intl" \
     "php${PHP_VER}-mbstring" "php${PHP_VER}-xml" "php${PHP_VER}-zip" "php${PHP_VER}-curl" \
     "php${PHP_VER}-opcache" "php${PHP_VER}-redis" "php${PHP_VER}-apcu" "php${PHP_VER}-snmp" "php${PHP_VER}-gd" \
-    composer \
+    composer age \
     nmap iproute2 arp-scan bind9-dnsutils mtr-tiny traceroute iputils-ping \
     fonts-liberation2
 
@@ -279,6 +279,18 @@ if ! sysctl -q -p /etc/sysctl.d/60-bianchi-ping.conf; then
     echo "AVISO: não foi possível ajustar net.ipv4.ping_group_range; aplicando cap_net_raw no ping" >&2
     setcap cap_net_raw+ep "$(command -v ping)" || echo "AVISO: setcap falhou — ping do Diagnóstico ficará indisponível" >&2
 fi
+# Backup cifrado diário (ADR-0019): só roda com a chave pública em /etc/glpi-bianchi/backup.age.pub
+install -d -m 0750 /etc/glpi-bianchi /var/backups/glpi-bianchi
+for f in bianchi-backup.service bianchi-backup.timer; do
+    sed "s#@APP_DIR@#${APP_DIR}#g" "$SCRIPT_DIR/systemd/$f" > "/etc/systemd/system/$f"
+done
+systemctl daemon-reload
+systemctl enable --now bianchi-backup.timer
+[[ -s /etc/glpi-bianchi/backup.age.pub ]] || warn "Backup cifrado inativo: falta /etc/glpi-bianchi/backup.age.pub (ver deploy/lxc/backup.sh)."
+# Dados antigos → cifrados; segredos regravados com a chave atual (idempotente — ADR-0019)
+as_app php bin/console app:crypto:rotate --no-interaction --no-ansi | tail -n 12 || warn "app:crypto:rotate falhou — rode manualmente e veja o erro."
+# .env.local guarda as chaves: só o usuário da aplicação lê
+chmod 0600 "$ENV_LOCAL"
 for i in $(seq 1 "$WORKERS"); do
     systemctl enable "bianchi-worker@${i}"
     # zera o StartLimitBurst de falhas anteriores (ex.: deploy quebrado antes deste)
@@ -309,7 +321,9 @@ $( [[ -n "${ADMIN_PASS:-}" ]] && printf '  Primeiro acesso        : usuário \03
     glpi-agent --server http://${IP}/ --force --debug
 
   Anexos (fotos, contratos): /var/lib/glpi-bianchi/files
-  IMPORTANTE: faça backup do .env.local — DATA_ENCRYPTION_KEY decifra as chaves de licença.
+  Criptografia (ADR-0019): anexos, inventários brutos, 2FA, licenças e SNMP cifrados com DATA_ENCRYPTION_KEY.
+  IMPORTANTE: guarde o .env.local FORA do CT (cofre) — sem DATA_ENCRYPTION_KEY os dados cifrados se perdem.
+  Backup cifrado diário: $( [[ -s /etc/glpi-bianchi/backup.age.pub ]] && echo "ativo em /var/backups/glpi-bianchi" || echo "INATIVO — crie /etc/glpi-bianchi/backup.age.pub (deploy/lxc/backup.sh)" )
 
   Operação: make status | make logs | make update
 EOF

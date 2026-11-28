@@ -54,10 +54,15 @@ class RawInventory
     #[ORM\Column(options: ['default' => false])]
     private bool $partial;
 
-    /** @var array<string, mixed> */
-    #[ORM\Column(type: Types::JSON, options: ['jsonb' => true])]
+    /** @var array<string, mixed>|null cifrado em repouso (ADR-0019) */
+    #[ORM\Column(name: 'payload_sealed', type: 'sealed_json', nullable: true)]
     #[Ignore]
-    private array $payload;
+    private ?array $payload;
+
+    /** @var array<string, mixed>|null recebido antes da ADR-0019, até `app:crypto:rotate` cifrar */
+    #[ORM\Column(name: 'payload_legacy', type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    #[Ignore]
+    private ?array $legacyPayload = null;
 
     #[ORM\Column]
     private int $sizeBytes;
@@ -182,7 +187,7 @@ class RawInventory
     /** @return array<string, mixed> */
     public function getPayload(): array
     {
-        return $this->payload;
+        return $this->payload ?? $this->legacyPayload ?? [];
     }
 
     public function getSizeBytes(): int
