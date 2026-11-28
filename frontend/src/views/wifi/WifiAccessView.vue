@@ -60,6 +60,14 @@ async function sync(c: TreeController): Promise<void> {
     await refresh()
   } catch (e) { notify('warn', 'Sincronização falhou', e instanceof Error ? e.message : String(e)) } finally { busy.value = null }
 }
+async function syncSite(siteId: number, name: string): Promise<void> {
+  busy.value = `site-${siteId}`
+  try {
+    const r = await wifi.syncSite(siteId)
+    notify(r.drift ? 'warn' : 'ok', `${name}: ${r.wlans} rede(s) relida(s) do UniFi`, r.drift ? `${r.drift} MAC(s) foram removidos direto no UniFi — veja os marcados "Com erro".` : undefined)
+    await refresh()
+  } catch (e) { notify('warn', `Não sincronizou ${name}`, e instanceof Error ? e.message : String(e)) } finally { busy.value = null }
+}
 async function apply(): Promise<void> {
   if (!selected.value) return
   busy.value = 'apply'
@@ -115,7 +123,9 @@ const totalUnknown = computed(() => tree.value.reduce((n, c) => n + c.sites.redu
             </div>
             <p v-if="c.last_error" class="ctl-err">{{ c.last_error }}</p>
             <div v-for="s in c.sites" :key="s.id" class="site">
-              <div class="site-name"><AppIcon name="building" :size="13" /> {{ s.name }}<span v-if="s.branch" class="muted"> · {{ s.branch }}</span></div>
+              <div class="site-name"><AppIcon name="building" :size="13" /> <span class="grow">{{ s.name }}<span v-if="s.branch" class="muted"> · {{ s.branch }}</span></span>
+                <button v-if="canEdit" class="site-sync" type="button" :disabled="!!busy" :aria-label="`Sincronizar ${s.name}`" title="Sincronizar este site"
+                  @click="syncSite(s.id, s.name)"><AppIcon name="refresh" :size="13" :class="{ spin: busy === `site-${s.id}` }" /></button></div>
               <button v-for="w in s.wlans" :key="w.id" type="button" class="wlan" :class="{ active: w.id === selected }" @click="selected = w.id">
                 <AppIcon name="wifi" :size="15" />
                 <span class="grow wn">{{ w.name }}</span>
@@ -140,6 +150,8 @@ const totalUnknown = computed(() => tree.value.reduce((n, c) => n + c.sites.redu
                 <p class="muted">{{ detail.site }} · {{ detail.controller }} · {{ detail.security || 'segurança ?' }}{{ detail.enabled ? '' : ' · rede desativada' }}</p></div>
             </div>
             <div class="actions">
+              <button v-if="canEdit" class="btn" type="button" :disabled="!!busy" :title="`Reler do UniFi as redes de ${detail.site}`" @click="syncSite(detail.site_id, detail.site)">
+                <AppIcon name="refresh" :size="15" :class="{ spin: busy === `site-${detail.site_id}` }" /> Sincronizar site</button>
               <button v-if="canEdit" class="btn" type="button" :disabled="!!busy || current.filter_policy === 'deny'" @click="apply">
                 <AppIcon name="upload" :size="15" :class="{ spin: busy === 'apply' }" /> {{ current.pending || current.errors ? `Aplicar ${current.pending + current.errors} pendência(s)` : 'Conferir e aplicar' }}</button>
               <button v-if="isAdmin && !current.filter_enabled && current.filter_policy !== 'deny'" class="btn btn-danger" type="button" @click="confirmName = ''; filterOpen = true">
@@ -232,6 +244,9 @@ const totalUnknown = computed(() => tree.value.reduce((n, c) => n + c.sites.redu
 .dot.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .dot.bad { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
 .site { margin: 4px 0 8px; }
+.site-sync { margin-left: auto; display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 7px; background: none; color: var(--text-3); cursor: pointer; opacity: 0; transition: opacity .15s ease; }
+.site:hover .site-sync, .site-sync:focus-visible, .site-sync:has(.spin) { opacity: 1; }
+.site-sync:hover { background: var(--panel-hover); color: var(--accent-text); }
 .site-name { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-2); padding: 4px 6px; text-transform: uppercase; letter-spacing: .03em; }
 .wlan { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--text); cursor: pointer; text-align: left; font: inherit; }
 .wlan:hover { background: var(--panel-hover); }

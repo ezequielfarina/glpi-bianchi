@@ -186,6 +186,46 @@ final class WifiAccessTest extends WebTestCase
         self::assertNotEmpty($this->call('GET', '/api/ui/wifi/tree')['items']);
     }
 
+    public function testCredentialIsTestedBeforeSavingAndSiteSync(): void
+    {
+        $this->loginAs($this->client, 'admin');
+        $cid = $this->controller();
+        $before = (string) $this->db->fetchOne('SELECT secret FROM unifi_controller WHERE id = ?', [$cid]);
+
+        // senha errada: recusada e a antiga continua valendo
+        $bad = $this->call('POST', "/api/ui/wifi/controllers/$cid/credential", ['secret' => 'digitada-errada'], 422);
+        self::assertStringContainsString('nada foi alterado', (string) ($bad['errors']['secret'] ?? ''));
+        self::assertSame($before, $this->db->fetchOne('SELECT secret FROM unifi_controller WHERE id = ?', [$cid]));
+        self::assertTrue($this->call('POST', "/api/ui/wifi/controllers/$cid/test")['ok']);
+
+        // senha nova trocada no UniFi: aceita, regrava cifrado
+        FakeUnifi::$pass = 'senha-nova-forte-2026';
+        self::assertFalse($this->call('POST', "/api/ui/wifi/controllers/$cid/test")['ok']);
+        $ok = $this->call('POST', "/api/ui/wifi/controllers/$cid/credential", ['secret' => 'senha-nova-forte-2026']);
+        self::assertTrue($ok['ok']);
+        self::assertSame(2, $ok['sites']);
+        self::assertNotSame($before, $this->db->fetchOne('SELECT secret FROM unifi_controller WHERE id = ?', [$cid]));
+        self::assertTrue($this->call('POST', "/api/ui/wifi/controllers/$cid/test")['ok']);
+        self::assertStringNotContainsString('senha-nova-forte-2026', (string) $this->db->fetchOne("SELECT string_agg(coalesce(details::text, ''), ' ') FROM audit_log"));
+
+        // sincronizar um site só: rede nova no UniFi aparece, a removida some
+        $this->call('POST', "/api/ui/wifi/sync/$cid");
+        $site = (int) $this->db->fetchOne("SELECT id FROM unifi_site WHERE site_ref = 'default'");
+        FakeUnifi::$sites['default']['wlans']['w9'] = ['_id' => 'w9', 'name' => 'NOVA-REDE', 'enabled' => true, 'security' => 'wpapsk', 'x_passphrase' => FakeUnifi::PASSPHRASE,
+            'mac_filter_enabled' => true, 'mac_filter_policy' => 'allow', 'mac_filter_list' => ['aa:bb:cc:00:00:99']];
+        unset(FakeUnifi::$sites['default']['wlans']['w2']);
+        $r = $this->call('POST', "/api/ui/wifi/sites/$site/sync");
+        self::assertSame(['site' => 'Matriz', 'wlans' => 2, 'drift' => 0], $r);
+        self::assertSame(1, (int) $this->db->fetchOne("SELECT count(*) FROM unifi_wlan WHERE name = 'NOVA-REDE' AND present"));
+        self::assertFalse((bool) $this->db->fetchOne("SELECT present FROM unifi_wlan WHERE name = 'BIANCHI-VISITANTE'"));
+        $this->call('POST', '/api/ui/wifi/sites/999999/sync', null, 404);
+
+        $this->client->restart();
+        $this->loginAs($this->client, 'editor');
+        $this->call('POST', "/api/ui/wifi/controllers/$cid/credential", ['secret' => 'x'], 403);
+        $this->call('POST', "/api/ui/wifi/sites/$site/sync");
+    }
+
     private function runSync(): int
     {
         $app = new Application(self::$kernel ?? self::bootKernel());

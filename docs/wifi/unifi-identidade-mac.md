@@ -101,6 +101,14 @@ Só `mac_filter_enabled`, `mac_filter_policy` (os valores que já estavam) e `ma
 `(lista atual − MACs que o painel retira) ∪ MACs ativos do painel`, com trava por rede e releitura para conferir.
 Limite: 512 MACs por rede.
 
+### Trocar a senha da integração
+
+1. No UniFi: *Admins & Users* → usuário da integração → *Change password*.
+2. No painel: *Controllers UniFi* → **Trocar senha** → informe a nova → **Testar e salvar**.
+   O painel faz login no UniFi com a senha nova antes de gravar; se for recusada, a anterior continua cadastrada.
+
+Entre os passos 1 e 2 a sincronização automática falha (aviso no card do controller) — nada é perdido, as pendências esperam.
+
 ## 5. Operação e troubleshooting
 
 ```bash

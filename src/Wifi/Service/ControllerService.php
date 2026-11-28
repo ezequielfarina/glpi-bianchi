@@ -7,6 +7,7 @@ namespace App\Wifi\Service;
 use App\Shared\Security\SecretBox;
 use App\Ui\Write\NotFoundException;
 use App\Ui\Write\Payload;
+use App\Ui\Write\ValidationException;
 use App\Wifi\Unifi\TlsInspector;
 use App\Wifi\Unifi\UnifiClientFactory;
 use App\Wifi\Unifi\UnifiConnection;
@@ -126,6 +127,42 @@ final readonly class ControllerService
     public function inspectTls(string $baseUrl): array
     {
         return $this->tls->inspect($baseUrl);
+    }
+
+    /**
+     * Troca a senha/API key: testa a credencial nova no UniFi ANTES de gravar — digitação errada não derruba a integração.
+     *
+     * @param array<string, mixed> $data {secret, username?}
+     *
+     * @return array{ok: bool, platform: ?string, version: ?string, sites: int, error: ?string}
+     */
+    public function updateCredential(int $id, array $data): array
+    {
+        $row = $this->row($id);
+        $p = new Payload($data);
+        $secret = $p->string('secret', 500, required: true);
+        $username = 'local' === $row['auth_mode'] ? ($p->string('username', 100) ?? (string) $row['username']) : null;
+        $p->check();
+
+        $conn = $this->factory->fromConfig([
+            'base_url' => (string) $row['base_url'], 'auth_mode' => (string) $row['auth_mode'], 'username' => $username, 'secret' => $secret,
+            'cloud_host_id' => null === $row['cloud_host_id'] ? null : (string) $row['cloud_host_id'], 'verify_tls' => (bool) $row['verify_tls'],
+            'tls_pin' => null === $row['tls_pin'] ? null : (string) $row['tls_pin'],
+        ]);
+        try {
+            $sites = $conn->sites();
+            $version = null === ($sites[0] ?? null) ? null : $conn->version($sites[0]['ref']);
+        } catch (UnifiException $e) {
+            throw new ValidationException(['secret' => 'O UniFi não aceitou a credencial nova — nada foi alterado. '.$e->getMessage()]);
+        } finally {
+            $conn->logout();
+        }
+        $this->db->executeStatement(
+            'UPDATE unifi_controller SET secret = ?, username = ?, platform = ?, version = coalesce(?, version), last_error = NULL, updated_at = now() WHERE id = ?',
+            [$this->box->encrypt($secret, UnifiClientFactory::context($id)), $username, $conn->platform(), $version, $id]
+        );
+
+        return ['ok' => true, 'platform' => $conn->platform(), 'version' => $version, 'sites' => \count($sites), 'error' => null];
     }
 
     /** @return array{ok: bool, platform: ?string, version: ?string, sites: int, error: ?string} */

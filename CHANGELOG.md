@@ -13,6 +13,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Preserva o que já está no UniFi: MACs sem cadastro aparecem em "Sem identificação" para identificar; nada é apagado sem identidade.
 - Revogação, vencimento automático (visitantes/terceiros), conferência após gravar, estados pendente/erro com nova tentativa,
   apelido "Pessoa — Aparelho" no cliente do UniFi, aviso de filtro desligado e de MAC aleatório, exportação CSV.
+- **Trocar senha/API key** do controller: a credencial nova é testada no UniFi antes de gravar (erro de digitação não derruba a integração).
+- **Sincronizar site**: relê só as redes de um site (árvore e cabeçalho da rede).
 - Timer `bianchi-wifi-sync` (10 min) e comando `app:wifi:sync`; todas as ações na auditoria (módulo Wi-Fi).
 
 ### Corrigido — scanner de rede

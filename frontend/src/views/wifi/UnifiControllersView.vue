@@ -5,6 +5,7 @@ import AppModal from '../../components/AppModal.vue'
 import HelpTip from '../../components/HelpTip.vue'
 import LoadState from '../../components/LoadState.vue'
 import { clean, useForm } from '../../components/forms/useForm'
+import { ApiError } from '../../lib/api'
 import { relative } from '../../lib/format'
 import { notify } from '../../lib/toast'
 import { wifi, type ControllerRow, type TestResult, type TlsInfo } from '../../lib/wifi'
@@ -66,6 +67,29 @@ async function remove(c: ControllerRow): Promise<void> {
   if (!window.confirm(`Excluir o controller "${c.name}"? Os sites, redes e vínculos de MAC dele saem do painel (o UniFi não é alterado).`)) return
   try { await wifi.deleteController(c.id); notify('ok', 'Controller excluído'); await load() } catch (e) { notify('warn', 'Não excluído', e instanceof Error ? e.message : String(e)) }
 }
+// Trocar senha/API key: o backend testa no UniFi antes de gravar
+const cred = ref<ControllerRow | null>(null)
+const credForm = reactive({ username: '', secret: '', show: false })
+const credError = ref<string | null>(null)
+function openCred(c: ControllerRow): void {
+  cred.value = c
+  Object.assign(credForm, { username: c.username ?? '', secret: '', show: false })
+  credError.value = null
+}
+async function saveCred(): Promise<void> {
+  if (!cred.value || !credForm.secret) return
+  busy.value = 'cred'
+  credError.value = null
+  try {
+    const r = await wifi.updateCredential(cred.value.id, { secret: credForm.secret, username: cred.value.auth_mode === 'local' ? credForm.username : undefined })
+    notify('ok', 'Credencial trocada e testada', `${r.sites} site(s) acessíveis${r.version ? ` · Network ${r.version}` : ''}`)
+    tests.value = { ...tests.value, [cred.value.id]: r }
+    cred.value = null
+    await load()
+  } catch (e) {
+    credError.value = e instanceof ApiError && e.fields.secret ? e.fields.secret : e instanceof Error ? e.message : String(e)
+  } finally { busy.value = null; credForm.secret = '' }
+}
 const PLATFORM: Record<string, string> = { unifi_os: 'UniFi OS', classic: 'Controller clássico' }
 </script>
 
@@ -106,6 +130,7 @@ const PLATFORM: Record<string, string> = { unifi_os: 'UniFi OS', classic: 'Contr
             <button class="btn btn-sm" type="button" :disabled="!!busy" @click="test(c.id)"><AppIcon name="pulse" :size="14" /> {{ busy === `test-${c.id}` ? 'Testando…' : 'Testar' }}</button>
             <button class="btn btn-sm" type="button" :disabled="!!busy || !c.enabled" @click="sync(c)"><AppIcon name="refresh" :size="14" /> {{ busy === `sync-${c.id}` ? 'Sincronizando…' : 'Sincronizar' }}</button>
             <RouterLink to="/wifi" class="btn btn-sm"><AppIcon name="wifi" :size="14" /> Redes</RouterLink>
+            <button class="btn btn-sm" type="button" :disabled="!!busy" @click="openCred(c)"><AppIcon name="key" :size="14" /> {{ c.auth_mode === 'local' ? 'Trocar senha' : 'Trocar API key' }}</button>
             <span class="grow" />
             <button class="btn btn-icon" type="button" aria-label="Editar" @click="edit(c)"><AppIcon name="edit" :size="15" /></button>
             <button class="btn btn-icon btn-danger" type="button" aria-label="Excluir" @click="remove(c)"><AppIcon name="trash" :size="15" /></button>
@@ -154,6 +179,20 @@ const PLATFORM: Record<string, string> = { unifi_os: 'UniFi OS', classic: 'Contr
         </div>
       </form>
     </AppModal>
+    <AppModal v-if="cred" :title="`${cred.auth_mode === 'local' ? 'Trocar senha' : 'Trocar API key'} — ${cred.name}`" @close="cred = null">
+      <form class="cred" autocomplete="off" @submit.prevent="saveCred">
+        <p class="muted">Troque primeiro no UniFi (Admins &amp; Users → o usuário da integração → Change password) e depois informe aqui.
+          A credencial nova é <b>testada no controller antes de ser salva</b>; se o UniFi recusar, a atual continua valendo.</p>
+        <div v-if="cred.auth_mode === 'local'" class="field"><label for="cr-user">Usuário</label>
+          <input id="cr-user" v-model="credForm.username" class="input" autocomplete="off" /></div>
+        <div class="field"><label for="cr-secret">{{ cred.auth_mode === 'local' ? 'Senha nova' : 'API key nova' }}</label>
+          <div class="row"><input id="cr-secret" v-model="credForm.secret" class="input" :type="credForm.show ? 'text' : 'password'" autocomplete="new-password" :aria-invalid="!!credError" />
+            <button class="btn btn-icon" type="button" :aria-label="credForm.show ? 'Ocultar' : 'Mostrar'" @click="credForm.show = !credForm.show"><AppIcon name="eye" :size="15" /></button></div>
+          <span v-if="credError" class="err">{{ credError }}</span></div>
+        <div class="form-actions"><button class="btn" type="button" @click="cred = null">Cancelar</button>
+          <button class="btn btn-primary" type="submit" :disabled="!credForm.secret || busy === 'cred'">{{ busy === 'cred' ? 'Testando no UniFi…' : 'Testar e salvar' }}</button></div>
+      </form>
+    </AppModal>
   </div>
 </template>
 
@@ -181,4 +220,6 @@ dd { margin: 0; }
 .cert { display: grid; gap: 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--accent-soft); font-size: 13px; }
 .cert.self { background: var(--warn-soft); }
 .cert .btn { justify-self: start; margin-top: 4px; }
+.cred { display: grid; gap: 12px; }
+.cred p { margin: 0; line-height: 1.5; }
 </style>

@@ -30,6 +30,7 @@ final class FakeUnifi implements HttpClientInterface
     public static array $calls = [];
     public static bool $down = false;
     public static bool $ignoreWrites = false;
+    public static string $pass = self::PASS;
 
     public function __construct()
     {
@@ -40,6 +41,7 @@ final class FakeUnifi implements HttpClientInterface
     {
         self::$down = false;
         self::$ignoreWrites = false;
+        self::$pass = self::PASS;
         self::$calls = [];
         self::$sites = [
             'default' => ['desc' => 'Matriz', 'users' => [], 'wlans' => [
@@ -75,7 +77,7 @@ final class FakeUnifi implements HttpClientInterface
             return new MockResponse('', ['http_code' => 302, 'response_headers' => ['Location: /manage']]);
         }
         if ('/api/login' === $path) {
-            $ok = \is_array($body) && self::USER === ($body['username'] ?? null) && self::PASS === ($body['password'] ?? null);
+            $ok = \is_array($body) && self::USER === ($body['username'] ?? null) && self::$pass === ($body['password'] ?? null);
 
             return $ok ? self::ok([], ['Set-Cookie: unifises=sess123; Path=/; HttpOnly', 'Set-Cookie: csrf_token=csrf456; Path=/'])
                 : new MockResponse('{"meta":{"rc":"error","msg":"api.err.Invalid"},"data":[]}', ['http_code' => 400]);

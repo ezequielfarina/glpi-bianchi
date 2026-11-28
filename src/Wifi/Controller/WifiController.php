@@ -95,12 +95,25 @@ final readonly class WifiController
         return $this->json($this->controllers->test($id));
     }
 
+    /** {secret, username?} — testa no UniFi antes de gravar */
+    #[Route('/controllers/{id}/credential', name: 'controller_credential', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function controllerCredential(int $id, Request $request): JsonResponse
+    {
+        return $this->json($this->controllers->updateCredential($id, $this->body($request)));
+    }
+
     // ---- sincronizar e aplicar (técnico) ----
 
     #[Route('/sync/{id}', name: 'sync', methods: ['POST'], requirements: ['id' => '\d+'])]
     public function sync(int $id): JsonResponse
     {
         return $this->json($this->sync->sync($id));
+    }
+
+    #[Route('/sites/{id}/sync', name: 'site_sync', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function siteSync(int $id): JsonResponse
+    {
+        return $this->json($this->sync->syncSite($id));
     }
 
     #[Route('/sites/{id}', name: 'site_update', methods: ['PUT'], requirements: ['id' => '\d+'])]

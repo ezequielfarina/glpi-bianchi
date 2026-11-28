@@ -187,6 +187,8 @@ final class AuditCatalog
         'ui_wifi_controller_delete' => ['unifi_controller.deleted', 'Controller UniFi excluído', 'wifi', 'unifi_controller', 'id'],
         'ui_wifi_controller_tls' => ['unifi_controller.tls_inspected', 'Certificado do controller UniFi lido', 'wifi', null, null],
         'ui_wifi_controller_test' => ['unifi_controller.tested', 'Conexão com controller UniFi testada', 'wifi', 'unifi_controller', 'id'],
+        'ui_wifi_controller_credential' => ['unifi_controller.credential_changed', 'Senha/API key do controller UniFi trocada', 'wifi', 'unifi_controller', 'id'],
+        'ui_wifi_site_sync' => ['unifi_site.synced', 'Site UniFi sincronizado', 'wifi', 'unifi_site', 'id'],
         'ui_wifi_sync' => ['unifi_controller.synced', 'Sites e redes Wi-Fi sincronizados do UniFi', 'wifi', 'unifi_controller', 'id'],
         'ui_wifi_site_update' => ['unifi_site.updated', 'Site UniFi vinculado à filial', 'wifi', 'unifi_site', 'id'],
         'ui_wifi_wlan_apply' => ['unifi_wlan.applied', 'Filtro de MAC aplicado no UniFi', 'wifi', 'unifi_wlan', 'id'],

@@ -115,8 +115,10 @@ Erro de comunicação com o UniFi responde **502** `{"code": "unifi", "error": "
 | GET · POST · PUT · DELETE | `/controllers[/{id}]` | `{name, auth_mode, base_url, username, secret, cloud_host_id, verify_tls, tls_pin, write_client_alias, enabled}` — `secret` nunca volta (`has_secret`); vazio na edição mantém |
 | POST | `/controllers/tls-inspect` | `{base_url}` → `{subject, issuer, valid_to, self_signed, sha256, pin}` para fixar o certificado |
 | POST | `/controllers/{id}/test` | `{ok, platform, version, sites, error}` |
+| POST | `/controllers/{id}/credential` | `{secret, username?}` troca senha/API key — testa no UniFi antes de gravar (422 se recusada, a atual continua) |
 | POST | `/sync/{id}` | relê sites e redes → `{sites, wlans, drift, version}` (`drift` = MACs do painel removidos direto no UniFi) |
 | PUT | `/sites/{id}` | `{branch_id}` |
+| POST | `/sites/{id}/sync` | relê só as redes do site → `{site, wlans, drift}` (técnico) |
 | GET | `/wlans/{id}` | rede + `identities` + `unknown` (MACs no UniFi sem identidade) |
 | POST | `/wlans/{id}/apply` | `{changed, added, removed, total, warnings, error}` |
 | POST | `/wlans/{id}/filter` | `{confirm: "<nome exato da rede>"}` liga o filtro em modo permissão |

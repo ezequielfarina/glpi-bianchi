@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Wifi\Service;
 
+use App\Ui\Write\NotFoundException;
 use App\Wifi\Unifi\UnifiException;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
@@ -57,28 +58,9 @@ final readonly class SyncService
                     SQL, [$controllerId, $s['ref'], '' === $s['id'] ? null : $s['id'], mb_substr($s['description'], 0, 255)]);
                 $seenSites[] = $siteId;
                 ++$count['sites'];
-                $seenWlans = [];
-                foreach ($wlansBySite[$s['ref']] as $w) {
-                    if ('' === $w['id']) {
-                        continue;
-                    }
-                    $wlanId = (int) $this->db->fetchOne(<<<'SQL'
-                        INSERT INTO unifi_wlan (site_id, external_id, name, enabled, security, filter_enabled, filter_policy, remote_macs, present, synced_at, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb), true, now(), now(), now())
-                        ON CONFLICT (site_id, external_id) DO UPDATE SET name = EXCLUDED.name, enabled = EXCLUDED.enabled, security = EXCLUDED.security,
-                            filter_enabled = EXCLUDED.filter_enabled, filter_policy = EXCLUDED.filter_policy, remote_macs = EXCLUDED.remote_macs,
-                            present = true, synced_at = now(), updated_at = now()
-                        RETURNING id
-                        SQL, [$siteId, $w['id'], mb_substr($w['name'], 0, 100), $w['enabled'], mb_substr($w['security'], 0, 30), $w['filter_enabled'], $w['filter_policy'],
-                        json_encode($w['macs'])], [3 => 'boolean', 5 => 'boolean']);
-                    $seenWlans[] = $wlanId;
-                    ++$count['wlans'];
-                    $count['drift'] += $this->markDrift($wlanId, $w['macs']);
-                }
-                $this->db->executeStatement(
-                    'UPDATE unifi_wlan SET present = false, updated_at = now() WHERE site_id = ? AND present AND NOT (id = ANY(CAST(? AS int[])))',
-                    [$siteId, '{'.implode(',', $seenWlans).'}']
-                );
+                [$n, $drift] = $this->storeWlans($siteId, $wlansBySite[$s['ref']]);
+                $count['wlans'] += $n;
+                $count['drift'] += $drift;
             }
             $this->db->executeStatement(
                 'UPDATE unifi_site SET present = false, updated_at = now() WHERE controller_id = ? AND present AND NOT (id = ANY(CAST(? AS int[])))',
@@ -92,6 +74,70 @@ final readonly class SyncService
         $this->logger->info('Sincronização UniFi concluída', ['controller' => $controllerId] + $count);
 
         return $count;
+    }
+
+    /**
+     * Relê só um site (as redes Wi-Fi e os filtros de MAC dele) — botão "Sincronizar site".
+     *
+     * @return array{site: string, wlans: int, drift: int}
+     */
+    public function syncSite(int $siteId): array
+    {
+        $site = $this->db->fetchAssociative('SELECT id, controller_id, site_ref, coalesce(description, site_ref) AS name FROM unifi_site WHERE id = ? AND present', [$siteId])
+            ?: throw new NotFoundException('Site não encontrado (sincronize o controller inteiro).');
+        $conn = $this->controllers->connect((int) $site['controller_id']);
+        try {
+            $wlans = $conn->wlans((string) $site['site_ref']);
+        } catch (UnifiException $e) {
+            $this->logger->warning('Sincronização do site UniFi falhou', ['site' => $siteId, 'error' => $e->getMessage()]);
+            throw $e;
+        } finally {
+            $conn->logout();
+        }
+        $r = $this->db->transactional(function () use ($siteId, $wlans): array {
+            $r = $this->storeWlans($siteId, $wlans);
+            $this->db->executeStatement('UPDATE unifi_site SET synced_at = now(), updated_at = now() WHERE id = ?', [$siteId]);
+
+            return $r;
+        });
+        $this->logger->info('Sincronização do site UniFi concluída', ['site' => $siteId, 'wlans' => $r[0], 'drift' => $r[1]]);
+
+        return ['site' => (string) $site['name'], 'wlans' => $r[0], 'drift' => $r[1]];
+    }
+
+    /**
+     * Grava as redes de um site, marca as que sumiram e o "drift" dos MACs do painel.
+     *
+     * @param list<array{id: string, name: string, enabled: bool, security: string, filter_enabled: bool, filter_policy: ?string, macs: list<string>}> $wlans
+     *
+     * @return array{0: int, 1: int} redes gravadas, MACs removidos direto no UniFi
+     */
+    private function storeWlans(int $siteId, array $wlans): array
+    {
+        $seen = [];
+        $drift = 0;
+        foreach ($wlans as $w) {
+            if ('' === $w['id']) {
+                continue;
+            }
+            $wlanId = (int) $this->db->fetchOne(<<<'SQL'
+                INSERT INTO unifi_wlan (site_id, external_id, name, enabled, security, filter_enabled, filter_policy, remote_macs, present, synced_at, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb), true, now(), now(), now())
+                ON CONFLICT (site_id, external_id) DO UPDATE SET name = EXCLUDED.name, enabled = EXCLUDED.enabled, security = EXCLUDED.security,
+                    filter_enabled = EXCLUDED.filter_enabled, filter_policy = EXCLUDED.filter_policy, remote_macs = EXCLUDED.remote_macs,
+                    present = true, synced_at = now(), updated_at = now()
+                RETURNING id
+                SQL, [$siteId, $w['id'], mb_substr($w['name'], 0, 100), $w['enabled'], mb_substr($w['security'], 0, 30), $w['filter_enabled'], $w['filter_policy'],
+                json_encode($w['macs'])], [3 => 'boolean', 5 => 'boolean']);
+            $seen[] = $wlanId;
+            $drift += $this->markDrift($wlanId, $w['macs']);
+        }
+        $this->db->executeStatement(
+            'UPDATE unifi_wlan SET present = false, updated_at = now() WHERE site_id = ? AND present AND NOT (id = ANY(CAST(? AS int[])))',
+            [$siteId, '{'.implode(',', $seen).'}']
+        );
+
+        return [\count($seen), $drift];
     }
 
     /** @param list<string> $remote */
