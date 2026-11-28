@@ -110,6 +110,18 @@ final readonly class ScheduleService
     {
         $now ??= new \DateTimeImmutable();
         $log = [];
+        // varreduras órfãs: worker morto sem registrar o fim (SIGKILL, queda do CT) ficariam "em andamento"
+        // para sempre e o agendamento pularia todas as execuções seguintes
+        $orphans = $this->db->executeStatement(<<<'SQL'
+            UPDATE network_scan
+               SET status = 'failed', finished_at = now(), phase = NULL,
+                   error = 'Varredura interrompida: o worker do scanner parou sem concluir (reinício ou queda do serviço).'
+             WHERE status = 'running'
+               AND started_at < now() - CASE WHEN profile = 'full' THEN interval '3 hours 15 minutes' ELSE interval '1 hour 15 minutes' END
+            SQL);
+        if ($orphans > 0) {
+            $log[] = ['schedule' => '-', 'result' => $orphans.' varredura(s) órfã(s) marcada(s) como interrompida(s)'];
+        }
         $due = $this->db->fetchAllAssociative('SELECT * FROM scan_schedule WHERE enabled AND next_run_at <= ? ORDER BY next_run_at', [$now->format(\DATE_ATOM)]);
         foreach ($due as $sc) {
             $next = $this->nextRun($sc['frequency'], null === $sc['interval_hours'] ? null : (int) $sc['interval_hours'], $sc['run_at'], json_decode((string) $sc['weekdays'], true) ?: [], $now);

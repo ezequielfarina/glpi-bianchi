@@ -8,6 +8,11 @@ printf '<host><status state="up" reason="arp-response"/>\n<address addr="192.168
 sleep 0.3
 printf 'names><hostname name="pc-01.empresa.local" type="PTR"/></hostnames>\n<ports><port protocol="tcp" portid="3389"><state state="open"/><service name="ms-wbt-server"/></port><port protocol="tcp" portid="445"><state state="open"/><service name="microsoft-ds"/></port></ports>\n'
 printf '<hostscript><script id="nbstat" output="NetBIOS name: PC-01, NetBIOS user: &lt;unknown&gt;, NetBIOS MAC: 00:0c:29:aa:bb:01 (VMware)"/></hostscript></host>\n'
+# simula o systemd reiniciando o worker no meio da varredura (ScanInterruptionTest)
+if [ -f "$(dirname "$0")/.sigterm" ]; then
+    printf 'NSOCK ERROR [10.1s] mksock_bind_addr(): Bind to 0.0.0.0:500 failed (IOD #9): Permission denied (13)\n' >&2
+    kill -TERM $$
+fi
 printf '<taskprogress task="SYN Stealth Scan" time="2" percent="55.50" remaining="3"/>\n'
 printf '<host><status state="up" reason="echo-reply"/><address addr="192.168.10.30" addrtype="ipv4"/><ports><port protocol="tcp" portid="9100"><state state="open"/><service name="jetdirect"/></port></ports></host>\n'
 printf '<host><status state="down" reason="no-response"/><address addr="192.168.10.31" addrtype="ipv4"/></host>\n'

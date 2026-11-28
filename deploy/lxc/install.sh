@@ -262,6 +262,8 @@ sed "s#@APP_DIR@#${APP_DIR}#g; s#@APP_USER@#${APP_USER}#g; s#@PHP_VER@#${PHP_VER
 systemctl daemon-reload
 systemctl enable bianchi-scan-worker
 systemctl reset-failed bianchi-scan-worker 2>/dev/null || true
+RUNNING_SCANS="$(runuser -u postgres -- psql -tAd "$DB_NAME" -c "SELECT string_agg('#'||id||' '||target, ', ') FROM network_scan WHERE status = 'running'" 2>/dev/null || true)"
+[[ -n "$RUNNING_SCANS" ]] && warn "Varredura em andamento será interrompida pelo reinício do scanner: $RUNNING_SCANS (agendada roda de novo em 5 min)."
 systemctl restart bianchi-scan-worker
 # Agendador de varreduras (timer a cada minuto) — ADR-0013
 for f in bianchi-scan-scheduler.service bianchi-scan-scheduler.timer; do

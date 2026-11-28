@@ -186,8 +186,13 @@ final readonly class RunNetworkScanHandler
 
                 return;
             }
+            if (null !== $result['signal']) {
+                $this->interrupted($id, $scan, $result['signal'], $warnings);
+
+                return;
+            }
             if (0 !== $result['exit']) {
-                throw new \RuntimeException('nmap terminou com código '.$result['exit'].': '.mb_substr($result['stderr'], 0, 1000));
+                throw new \RuntimeException('nmap terminou com código '.$result['exit'].': '.self::summarizeStderr($result['stderr']));
             }
             $this->finish($id, NetworkScan::DONE, null, $warnings);
             $this->afterScan($id, $scan);
@@ -211,6 +216,45 @@ final readonly class RunNetworkScanHandler
         } catch (\Throwable $e) {
             $this->logger->error('Network alert analysis failed', ['scan_id' => $id, 'error' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * nmap morto por sinal que não foi nosso (systemd reiniciando o worker num deploy, reboot do CT...):
+     * não é falha da rede. Guarda o que já foi encontrado e, se for agendada, roda de novo em 5 minutos.
+     *
+     * @param array<string, mixed> $scan
+     * @param list<string>         $warnings
+     */
+    private function interrupted(int $id, array $scan, int $signal, array $warnings): void
+    {
+        $msg = \sprintf('Varredura interrompida: o serviço do scanner foi parado no meio da varredura (sinal %d — reinício do worker, atualização do sistema ou do CT). Os dispositivos já encontrados foram mantidos.', $signal);
+        if (null !== $scan['schedule_id']) {
+            $this->db->executeStatement("UPDATE scan_schedule SET next_run_at = LEAST(next_run_at, now() + interval '5 minutes') WHERE id = ? AND enabled", [(int) $scan['schedule_id']]);
+            $msg .= ' O agendamento roda de novo em 5 minutos.';
+        }
+        $this->logger->warning('Network scan interrupted', ['scan_id' => $id, 'signal' => $signal]);
+        $this->finish($id, NetworkScan::FAILED, $msg, $warnings);
+    }
+
+    /**
+     * stderr do nmap para a mensagem de erro: junta linhas repetidas (o NSOCK repete o mesmo erro por host)
+     * sem carimbo de tempo/IOD, e mostra quantas vezes cada uma ocorreu.
+     */
+    public static function summarizeStderr(string $stderr, int $max = 600): string
+    {
+        $count = [];
+        foreach (preg_split('/\R|(?=NSOCK ERROR)/', $stderr) ?: [] as $line) {
+            $line = trim((string) preg_replace(['/\[\d+\.\d+s\]\s*/', '/\s*\(IOD #\d+\)/'], '', $line));
+            if ('' !== $line) {
+                $count[$line] = ($count[$line] ?? 0) + 1;
+            }
+        }
+        $out = [];
+        foreach ($count as $line => $n) {
+            $out[] = $n > 1 ? "$line (×$n)" : $line;
+        }
+
+        return mb_substr(implode(' | ', $out), 0, $max);
     }
 
     /** @param array<string, mixed> $scan */

@@ -31,12 +31,13 @@ class NmapRunner
     }
 
     /**
-     * @param list<string>                         $args
-     * @param callable(\SimpleXMLElement): void   $onHost
-     * @param callable(string, float): void        $onProgress tarefa, percentual (-1 = só mudou a fase)
-     * @param callable(): bool                     $shouldStop
+     * @param list<string>                      $args
+     * @param callable(\SimpleXMLElement): void $onHost
+     * @param callable(string, float): void     $onProgress tarefa, percentual (-1 = só mudou a fase)
+     * @param callable(): bool                  $shouldStop
      *
-     * @return array{exit: int, stderr: string, stopped: bool}
+     * @return array{exit: int, stderr: string, stopped: bool, signal: int|null} `signal`: sinal que encerrou o nmap
+     *                                                                           sem ter sido pedido por nós (ex.: 15 = SIGTERM do systemd ao reiniciar o worker)
      */
     public function run(array $args, string $target, callable $onHost, callable $onProgress, callable $shouldStop, int $timeoutSeconds = 3600): array
     {
@@ -83,9 +84,22 @@ class NmapRunner
         $this->drain($buffer, $onHost, $onProgress);
         fclose($pipes[1]);
         fclose($pipes[2]);
-        $exit = proc_close($proc);
+        // proc_close devolve o status cru quando o processo morre por sinal: lê o motivo antes
+        $signal = null;
+        $exit = null;
+        for ($i = 0; $i < 50; ++$i) {
+            $st = proc_get_status($proc);
+            if (!$st['running']) {
+                $signal = $st['signaled'] ? $st['termsig'] : null;
+                $exit = $st['exitcode'];
+                break;
+            }
+            usleep(100_000);
+        }
+        $closed = proc_close($proc);
+        $exit = null !== $exit && $exit >= 0 ? $exit : $closed;
 
-        return ['exit' => $exit, 'stderr' => trim($stderr), 'stopped' => $stopped];
+        return ['exit' => null !== $signal ? 128 + $signal : $exit, 'stderr' => trim($stderr), 'stopped' => $stopped, 'signal' => $stopped ? null : $signal];
     }
 
     /**
@@ -93,7 +107,7 @@ class NmapRunner
      * e devolve o que sobrou (bloco ainda incompleto).
      *
      * @param callable(\SimpleXMLElement): void $onHost
-     * @param callable(string, float): void      $onProgress
+     * @param callable(string, float): void     $onProgress
      */
     private function drain(string $buffer, callable $onHost, callable $onProgress): string
     {

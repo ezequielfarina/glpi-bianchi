@@ -92,4 +92,13 @@ final class ScannerUnitTest extends TestCase
         self::assertSame('mobile', $c->classify(['vendor' => 'Apple'] + $base));
         self::assertSame('unknown', $c->classify($base));
     }
+
+    /** Mensagem real da varredura "Rede TI": NSOCK repetido vira uma linha com contagem, sem carimbo de tempo. */
+    public function testNmapStderrIsSummarized(): void
+    {
+        $stderr = 'NSOCK ERROR [4827.9820s] mksock_bind_addr(): Bind to 0.0.0.0:500 failed (IOD #9): Permission denied (13) '
+            .'NSOCK ERROR [5027.3020s] mksock_bind_addr(): Bind to 0.0.0.0:500 failed (IOD #1229): Permission denied (13) '
+            .'NSOCK ERROR [5028.5150s] mksock_bind_addr(): Bind to 0.0.0.0:500 failed (IOD #1235): Permission denied (13)';
+        self::assertSame('NSOCK ERROR mksock_bind_addr(): Bind to 0.0.0.0:500 failed: Permission denied (13) (×3)', \App\Tools\MessageHandler\RunNetworkScanHandler::summarizeStderr($stderr));
+    }
 }

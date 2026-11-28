@@ -4,6 +4,13 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Unreleased]
 
+### Corrigido — scanner de rede
+- Varredura morta por reinício do worker (deploy, `rotate-secrets.sh`, reboot) aparecia como "nmap terminou com código 15" com o stderr bruto: agora é **interrompida**, mantém os dispositivos já encontrados e, se for agendada, roda de novo em 5 minutos (sem alerta de falha).
+- Varredura órfã (worker morto sem registrar o fim) ficava "em andamento" para sempre e bloqueava o agendamento: o tick encerra depois do tempo máximo do perfil.
+- Worker do scanner com `CAP_NET_BIND_SERVICE`: a sonda IKE do `-sV` (VPN, UDP 500) usa porta de origem 500 e falhava com "Bind to 0.0.0.0:500 failed: Permission denied".
+- Mensagem de erro do nmap resumida (linhas repetidas viram "(×N)").
+- `install.sh` avisa quando o reinício vai interromper uma varredura em andamento.
+
 ### Segurança (auditoria 2026-11 — docs/security/auditoria-2026-11.md)
 - **Crítico:** com `APP_ENV=dev`, `/_profiler` expunha sem login os segredos (`API_TOKEN`, `DATA_ENCRYPTION_KEY`, senha do banco) e cookies de sessão. Agora `/_profiler`, `/_wdt` e `/_error` só respondem a loopback (aplicação + nginx) e o painel web roda sempre com `APP_DEBUG=0`. **Gire os segredos:** `sudo bash deploy/lxc/rotate-secrets.sh`.
 - Endpoint do GLPI Agent: só redes permitidas (`AGENT_ALLOWED_NETWORKS`), credencial Basic opcional (`AGENT_BASIC_AUTH`) e limite por IP — impede inventário falso sobrescrevendo ativos.

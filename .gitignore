@@ -37,3 +37,4 @@ Thumbs.db
 
 # APP_SECRET de dev gerado pelo Flex — segredos ficam só no .env.local
 /.env.dev
+tests/Fixtures/nmap/.sigterm
