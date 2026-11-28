@@ -116,10 +116,10 @@ async function unplug(t: CircuitTermination): Promise<void> {
             <AttachmentsPanel owner-type="circuit" :owner="c.id" :items="c.attachments.filter((a) => a.kind === 'document')" title="Documentos (proposta, termo de aceite)" @changed="reload" />
           </div>
         </div>
-        <SpecForm v-if="editing" :title="`Editar ${c.cid}`" :fields="fields"
+        <SpecForm v-if="editing" ctx="circuit" :title="`Editar ${c.cid}`" :fields="fields"
           :initial="{ supplier_id: c.supplier_id, cid: c.cid, type_id: c.type_id, status: c.status, commit_mbps: c.commit_rate_kbps ? c.commit_rate_kbps / 1000 : '', contract_id: c.contract_id ?? '', install_date: c.install_date ?? '', termination_date: c.termination_date ?? '', description: c.description ?? '', comments: c.comments ?? '' }"
           :save="(v) => circuits.save(c!.id, toBody(v))" ok-text="Circuito atualizado" @close="editing = false" @saved="editing = false; reload()" />
-        <SpecForm v-if="editSide" :title="`Lado ${editSide}`" :fields="tFields"
+        <SpecForm v-if="editSide" ctx="term" :title="`Lado ${editSide}`" :fields="tFields"
           :initial="side(editSide) ? { ...side(editSide)!, branch_id: side(editSide)!.branch_id ?? '', location_id: side(editSide)!.location_id ?? '' } : (editSide === 'A' ? { provider_network: 'Internet' } : {})"
           :save="async (v) => ({ id: (await circuits.saveTermination(c!.id, editSide!, v)).id })" ok-text="Terminação salva" @close="editSide = null" @saved="editSide = null; reload()" />
         <CableModal v-if="connect" :a="{ type: 'circuit', ids: [connect.id], kind: 'circuit', label: `${c.provider} ${c.cid} — lado ${connect.term_side}`, branchId: connect.branch_id }"

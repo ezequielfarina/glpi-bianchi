@@ -86,6 +86,22 @@ Leitura para qualquer perfil; escrita para Técnico/Administrador; toda escrita 
 | GET · POST · PUT · DELETE | `/api/ui/ipam/ranges[/{id}]` · `/ranges/{id}/next-ip` | faixas `{start_address, end_address, vrf_id, status, role, mark_utilized}` |
 | GET · POST · PUT · DELETE | `/api/ui/ipam/ip-addresses[/{id}]` | IPs (`q` aceita rede `10.1.0.0/16`, `assigned`, `device`) · `{address, vrf_id, port_id, status, role, dns_name, make_primary}` |
 | GET · POST · PUT · DELETE | `/api/ui/ipam/vrfs` · `/vlan-groups` · `/vlans[/{id}]` | VRFs, grupos e VLANs (detalhe da VLAN com portas e prefixos) |
+| GET | `/api/ui/dcim/topology?branch&mode=logical\|physical&vms=1` | grafo do mapa `{nodes: [{id, kind: device\|circuit\|cloud\|cluster\|vm, …}], links: [{source, target, kind: data\|power\|console\|member\|virtual\|provider, color, via, …}]}` |
+| GET | `/api/ui/dcim/devices/{id}/path-to-internet` | `{found, start, segments: [{from_port, to_kind, to_device, to_port, cid, provider_network, cables, trace}], reason: no_cable\|no_route\|null}` |
+
+### Virtualização (`/api/ui/virtualization` — ADR-0017)
+
+| Método | Rota | Uso |
+|---|---|---|
+| GET | `/api/ui/virtualization/choices` | tipos, grupos, status de cluster/VM |
+| POST · PUT · DELETE | `/lookups/{type\|group}[/{id}]` | plataformas e grupos `{name}` |
+| GET · POST · PUT · DELETE | `/clusters[/{id}]` | lista com consumo × capacidade (`q`, `branch`, `type`) · detalhe (`hosts_list`, `vm_list`) · `{name, type_id, group_id, branch_id, status, version, management_url}` |
+| POST | `/clusters/{id}/hosts` | `{device_id, member: true\|false}` — tirar o host solta as VMs dele |
+| GET · POST · PUT · DELETE | `/vms[/{id}]` | lista (`q` aceita IP, `cluster`, `host`, `branch`, `status`) · `{name, cluster_id, device_id, vcpus, memory_mb, disk_gb, vmid, platform, asset_uuid, copy_interfaces, primary_ip_id}` |
+| POST · PUT · DELETE | `/vms/{id}/interfaces` · `/interfaces/{id}` | NICs em lote (`net[0-3]`) `{name, bridge, mac_address, mode, untagged_vlan_id, tagged_vlan_ids}` → `201 {ids}` |
+| POST · PUT · DELETE | `/vms/{id}/disks[/{disk}]` · `/disks/{id}` | `{name, size_gb, storage}` |
+
+IP de VM: `POST /api/ui/ipam/ip-addresses` com `vm_interface_id` (e `make_primary`).
 
 ### Auditoria (`/api/ui/audit`, só Administrador — ADR-0015)
 

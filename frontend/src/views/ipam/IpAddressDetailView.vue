@@ -36,14 +36,14 @@ async function remove(): Promise<void> {
         </header>
         <section class="panel">
           <dl class="dc-kv top">
-            <dt>Equipamento</dt><dd><template v-if="ip.device_id"><RouterLink :to="`/dcim/devices/${ip.device_id}`" class="dc-link">{{ ip.device }}</RouterLink> · interface <span class="mono">{{ ip.port }}</span> · {{ ip.branch }}</template><span v-else class="muted">sem interface</span></dd>
+            <dt>Equipamento</dt><dd><template v-if="ip.device_id"><RouterLink :to="`/dcim/devices/${ip.device_id}`" class="dc-link">{{ ip.device }}</RouterLink> · interface <span class="mono">{{ ip.port }}</span> · {{ ip.branch }}</template><template v-else-if="ip.vm_id">VM <RouterLink :to="`/virtualization/vms/${ip.vm_id}`" class="dc-link">{{ ip.vm }}</RouterLink> · interface <span class="mono">{{ ip.vm_interface }}</span></template><span v-else class="muted">sem interface</span></dd>
             <dt>Prefixo</dt><dd><RouterLink v-if="ip.prefix_id" :to="`/ipam/prefixes/${ip.prefix_id}`" class="dc-link mono">{{ ip.prefix }}</RouterLink><span v-else class="muted">fora de prefixo cadastrado</span></dd>
             <dt>VRF</dt><dd>{{ ip.vrf ?? 'Global' }}</dd>
             <dt>Papel</dt><dd>{{ ip.role ?? '—' }}</dd>
             <template v-if="ip.comments"><dt>Observações</dt><dd class="pre">{{ ip.comments }}</dd></template>
           </dl>
         </section>
-        <IpForm v-if="editing" :ip="ip" :ports="ip.port_id ? [{ id: ip.port_id, name: ip.port ?? '' }] : undefined" @close="editing = false" @saved="editing = false; reload()" />
+        <IpForm v-if="editing" :ip="ip" :ports="ip.port_id ? [{ id: ip.port_id, name: ip.port ?? '' }] : undefined" :vm-interfaces="ip.vm_interface_id ? [{ id: ip.vm_interface_id, name: ip.vm_interface ?? '' }] : undefined" @close="editing = false" @saved="editing = false; reload()" />
       </template>
     </LoadState>
   </div>

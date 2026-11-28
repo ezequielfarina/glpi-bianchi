@@ -9,6 +9,7 @@ use App\Ipam\Entity\IpAddress;
 use App\Organization\Entity\Branch;
 use App\Organization\Entity\Location;
 use App\Shared\Entity\TimestampableTrait;
+use App\Virtualization\Entity\Cluster;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -83,6 +84,19 @@ class Device
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $comments = null;
+
+    #[ORM\ManyToOne(targetEntity: Cluster::class)]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?Cluster $cluster = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $cpuThreads = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $memoryMb = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $storageGb = null;
 
     public function __construct(Branch $branch, DeviceType $deviceType, DeviceRole $role, string $name)
     {
@@ -170,5 +184,25 @@ class Device
     public function getComments(): ?string
     {
         return $this->comments;
+    }
+
+    public function getCluster(): ?Cluster
+    {
+        return $this->cluster;
+    }
+
+    public function getCpuThreads(): ?int
+    {
+        return $this->cpuThreads;
+    }
+
+    public function getMemoryMb(): ?int
+    {
+        return $this->memoryMb;
+    }
+
+    public function getStorageGb(): ?int
+    {
+        return $this->storageGb;
     }
 }

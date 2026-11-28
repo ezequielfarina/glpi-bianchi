@@ -60,7 +60,7 @@ const pct = (r: RackRow) => Math.min(100, Math.round((100 * r.used_u) / r.u_heig
         </div>
       </LoadState>
     </section>
-    <SpecForm v-if="creating" title="Novo rack" :fields="fields" :initial="{ branch_id: branch ?? '', u_height: 42, width: 19, starting_unit: 1, status: 'active' }"
+    <SpecForm v-if="creating" ctx="rack" title="Novo rack" :fields="fields" :initial="{ branch_id: branch ?? '', u_height: 42, width: 19, starting_unit: 1, status: 'active' }"
       :save="(v) => dcim.saveRack(null, v)" ok-text="Rack cadastrado" @close="creating = false" @saved="(id) => router.push(`/dcim/racks/${id}`)" />
   </div>
 </template>

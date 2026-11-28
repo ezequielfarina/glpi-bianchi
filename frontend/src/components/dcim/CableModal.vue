@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import AppModal from '../AppModal.vue'
+import HelpTip from '../HelpTip.vue'
 import { api } from '../../lib/api'
 import { circuits as circuitApi, dcim, dcimChoices, hex, type CableRow, type DcimChoices, type DeviceRow, type PortOption } from '../../lib/dcim'
 import type { BranchRow } from '../../lib/types'
@@ -95,7 +96,7 @@ async function save(): Promise<void> {
           <select id="cb-branch" v-model="branch" class="input"><option :value="null">Todas</option><option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option></select></div>
         <template v-if="mode === 'device'">
           <div class="field"><label for="cb-q">Buscar equipamento</label><input id="cb-q" v-model="q" class="input" type="search" placeholder="Nome, modelo, série…" /></div>
-          <div class="field full"><label for="cb-dev">Equipamento *</label>
+          <div class="field full"><label for="cb-dev">Equipamento *<HelpTip ctx="cable" k="b" label="Equipamento" /></label>
             <select id="cb-dev" v-model="device" class="input" :size="Math.min(8, Math.max(3, devices.length))">
               <option v-for="d in devices" :key="d.id" :value="d.id">{{ d.name }} — {{ d.role }} · {{ d.device_type }}{{ d.rack ? ` · ${d.rack}` : d.location ? ` · ${d.location}` : '' }}</option>
             </select></div>
@@ -118,21 +119,21 @@ async function save(): Promise<void> {
         <span v-if="errors.a_terminations || errors.b_terminations" class="err full">{{ errors.a_terminations ?? errors.b_terminations }}</span>
       </template>
 
-      <div class="field"><label for="cb-label">Etiqueta</label><input id="cb-label" v-model="f.label" class="input mono" placeholder="ex.: P-0112" /></div>
-      <div class="field"><label for="cb-type">Tipo</label>
+      <div class="field"><label for="cb-label">Etiqueta<HelpTip ctx="cable" k="label" label="Etiqueta" /></label><input id="cb-label" v-model="f.label" class="input mono" placeholder="ex.: P-0112" /></div>
+      <div class="field"><label for="cb-type">Tipo<HelpTip ctx="cable" k="type" label="Tipo" /></label>
         <select id="cb-type" v-model="f.type" class="input"><option value="">—</option><option v-for="o in choices?.cable_types ?? []" :key="o.value" :value="o.value">{{ o.label }}</option></select></div>
-      <div class="field"><label for="cb-status">Situação</label>
+      <div class="field"><label for="cb-status">Situação<HelpTip ctx="cable" k="status" label="Situação" /></label>
         <select id="cb-status" v-model="f.status" class="input"><option v-for="o in choices?.cable_status ?? []" :key="o.value" :value="o.value">{{ o.label }}</option></select></div>
-      <div class="field"><label for="cb-len">Comprimento</label>
+      <div class="field"><label for="cb-len">Comprimento<HelpTip ctx="cable" k="length" label="Comprimento" /></label>
         <div class="row"><input id="cb-len" v-model="f.length" class="input" inputmode="decimal" placeholder="ex.: 2,5" :aria-invalid="!!errors.length" />
           <select v-model="f.length_unit" class="input unit" aria-label="Unidade"><option v-for="o in choices?.length_units ?? []" :key="o.value" :value="o.value">{{ o.label }}</option></select></div>
         <span v-if="errors.length" class="err">{{ errors.length }}</span></div>
-      <div class="field full"><label>Cor</label>
+      <div class="field full"><label>Cor<HelpTip ctx="cable" k="color" label="Cor" /></label>
         <div class="colors">
           <button type="button" class="sw none" :class="{ on: !f.color }" title="Sem cor" @click="f.color = ''">∅</button>
           <button v-for="o in choices?.colors ?? []" :key="o.value" type="button" class="sw" :class="{ on: f.color === o.value }" :style="{ background: hex(o.value) }" :title="o.label" :aria-label="o.label" @click="f.color = o.value" />
         </div></div>
-      <div class="field full"><label for="cb-desc">Descrição</label><input id="cb-desc" v-model="f.description" class="input" /></div>
+      <div class="field full"><label for="cb-desc">Descrição<HelpTip ctx="cable" k="description" label="Descrição" /></label><input id="cb-desc" v-model="f.description" class="input" /></div>
       <div class="form-actions full">
         <button class="btn" type="button" @click="emit('close')">Cancelar</button>
         <button class="btn btn-primary" type="submit" :disabled="saving || (!cable && (mode === 'device' ? !picked.length : !circuitTerm))">{{ saving ? 'Salvando…' : cable ? 'Salvar' : 'Conectar' }}</button>

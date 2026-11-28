@@ -27,6 +27,6 @@ const fields = computed<FieldSpec[]>(() => [
 </script>
 
 <template>
-  <SpecForm v-if="ready" :title="l ? `Editar ${l.name}` : 'Novo local'" :fields="fields" :initial="initial" :save="(v) => dcim.saveLocation(l?.id ?? null, v)"
+  <SpecForm v-if="ready" ctx="location" :title="l ? `Editar ${l.name}` : 'Novo local'" :fields="fields" :initial="initial" :save="(v) => dcim.saveLocation(l?.id ?? null, v)"
     :ok-text="l ? 'Local atualizado' : 'Local cadastrado'" @close="emit('close')" @saved="emit('saved', $event)" />
 </template>

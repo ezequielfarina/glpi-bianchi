@@ -18,7 +18,7 @@ final class AuditCatalog
         'licenses' => 'Licenças', 'attachments' => 'Anexos', 'lookups' => 'Cadastros auxiliares', 'stock' => 'Estoque',
         'invoices' => 'Notas fiscais', 'tools' => 'Ferramentas', 'monitor' => 'Monitoramento', 'users' => 'Usuários',
         'account' => 'Minha conta', 'settings' => 'Configurações', 'agents' => 'Agentes',
-        'dcim' => 'Infraestrutura física', 'cabling' => 'Cabeamento', 'ipam' => 'IPAM', 'circuits' => 'Circuitos', 'other' => 'Outros',
+        'dcim' => 'Infraestrutura física', 'cabling' => 'Cabeamento', 'ipam' => 'IPAM', 'circuits' => 'Circuitos', 'virtualization' => 'Virtualização', 'other' => 'Outros',
     ];
 
     /** @var array<string, array{0: string, 1: string, 2: string, 3: string|null, 4: string|null}> */
@@ -159,6 +159,23 @@ final class AuditCatalog
         'ui_circuit_delete' => ['circuit.deleted', 'Circuito excluído', 'circuits', 'circuit', 'id'],
         'ui_circuit_termination_save' => ['circuit.termination_saved', 'Terminação de circuito salva', 'circuits', 'circuit', 'id'],
         'ui_circuit_termination_delete' => ['circuit.termination_deleted', 'Terminação de circuito excluída', 'circuits', 'circuit_termination', 'id'],
+        // virtualização (ADR-0017)
+        'ui_virt_lookup_create' => ['cluster_lookup.created', 'Tipo/grupo de cluster cadastrado', 'virtualization', 'cluster_lookup', null],
+        'ui_virt_lookup_update' => ['cluster_lookup.updated', 'Tipo/grupo de cluster alterado', 'virtualization', 'cluster_lookup', 'id'],
+        'ui_virt_lookup_delete' => ['cluster_lookup.deleted', 'Tipo/grupo de cluster excluído', 'virtualization', 'cluster_lookup', 'id'],
+        'ui_virt_cluster_create' => ['cluster.created', 'Cluster cadastrado', 'virtualization', 'cluster', null],
+        'ui_virt_cluster_update' => ['cluster.updated', 'Cluster alterado', 'virtualization', 'cluster', 'id'],
+        'ui_virt_cluster_delete' => ['cluster.deleted', 'Cluster excluído', 'virtualization', 'cluster', 'id'],
+        'ui_virt_cluster_host' => ['cluster.host_changed', 'Host do cluster alterado', 'virtualization', 'cluster', 'id'],
+        'ui_virt_vm_create' => ['vm.created', 'Máquina virtual cadastrada', 'virtualization', 'vm', null],
+        'ui_virt_vm_update' => ['vm.updated', 'Máquina virtual alterada', 'virtualization', 'vm', 'id'],
+        'ui_virt_vm_delete' => ['vm.deleted', 'Máquina virtual excluída', 'virtualization', 'vm', 'id'],
+        'ui_virt_iface_create' => ['vm_interface.created', 'Interfaces da VM criadas', 'virtualization', 'vm', 'id'],
+        'ui_virt_iface_update' => ['vm_interface.updated', 'Interface da VM alterada', 'virtualization', 'vm_interface', 'id'],
+        'ui_virt_iface_delete' => ['vm_interface.deleted', 'Interface da VM excluída', 'virtualization', 'vm_interface', 'id'],
+        'ui_virt_disk_create' => ['vm_disk.created', 'Disco da VM criado', 'virtualization', 'vm', 'id'],
+        'ui_virt_disk_update' => ['vm_disk.updated', 'Disco da VM alterado', 'virtualization', 'vm', 'vm'],
+        'ui_virt_disk_delete' => ['vm_disk.deleted', 'Disco da VM excluído', 'virtualization', 'vm_disk', 'id'],
         // configurações
         'ui_settings_update' => ['settings.updated', 'Configurações alteradas', 'settings', null, null],
     ];

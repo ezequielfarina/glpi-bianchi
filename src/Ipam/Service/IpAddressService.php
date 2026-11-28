@@ -14,7 +14,7 @@ use Doctrine\DBAL\Connection;
  * Endereços IP (ADR-0016 §7). Porta de `ipam.IPAddress` (netbox/ipam/models/ip.py):
  *  - endereço com máscara; sem máscara, herda a do menor prefixo que o contém;
  *  - único por VRF quando a VRF (ou a tabela global) exige — sob advisory lock para não haver corrida;
- *  - atribuído a uma interface; pode virar o IP primário do equipamento;
+ *  - atribuído a uma interface física ou de VM (ADR-0017); pode virar o IP primário do equipamento/VM;
  *  - rede e broadcast de um prefixo IPv4 comum são recusados (IPAddress.clean).
  */
 final readonly class IpAddressService
@@ -30,7 +30,7 @@ final readonly class IpAddressService
     }
 
     /**
-     * @param array{q?: string|null, vrf?: int|null, status?: string|null, role?: string|null, branch?: int|null, assigned?: bool|null, device?: int|null, id?: int|null} $f
+     * @param array{q?: string|null, vrf?: int|null, status?: string|null, role?: string|null, branch?: int|null, assigned?: bool|null, device?: int|null, vm?: int|null, id?: int|null} $f
      *
      * @return list<array<string, mixed>>
      */
@@ -41,7 +41,9 @@ final readonly class IpAddressService
 
         return $this->db->fetchAllAssociative(<<<'SQL'
             SELECT i.id, host(i.address) || '/' || masklen(i.address) AS address, family(i.address) AS family, i.status, i.role, i.dns_name, i.description,
-                   i.vrf_id, v.name AS vrf, i.port_id, po.name AS port, d.id AS device_id, d.name AS device, b.name AS branch, (d.primary_ip_id = i.id) AS is_primary,
+                   i.vrf_id, v.name AS vrf, i.port_id, po.name AS port, d.id AS device_id, d.name AS device, coalesce(b.name, vb.name) AS branch,
+                   coalesce(d.primary_ip_id = i.id, vm.primary_ip_id = i.id) AS is_primary,
+                   i.vm_interface_id, vi.name AS vm_interface, vm.id AS vm_id, vm.name AS vm,
                    (SELECT x.id FROM ipam_prefix x WHERE x.vrf_id IS NOT DISTINCT FROM i.vrf_id AND x.prefix >>= inet(host(i.address)) ORDER BY masklen(x.prefix) DESC LIMIT 1) AS prefix_id,
                    (SELECT x.prefix::text FROM ipam_prefix x WHERE x.vrf_id IS NOT DISTINCT FROM i.vrf_id AND x.prefix >>= inet(host(i.address)) ORDER BY masklen(x.prefix) DESC LIMIT 1) AS prefix
             FROM ipam_ip_address i
@@ -49,20 +51,25 @@ final readonly class IpAddressService
             LEFT JOIN dcim_port po ON po.id = i.port_id
             LEFT JOIN dcim_device d ON d.id = po.device_id
             LEFT JOIN branch b ON b.id = d.branch_id
+            LEFT JOIN virt_interface vi ON vi.id = i.vm_interface_id
+            LEFT JOIN virt_machine vm ON vm.id = vi.vm_id
+            LEFT JOIN virt_cluster vc ON vc.id = vm.cluster_id
+            LEFT JOIN branch vb ON vb.id = vc.branch_id
             WHERE (CAST(:vrf AS int) IS NULL OR i.vrf_id = :vrf OR (CAST(:vrf AS int) = 0 AND i.vrf_id IS NULL))
               AND (CAST(:id AS int) IS NULL OR i.id = :id)
               AND (CAST(:status AS text) IS NULL OR i.status = :status)
               AND (CAST(:role AS text) IS NULL OR i.role = :role)
-              AND (CAST(:branch AS int) IS NULL OR d.branch_id = :branch)
+              AND (CAST(:branch AS int) IS NULL OR d.branch_id = :branch OR vc.branch_id = :branch)
+              AND (CAST(:vm AS int) IS NULL OR vm.id = :vm)
               AND (CAST(:device AS int) IS NULL OR d.id = :device)
-              AND (CAST(:assigned AS boolean) IS NULL OR (i.port_id IS NOT NULL) = CAST(:assigned AS boolean))
+              AND (CAST(:assigned AS boolean) IS NULL OR (i.port_id IS NOT NULL OR i.vm_interface_id IS NOT NULL) = CAST(:assigned AS boolean))
               AND (CAST(:q AS text) IS NULL OR host(i.address) LIKE CAST(:q AS text) || '%' OR i.dns_name ILIKE '%' || CAST(:q AS text) || '%'
-                   OR i.description ILIKE '%' || CAST(:q AS text) || '%' OR d.name ILIKE '%' || CAST(:q AS text) || '%'
+                   OR i.description ILIKE '%' || CAST(:q AS text) || '%' OR d.name ILIKE '%' || CAST(:q AS text) || '%' OR vm.name ILIKE '%' || CAST(:q AS text) || '%'
                    OR (CAST(:qnet AS cidr) IS NOT NULL AND inet(host(i.address)) <<= CAST(:qnet AS cidr)))
             ORDER BY v.name NULLS FIRST, i.address
             LIMIT 5000
             SQL, ['vrf' => $f['vrf'] ?? null, 'id' => $f['id'] ?? null, 'status' => $f['status'] ?? null, 'role' => $f['role'] ?? null, 'branch' => $f['branch'] ?? null,
-            'device' => $f['device'] ?? null, 'assigned' => null === ($f['assigned'] ?? null) ? null : (($f['assigned'] ?? false) ? 'true' : 'false'),
+            'device' => $f['device'] ?? null, 'vm' => $f['vm'] ?? null, 'assigned' => null === ($f['assigned'] ?? null) ? null : (($f['assigned'] ?? false) ? 'true' : 'false'),
             'q' => $q, 'qnet' => null !== $net && str_contains((string) $q, '/') ? IpNet::cidr($net['bin'], $net['len']) : null]);
     }
 
@@ -82,6 +89,17 @@ final readonly class IpAddressService
         $text = $p->string('address', 64, required: true);
         $vrfId = $p->int('vrf_id', 1);
         $portId = $p->int('port_id', 1);
+        $vmIfaceId = $p->int('vm_interface_id', 1);
+        if (null !== $portId && null !== $vmIfaceId) {
+            $p->error('port_id', 'O IP fica numa interface física OU numa interface de VM, não nas duas.');
+        }
+        $vmIface = null;
+        if (null !== $vmIfaceId) {
+            $vmIface = $this->db->fetchAssociative('SELECT id, vm_id FROM virt_interface WHERE id = ?', [$vmIfaceId]) ?: null;
+            if (null === $vmIface) {
+                $p->error('vm_interface_id', 'Interface da VM não encontrada.');
+            }
+        }
         $net = null === $text ? null : IpNet::parse($text);
         if (null !== $text && null === $net) {
             $p->error('address', 'Endereço inválido (ex.: 192.168.10.20/24).');
@@ -114,19 +132,20 @@ final readonly class IpAddressService
                 throw new ValidationException(['address' => $net['bin'] === $network ? 'Esse é o endereço de rede.' : 'Esse é o endereço de broadcast.']);
             }
         }
-        $row = ['address' => $address, 'vrf_id' => $vrfId, 'port_id' => $portId, 'status' => $p->enum('status', array_keys(self::STATUS), 'active'),
+        $row = ['address' => $address, 'vrf_id' => $vrfId, 'port_id' => $portId, 'vm_interface_id' => $vmIfaceId, 'status' => $p->enum('status', array_keys(self::STATUS), 'active'),
             'role' => $p->enum('role', array_keys(self::ROLES)), 'dns_name' => $dns, 'description' => $p->string('description', 255), 'comments' => $p->string('comments', 10000)];
         $makePrimary = $p->bool('make_primary');
-        if ($makePrimary && null === $port) {
+        if ($makePrimary && null === $port && null === $vmIface) {
             $p->error('make_primary', 'Atribua o IP a uma interface para torná-lo primário.');
         }
         $p->check();
 
-        return (int) $this->db->transactional(function () use ($id, $row, $host, $vrfId, $makePrimary, $port): int {
+        return (int) $this->db->transactional(function () use ($id, $row, $host, $vrfId, $makePrimary, $port, $vmIface): int {
             if ($this->prefixes->enforceUnique($vrfId)) {
                 $this->db->executeStatement('SELECT pg_advisory_xact_lock(hashtext(?))', ['ipam_ip:'.($vrfId ?? 0)]);
                 $dup = $this->db->fetchOne(<<<'SQL'
-                    SELECT coalesce(d.name || ' ' || p.name, 'IP #' || i.id) FROM ipam_ip_address i LEFT JOIN dcim_port p ON p.id = i.port_id LEFT JOIN dcim_device d ON d.id = p.device_id
+                    SELECT coalesce(d.name || ' ' || p.name, vm.name || ' ' || vi.name, 'IP #' || i.id) FROM ipam_ip_address i LEFT JOIN dcim_port p ON p.id = i.port_id LEFT JOIN dcim_device d ON d.id = p.device_id
+                    LEFT JOIN virt_interface vi ON vi.id = i.vm_interface_id LEFT JOIN virt_machine vm ON vm.id = vi.vm_id
                     WHERE i.vrf_id IS NOT DISTINCT FROM ? AND host(i.address) = ? AND i.id <> ?
                     SQL, [$vrfId, $host, $id ?? 0]);
                 if (false !== $dup) {
@@ -135,20 +154,26 @@ final readonly class IpAddressService
             }
             if (null === $id) {
                 $id = (int) $this->db->fetchOne(
-                    'INSERT INTO ipam_ip_address (address, vrf_id, port_id, status, role, dns_name, description, comments, created_at, updated_at)
-                     VALUES (CAST(? AS inet), ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+                    'INSERT INTO ipam_ip_address (address, vrf_id, port_id, vm_interface_id, status, role, dns_name, description, comments, created_at, updated_at)
+                     VALUES (CAST(? AS inet), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
                     [...array_values($row), Refs::now(), Refs::now()],
                 );
             } else {
-                $old = $this->db->fetchAssociative('SELECT port_id FROM ipam_ip_address WHERE id = ?', [$id]) ?: throw new NotFoundException('Endereço IP não encontrado.');
+                $old = $this->db->fetchAssociative('SELECT port_id, vm_interface_id FROM ipam_ip_address WHERE id = ?', [$id]) ?: throw new NotFoundException('Endereço IP não encontrado.');
                 $this->db->update('ipam_ip_address', $row + ['updated_at' => Refs::now()], ['id' => $id]);
                 if ($old['port_id'] !== $row['port_id']) {
                     // saiu do equipamento: deixa de ser o primário dele
                     $this->db->executeStatement('UPDATE dcim_device SET primary_ip_id = NULL WHERE primary_ip_id = ? AND id NOT IN (SELECT device_id FROM dcim_port WHERE id = ?)', [$id, $row['port_id'] ?? 0]);
                 }
+                if ($old['vm_interface_id'] !== $row['vm_interface_id']) {
+                    $this->db->executeStatement('UPDATE virt_machine SET primary_ip_id = NULL WHERE primary_ip_id = ? AND id NOT IN (SELECT vm_id FROM virt_interface WHERE id = ?)', [$id, $row['vm_interface_id'] ?? 0]);
+                }
             }
             if ($makePrimary && \is_array($port)) {
                 $this->db->executeStatement('UPDATE dcim_device SET primary_ip_id = ?, updated_at = ? WHERE id = ?', [$id, Refs::now(), $port['device_id']]);
+            }
+            if ($makePrimary && \is_array($vmIface)) {
+                $this->db->executeStatement('UPDATE virt_machine SET primary_ip_id = ?, updated_at = ? WHERE id = ?', [$id, Refs::now(), $vmIface['vm_id']]);
             }
 
             return $id;

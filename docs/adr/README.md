@@ -21,3 +21,4 @@ Para uma nova decisão, copie [`0000-template.md`](0000-template.md) usando o pr
 | [0014](0014-estoque-e-notas-fiscais.md) | Estoque central de TI (razão de movimentações, patrimônio desde a entrada), nota fiscal simplificada e etiqueta de envio | aceito |
 | [0015](0015-auditoria-de-acoes.md) | Trilha de auditoria de todas as ações da interface, somente inclusão | aceito |
 | [0016](0016-dcim-ipam-cabeamento.md) | DCIM, cabeamento com trace ponta a ponta, circuitos e IPAM no modelo do NetBox | aceito |
+| [0017](0017-virtualizacao-e-mapa.md) | Virtualização (clusters, hosts, VMs), caminho até a internet e mapa 3D da rede | aceito |

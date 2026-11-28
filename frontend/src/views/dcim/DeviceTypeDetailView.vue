@@ -85,7 +85,7 @@ async function remove(): Promise<void> {
             <AttachmentsPanel owner-type="device_type" :owner="t.id" :items="t.attachments.filter((a) => a.kind === 'document')" title="Manuais e datasheets" @changed="reload" />
           </div>
         </div>
-        <SpecForm v-if="editing" :title="`Editar ${t.model}`" :fields="typeFields(roles)"
+        <SpecForm v-if="editing" ctx="type" :title="`Editar ${t.model}`" :fields="typeFields(roles)"
           :initial="{ manufacturer: t.manufacturer, model: t.model, part_number: t.part_number ?? '', u_height: String(t.u_height), default_role_id: t.default_role_id ?? '', is_full_depth: t.is_full_depth, description: t.description ?? '', comments: t.comments ?? '' }"
           :save="(v) => dcim.saveType(t!.id, v)" ok-text="Tipo atualizado" @close="editing = false" @saved="editing = false; reload()" />
         <PortFormModal v-if="adding" target="type" :rears="rears" :save="(b) => dcim.addTemplates(t!.id, b)" @close="adding = false" @saved="adding = false; reload()" />

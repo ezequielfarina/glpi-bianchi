@@ -109,6 +109,11 @@ doctrine:
                 is_bundle: false
                 dir: '%kernel.project_dir%/src/Circuit/Entity'
                 prefix: 'App\Circuit\Entity'
+            Virtualization:
+                type: attribute
+                is_bundle: false
+                dir: '%kernel.project_dir%/src/Virtualization/Entity'
+                prefix: 'App\Virtualization\Entity'
         controller_resolver:
             auto_mapping: false
 

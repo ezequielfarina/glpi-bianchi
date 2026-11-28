@@ -11,12 +11,16 @@ export interface FieldSpec {
   mono?: boolean
   /** mostra o campo só quando a função devolver true */
   show?: (v: Record<string, unknown>) => boolean
+  /** ajuda própria (senão vem do dicionário lib/fieldHelp.ts por contexto + chave) */
+  help?: string
+  example?: string
 }
 </script>
 
 <script setup lang="ts">
 import { reactive } from 'vue'
 import AppModal from '../AppModal.vue'
+import HelpTip from '../HelpTip.vue'
 import { clean, useForm } from '../forms/useForm'
 
 // Formulário genérico (modal) dirigido por especificação de campos — cadastros simples do DCIM/IPAM.
@@ -27,6 +31,8 @@ const props = defineProps<{
   save: (values: Record<string, unknown>) => Promise<{ id: number }>
   okText?: string
   wide?: boolean
+  /** contexto da ajuda dos campos (ex.: "rack", "vm") */
+  ctx?: string
 }>()
 const emit = defineEmits<{ close: []; saved: [id: number] }>()
 const { saving, errors, submit } = useForm()
@@ -45,9 +51,9 @@ const id = (f: FieldSpec) => `sf-${f.key}`
   <AppModal :title="title" :wide="wide ?? fields.length > 4" @close="emit('close')">
     <form class="form-grid" novalidate @submit.prevent="go">
       <template v-for="f in fields" :key="f.key">
-        <label v-if="f.type === 'check' && visible(f)" class="check" :class="{ full: f.full }"><input v-model="v[f.key]" type="checkbox" /> {{ f.label }}</label>
+        <label v-if="f.type === 'check' && visible(f)" class="check" :class="{ full: f.full }"><input v-model="v[f.key]" type="checkbox" /> {{ f.label }}<HelpTip :ctx="ctx" :k="f.key" :text="f.help" :example="f.example" :label="f.label" /></label>
         <div v-else-if="visible(f)" class="field" :class="{ full: f.full || f.type === 'textarea' }">
-          <label :for="id(f)">{{ f.label }}{{ f.required ? ' *' : '' }}</label>
+          <label :for="id(f)">{{ f.label }}{{ f.required ? ' *' : '' }}<HelpTip :ctx="ctx" :k="f.key" :text="f.help" :example="f.example" :label="f.label" /></label>
           <select v-if="f.type === 'select'" :id="id(f)" v-model="v[f.key]" class="input" :aria-invalid="!!errors[f.key]">
             <option v-if="!f.required" :value="''">—</option>
             <option v-for="o in f.options ?? []" :key="String(o.value)" :value="o.value ?? ''">{{ o.label }}</option>

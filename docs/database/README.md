@@ -85,6 +85,16 @@ erDiagram
     ipam_vlan_group ||--o{ ipam_vlan : ""
     dcim_port ||--o{ ipam_ip_address : "IP na interface"
     dcim_port }o--o{ ipam_vlan : "tagged"
+    virt_cluster_type ||--o{ virt_cluster : "plataforma"
+    virt_cluster_group ||--o{ virt_cluster : ""
+    virt_cluster ||--o{ dcim_device : "hosts"
+    virt_cluster ||--o{ virt_machine : ""
+    dcim_device ||--o{ virt_machine : "roda em"
+    asset |o--o| virt_machine : "vínculo opcional"
+    virt_machine ||--o{ virt_interface : ""
+    virt_machine ||--o{ virt_disk : ""
+    virt_interface ||--o{ ipam_ip_address : "IP da VM"
+    virt_interface }o--o{ ipam_vlan : "tagged"
 ```
 
 ## Dicionário
@@ -201,6 +211,18 @@ erDiagram
 | `ipam_ip_range` | faixa `start_address`–`end_address` (INET com máscara), status, papel, `mark_utilized` | CHECK mesma família/máscara e início ≤ fim; sobreposição recusada no serviço |
 | `ipam_ip_address` | `address INET` com máscara, VRF, `port_id` (interface), status, papel, DNS | GiST `inet_ops`; unicidade por VRF no serviço sob `pg_advisory_xact_lock` |
 | `ipam_vlan_group` / `ipam_vlan` | grupo com faixa de VID; VLAN (VID 1–4094, único no grupo) | não confundir com `vlan` (VLANs vistas pelo agente) |
+
+### Virtualização (ADR-0017)
+
+| Tabela | Conteúdo | Regras |
+|---|---|---|
+| `virt_cluster_type` / `virt_cluster_group` | plataforma (seed: Proxmox VE, VMware ESXi/vSphere, Hyper-V, XCP-ng, KVM, Nutanix AHV) e agrupamento livre | exclusão bloqueada se em uso |
+| `virt_cluster` | cluster/virtualizador: tipo, grupo, filial, status, versão, `management_url` | UNIQUE nome; anexos `cluster` |
+| `dcim_device` (+) | `cluster_id` (host do cluster), `cpu_threads`, `memory_mb`, `storage_gb` | capacidade nula = lida do inventário (componentes `processor`/`memory`/`storage`, `memory_mib`) |
+| `virt_machine` | VM: cluster, `device_id` (host), função, `asset_id` (UNIQUE, SET NULL), `vcpus NUMERIC(6,2)`, `memory_mb`, `disk_gb`, `vmid`, SO, `primary_ip_id` | UNIQUE `(cluster_id, name)`; host precisa estar no cluster (serviço); anexos `vm` |
+| `virt_interface` / `virt_interface_vlan` | NIC da VM: bridge, MAC, MTU, modo 802.1Q, VLAN nativa / tagged | UNIQUE `(vm_id, name)`; CASCADE |
+| `virt_disk` | disco virtual: nome, `size_gb`, storage | UNIQUE `(vm_id, name)`; soma vira `virt_machine.disk_gb` |
+| `ipam_ip_address` (+) | `vm_interface_id` | CHECK: não pode ter `port_id` **e** `vm_interface_id` |
 
 ## Objetos fora do ORM
 

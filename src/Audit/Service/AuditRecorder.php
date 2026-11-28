@@ -74,6 +74,10 @@ final readonly class AuditRecorder
             'circuit_type' === $type && $isInt => 'SELECT name FROM circuit_type WHERE id = ?',
             'circuit' === $type && $isInt => "SELECT c.cid || ' — ' || s.name FROM circuit c JOIN supplier s ON s.id = c.supplier_id WHERE c.id = ?",
             'circuit_termination' === $type && $isInt => "SELECT c.cid || ' lado ' || t.term_side FROM circuit_termination t JOIN circuit c ON c.id = t.circuit_id WHERE t.id = ?",
+            'cluster' === $type && $isInt => "SELECT c.name || ' (' || t.name || ')' FROM virt_cluster c JOIN virt_cluster_type t ON t.id = c.type_id WHERE c.id = ?",
+            'vm' === $type && $isInt => "SELECT v.name || ' — ' || c.name FROM virt_machine v JOIN virt_cluster c ON c.id = v.cluster_id WHERE v.id = ?",
+            'vm_interface' === $type && $isInt => "SELECT v.name || ' ' || i.name FROM virt_interface i JOIN virt_machine v ON v.id = i.vm_id WHERE i.id = ?",
+            'vm_disk' === $type && $isInt => "SELECT v.name || ' ' || k.name FROM virt_disk k JOIN virt_machine v ON v.id = k.vm_id WHERE k.id = ?",
             'agent' === $type => 'SELECT ? ',
             default => null,
         };

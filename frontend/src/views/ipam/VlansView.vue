@@ -111,7 +111,7 @@ const initialFor = (kind: 'vlan' | 'group' | 'vrf') => (kind === 'vlan' ? { stat
         </table></div>
       </LoadState>
     </section>
-    <SpecForm v-if="form" :title="form.row ? 'Editar' : form.kind === 'vlan' ? 'Nova VLAN' : form.kind === 'group' ? 'Novo grupo de VLANs' : 'Nova VRF'" :fields="fields"
+    <SpecForm v-if="form" :ctx="form.kind === 'group' ? 'vlan_group' : form.kind" :title="form.row ? 'Editar' : form.kind === 'vlan' ? 'Nova VLAN' : form.kind === 'group' ? 'Novo grupo de VLANs' : 'Nova VRF'" :fields="fields"
       :initial="form.row ?? initialFor(form.kind)" :save="save" ok-text="Salvo" @close="form = null" @saved="form = null; load()" />
   </div>
 </template>

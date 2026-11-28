@@ -117,7 +117,7 @@ final readonly class Refs
             return true;
         }
         if (!\in_array($table, ['supplier', 'contract', 'contract_type', 'license_type', 'license_category', 'license', 'branch', 'invoice',
-            'location', 'dcim_rack', 'dcim_device', 'dcim_device_type', 'circuit', 'dcim_cable'], true)) {
+            'location', 'dcim_rack', 'dcim_device', 'dcim_device_type', 'circuit', 'dcim_cable', 'virt_cluster', 'virt_machine'], true)) {
             throw new \InvalidArgumentException($table);
         }
 

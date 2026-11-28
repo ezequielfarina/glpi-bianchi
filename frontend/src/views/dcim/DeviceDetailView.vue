@@ -10,6 +10,9 @@ import IpForm from '../../components/dcim/IpForm.vue'
 import PhotoGallery from '../../components/dcim/PhotoGallery.vue'
 import PortFormModal from '../../components/dcim/PortFormModal.vue'
 import TraceModal from '../../components/dcim/TraceModal.vue'
+import PathToInternet from '../../components/virt/PathToInternet.vue'
+import ResourceRing from '../../components/virt/ResourceRing.vue'
+import { gb, num, platformBadge, VM_STATUS } from '../../lib/virt'
 import { dcim, DEVICE_STATUS, hex, ipam, IP_STATUS, onColor, PORT_KIND_TABS, uLabel, type PortRow } from '../../lib/dcim'
 import { canEdit } from '../../lib/session'
 import { notify } from '../../lib/toast'
@@ -17,7 +20,9 @@ import { useAsync } from '../../lib/useAsync'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
+const showPath = ref(false)
 const { data: d, loading, error, reload } = useAsync(() => dcim.device(Number(props.id)))
+const vmUse = computed(() => (d.value?.vms ?? []).filter((v) => v.status !== 'offline').reduce((a, v) => ({ cpu: a.cpu + (v.vcpus ?? 0), mem: a.mem + (v.memory_mb ?? 0), disk: a.disk + (v.disk_gb ?? 0) }), { cpu: 0, mem: 0, disk: 0 }))
 const editing = ref(false)
 const addingPorts = ref(false)
 const editPort = ref<PortRow | null>(null)
@@ -144,8 +149,30 @@ const draw = (p: PortRow) => [p.allocated_draw ? `${p.allocated_draw} W` : null,
                 </table>
               </div>
             </section>
+            <section v-if="interfaces.length && !d.role.toLowerCase().includes('patch')" class="panel">
+              <div class="panel-head"><h2><AppIcon name="route" :size="17" /> Caminho até a internet</h2>
+                <button class="btn" type="button" @click="showPath = !showPath">{{ showPath ? 'Ocultar' : 'Mostrar' }}</button></div>
+              <PathToInternet v-if="showPath" :device-id="d.id" :start-name="d.name" />
+              <p v-else class="empty">Switches, cabos, firewall e link da operadora entre este equipamento e a internet, passo a passo.</p>
+            </section>
           </div>
           <div>
+            <section v-if="d.cluster_id || d.vms.length" class="panel virt">
+              <div class="panel-head"><h2><AppIcon name="cpu" :size="17" /> Virtualização</h2>
+                <RouterLink v-if="d.cluster_id" :to="`/virtualization/clusters/${d.cluster_id}`" class="dc-link dc-small"><b class="plat" :style="{ background: platformBadge(d.cluster_type).color }">{{ platformBadge(d.cluster_type).short }}</b> {{ d.cluster }}</RouterLink></div>
+              <div class="rings">
+                <ResourceRing label="vCPU" :used="vmUse.cpu" :total="d.capacity.cpu_threads" :size="84" />
+                <ResourceRing label="RAM" :used="vmUse.mem" :total="d.capacity.memory_mb" :format="gb" :size="84" />
+                <ResourceRing label="Disco" :used="vmUse.disk" :total="d.capacity.storage_gb" unit="GB" :size="84" />
+              </div>
+              <p v-if="d.capacity.capacity_from_inventory" class="muted dc-small pad">Capacidade lida do inventário do GLPI Agent.</p>
+              <ul v-if="d.vms.length" class="vml">
+                <li v-for="v in d.vms" :key="v.id"><span class="led" :class="v.status" :title="VM_STATUS[v.status]?.label" />
+                  <RouterLink :to="`/virtualization/vms/${v.id}`" class="dc-link">{{ v.name }}</RouterLink>
+                  <span class="muted dc-small">{{ num(v.vcpus) }} vCPU · {{ gb(v.memory_mb) }}{{ v.primary_ip ? ' · ' + v.primary_ip : '' }}</span></li>
+              </ul>
+              <p v-else class="empty">Nenhuma VM neste host ainda.</p>
+            </section>
             <section class="panel">
               <div class="panel-head"><h2>Dados</h2></div>
               <dl class="dc-kv">
@@ -207,4 +234,13 @@ const draw = (p: PortRow) => [p.allocated_draw ? `${p.allocated_draw} W` : null,
 .ips li .btn { margin-left: auto; }
 .strong { font-weight: 600; }
 .pre { white-space: pre-wrap; }
+.virt { background: linear-gradient(160deg, color-mix(in srgb, #009688 10%, transparent), transparent 60%), var(--panel); }
+.virt .rings { display: flex; justify-content: space-around; gap: 10px; padding: 4px 16px 10px; }
+.virt .pad { padding: 0 20px; margin: 0 0 8px; }
+.plat { color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 5px; }
+.vml { list-style: none; margin: 0; padding: 0 20px 16px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+.vml li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.led { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); }
+.led.active { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.led.failed { background: var(--bad); }
 </style>

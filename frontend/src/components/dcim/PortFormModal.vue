@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import AppModal from '../AppModal.vue'
+import HelpTip from '../HelpTip.vue'
 import { dcimChoices, ipamChoices, ipam, type DcimChoices, type PortRow, type PortTemplate, type VlanRow } from '../../lib/dcim'
 import { clean, useForm } from '../forms/useForm'
 
@@ -57,21 +58,21 @@ async function go(): Promise<void> {
 <template>
   <AppModal :title="p ? `Editar porta ${p.name}` : target === 'type' ? 'Adicionar portas ao modelo' : 'Adicionar portas'" wide @close="emit('close')">
     <form class="form-grid" novalidate @submit.prevent="go">
-      <div v-if="!p" class="field"><label for="pf-kind">Tipo de porta *</label>
+      <div v-if="!p" class="field"><label for="pf-kind">Tipo de porta *<HelpTip ctx="port" k="kind" label="Tipo de porta" /></label>
         <select id="pf-kind" v-model="f.kind" class="input"><option v-for="k in kinds" :key="k.value" :value="k.value">{{ k.label }}</option></select></div>
-      <div class="field"><label for="pf-name">{{ p ? 'Nome *' : 'Nome ou padrão *' }}</label>
+      <div class="field"><label for="pf-name">{{ p ? 'Nome *' : 'Nome ou padrão *' }}<HelpTip ctx="port" k="name" label="Nome" /></label>
         <input id="pf-name" v-model="f.name" class="input mono" :placeholder="p ? '' : 'ex.: Gi1/0/[1-48], [1-24], eth0'" :aria-invalid="!!errors.name" />
         <span v-if="errors.name" class="err">{{ errors.name }}</span><span v-else-if="!p" class="hint">{{ count }} porta(s){{ f.kind === 'pair' ? ' frontais + ' + count + ' traseiras' : '' }}. Use [1-24] ou [1,3,5] para lotes.</span></div>
-      <div class="field"><label for="pf-type">Tipo físico *</label>
+      <div class="field"><label for="pf-type">Tipo físico *<HelpTip ctx="port" k="type" label="Tipo físico" /></label>
         <select id="pf-type" v-model="f.type" class="input" :aria-invalid="!!errors.type"><option v-for="o in typeOptions" :key="o.value" :value="o.value">{{ o.label }}</option></select>
         <span v-if="errors.type" class="err">{{ errors.type }}</span></div>
       <div v-if="f.kind === 'pair'" class="field"><label for="pf-rt">Tipo físico da traseira</label>
         <select id="pf-rt" v-model="f.rear_type" class="input"><option v-for="o in choices?.port_types.rear ?? []" :key="o.value" :value="o.value">{{ o.label }}</option></select></div>
-      <div class="field"><label for="pf-label">Rótulo</label><input id="pf-label" v-model="f.label" class="input" placeholder="texto impresso no equipamento" /></div>
-      <div v-if="f.kind === 'rear'" class="field"><label for="pf-pos">Posições</label><input id="pf-pos" v-model.number="f.positions" class="input" type="number" min="1" max="1024" :aria-invalid="!!errors.positions" />
+      <div class="field"><label for="pf-label">Rótulo<HelpTip ctx="port" k="label" label="Rótulo" /></label><input id="pf-label" v-model="f.label" class="input" placeholder="texto impresso no equipamento" /></div>
+      <div v-if="f.kind === 'rear'" class="field"><label for="pf-pos">Posições<HelpTip ctx="port" k="positions" label="Posições" /></label><input id="pf-pos" v-model.number="f.positions" class="input" type="number" min="1" max="1024" :aria-invalid="!!errors.positions" />
         <span v-if="errors.positions" class="err">{{ errors.positions }}</span><span v-else class="hint">Bandeja de DIO / tronco MPO: uma posição por fibra.</span></div>
       <template v-if="f.kind === 'front'">
-        <div class="field"><label for="pf-rear">Porta traseira mapeada{{ p ? '' : ' *' }}</label>
+        <div class="field"><label for="pf-rear">Porta traseira mapeada{{ p ? '' : ' *' }}<HelpTip ctx="port" k="rear_port_id" label="Porta traseira mapeada" /></label>
           <select id="pf-rear" v-model="f.rear_port_id" class="input" :aria-invalid="!!errors.rear_port_id || !!errors.rear_port_template_id"><option value="">—</option>
             <option v-for="r in rears" :key="r.id" :value="r.id">{{ r.name }} ({{ r.positions }} pos.)</option></select>
           <span v-if="errors.rear_port_id || errors.rear_port_template_id" class="err">{{ errors.rear_port_id ?? errors.rear_port_template_id }}</span></div>
@@ -79,15 +80,15 @@ async function go(): Promise<void> {
           <span v-if="errors.rear_position" class="err">{{ errors.rear_position }}</span></div>
       </template>
       <template v-if="f.kind === 'power_port'">
-        <div class="field"><label for="pf-max">Consumo máximo (W)</label><input id="pf-max" v-model="f.maximum_draw" class="input" type="number" min="1" /></div>
-        <div class="field"><label for="pf-alloc">Consumo alocado (W)</label><input id="pf-alloc" v-model="f.allocated_draw" class="input" type="number" min="1" :aria-invalid="!!errors.allocated_draw" />
+        <div class="field"><label for="pf-max">Consumo máximo (W)<HelpTip ctx="port" k="maximum_draw" label="Consumo máximo (W)" /></label><input id="pf-max" v-model="f.maximum_draw" class="input" type="number" min="1" /></div>
+        <div class="field"><label for="pf-alloc">Consumo alocado (W)<HelpTip ctx="port" k="allocated_draw" label="Consumo alocado (W)" /></label><input id="pf-alloc" v-model="f.allocated_draw" class="input" type="number" min="1" :aria-invalid="!!errors.allocated_draw" />
           <span v-if="errors.allocated_draw" class="err">{{ errors.allocated_draw }}</span></div>
       </template>
       <template v-if="target === 'device' && f.kind === 'interface'">
-        <div v-if="p || count === 1" class="field"><label for="pf-mac">MAC</label><input id="pf-mac" v-model="f.mac_address" class="input mono" placeholder="00:11:22:33:44:55" :aria-invalid="!!errors.mac_address" />
+        <div v-if="p || count === 1" class="field"><label for="pf-mac">MAC<HelpTip ctx="port" k="mac_address" label="MAC" /></label><input id="pf-mac" v-model="f.mac_address" class="input mono" placeholder="00:11:22:33:44:55" :aria-invalid="!!errors.mac_address" />
           <span v-if="errors.mac_address" class="err">{{ errors.mac_address }}</span></div>
         <template v-if="p">
-          <div class="field"><label for="pf-mode">Modo 802.1Q</label>
+          <div class="field"><label for="pf-mode">Modo 802.1Q<HelpTip ctx="port" k="mode" label="Modo 802.1Q" /></label>
             <select id="pf-mode" v-model="f.mode" class="input"><option value="">—</option><option value="access">Acesso</option><option value="tagged">Tronco (tagged)</option><option value="tagged-all">Tronco (todas)</option></select></div>
           <div v-if="f.mode" class="field"><label for="pf-uv">VLAN untagged (nativa)</label>
             <select id="pf-uv" v-model="f.untagged_vlan_id" class="input"><option value="">—</option><option v-for="v in vlans" :key="v.id" :value="v.id">{{ v.vid }} — {{ v.name }}{{ v.group ? ` (${v.group})` : '' }}</option></select></div>
@@ -102,7 +103,7 @@ async function go(): Promise<void> {
         <label class="check" title="Para portas ligadas a algo que não está documentado (ex.: cabo da operadora fora do sistema)"><input v-model="f.mark_connected" type="checkbox" /> Marcar como conectada sem cabo</label>
         <span v-if="errors.mark_connected" class="err full">{{ errors.mark_connected }}</span>
       </template>
-      <div class="field full"><label for="pf-desc">Descrição</label><input id="pf-desc" v-model="f.description" class="input" /></div>
+      <div class="field full"><label for="pf-desc">Descrição<HelpTip ctx="port" k="description" label="Descrição" /></label><input id="pf-desc" v-model="f.description" class="input" /></div>
       <div class="form-actions full">
         <button class="btn" type="button" @click="emit('close')">Cancelar</button>
         <button class="btn btn-primary" type="submit" :disabled="saving || !f.name.trim()">{{ saving ? 'Salvando…' : 'Salvar' }}</button>

@@ -80,6 +80,9 @@ export interface DeviceDetail {
   ips: { id: number; address: string; status: string; role: string | null; dns_name: string | null; port_id: number; port: string; vrf: string | null }[]
   power: { outlets: number; used_outlets: number; allocated_w: number; maximum_w: number | null } | null
   attachments: Attachment[]; type_photo: string | null
+  cluster_id: number | null; cluster: string | null; cluster_type: string | null; cpu_threads: number | null; memory_mb: number | null; storage_gb: number | null
+  capacity: { cpu_threads: number | null; memory_mb: number | null; storage_gb: number | null; capacity_from_inventory: boolean }
+  vms: { id: number; name: string; status: string; platform: string | null; vcpus: number | null; memory_mb: number | null; disk_gb: number | null; primary_ip: string | null }[]
 }
 export interface PortOption { id: number; kind: string; name: string; label: string | null; type: string; positions: number; mark_connected: boolean; cable_id: number | null; mapped_positions: number }
 export interface AssetCandidate { uuid: string; name: string; serial_number: string | null; inventory_number: string | null; type: string; branch: string | null; branch_id: number | null; location_id: number | null; interfaces: number }
@@ -134,6 +137,7 @@ export interface IpRow {
   id: number; address: string; family: number; status: string; role: string | null; dns_name: string | null; description: string | null
   vrf_id: number | null; vrf: string | null; port_id: number | null; port: string | null; device_id: number | null; device: string | null
   branch: string | null; is_primary: boolean | null; prefix_id: number | null; prefix: string | null; comments?: string | null
+  vm_interface_id?: number | null; vm_interface?: string | null; vm_id?: number | null; vm?: string | null
 }
 export interface CircuitType { id: number; name: string; description: string | null; circuits: number }
 export interface CircuitRow {

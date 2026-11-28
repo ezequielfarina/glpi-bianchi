@@ -82,7 +82,8 @@ async function nextIn(r: RangeRow): Promise<void> {
             <tbody><tr v-for="i in ips" :key="i.id" class="dc-clickable" @click="router.push(`/ipam/ip-addresses/${i.id}`)">
               <td class="mono"><RouterLink :to="`/ipam/ip-addresses/${i.id}`" class="dc-strong" @click.stop>{{ i.address }}</RouterLink> <span v-if="i.vrf" class="pill pill-muted">{{ i.vrf }}</span></td>
               <td><span class="pill" :class="IP_STATUS[i.status]?.cls">{{ IP_STATUS[i.status]?.label }}</span><span v-if="i.role" class="pill pill-muted">{{ i.role }}</span><span v-if="i.is_primary" class="pill pill-accent">primário</span></td>
-              <td><template v-if="i.device_id"><RouterLink :to="`/dcim/devices/${i.device_id}`" class="dc-link" @click.stop>{{ i.device }}</RouterLink> <span class="mono">{{ i.port }}</span> <span class="muted dc-small">{{ i.branch }}</span></template></td>
+              <td><template v-if="i.device_id"><RouterLink :to="`/dcim/devices/${i.device_id}`" class="dc-link" @click.stop>{{ i.device }}</RouterLink> <span class="mono">{{ i.port }}</span> <span class="muted dc-small">{{ i.branch }}</span></template>
+                <template v-else-if="i.vm_id"><AppIcon name="vm" :size="13" /> <RouterLink :to="`/virtualization/vms/${i.vm_id}`" class="dc-link" @click.stop>{{ i.vm }}</RouterLink> <span class="mono">{{ i.vm_interface }}</span></template></td>
               <td><RouterLink v-if="i.prefix_id" :to="`/ipam/prefixes/${i.prefix_id}`" class="dc-link mono" @click.stop>{{ i.prefix }}</RouterLink></td>
               <td class="muted">{{ [i.dns_name, i.description].filter(Boolean).join(' · ') }}</td>
             </tr></tbody>
@@ -105,7 +106,7 @@ async function nextIn(r: RangeRow): Promise<void> {
       </LoadState>
     </section>
     <IpForm v-if="creating" :preset="{ vrf_id: vrf || '' }" @close="creating = false" @saved="(id) => router.push(`/ipam/ip-addresses/${id}`)" />
-    <SpecForm v-if="editRange && ch" :title="editRange === 'new' ? 'Nova faixa de IPs' : 'Editar faixa'" :fields="rangeFields(ch)"
+    <SpecForm v-if="editRange && ch" ctx="range" :title="editRange === 'new' ? 'Nova faixa de IPs' : 'Editar faixa'" :fields="rangeFields(ch)"
       :initial="editRange === 'new' ? { status: 'active', vrf_id: vrf || '' } : { start_address: `${editRange.start_address}/${editRange.len}`, end_address: editRange.end_address, vrf_id: editRange.vrf_id ?? '', status: editRange.status, role: editRange.role ?? '', mark_utilized: editRange.mark_utilized, description: editRange.description ?? '' }"
       :save="(v) => ipam.saveRange(editRange === 'new' ? null : (editRange as RangeRow).id, v)" ok-text="Faixa salva" @close="editRange = null" @saved="editRange = null; load()" />
   </div>

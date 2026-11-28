@@ -70,7 +70,7 @@ const cls = (u: number) => (u >= 95 ? 'bad' : u >= 80 ? 'warn' : '')
         </div>
       </LoadState>
     </section>
-    <SpecForm v-if="creating && ch" title="Novo prefixo" :fields="prefixFields(ch, branches.map((b) => ({ value: b.id, label: b.name })), vlans)" :initial="{ status: 'active', vrf_id: vrf || '', branch_id: branch ?? '' }"
+    <SpecForm v-if="creating && ch" ctx="prefix" title="Novo prefixo" :fields="prefixFields(ch, branches.map((b) => ({ value: b.id, label: b.name })), vlans)" :initial="{ status: 'active', vrf_id: vrf || '', branch_id: branch ?? '' }"
       :save="(v) => ipam.savePrefix(null, v)" ok-text="Prefixo cadastrado" @close="creating = false" @saved="(id) => router.push(`/ipam/prefixes/${id}`)" />
   </div>
 </template>

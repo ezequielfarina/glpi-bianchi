@@ -111,7 +111,7 @@ final readonly class UiAttachmentController
         $table = ['contract' => 'contract', 'supplier' => 'supplier', 'license' => 'license', 'branch' => 'branch', 'invoice' => 'invoice',
             // ADR-0016: fotos de locais, racks, equipamentos, tipos, circuitos e cabos
             'location' => 'location', 'rack' => 'dcim_rack', 'device' => 'dcim_device', 'device_type' => 'dcim_device_type',
-            'circuit' => 'circuit', 'cable' => 'dcim_cable'][$type]
+            'circuit' => 'circuit', 'cable' => 'dcim_cable', 'cluster' => 'virt_cluster', 'vm' => 'virt_machine'][$type]
             ?? throw new ValidationException(['owner_type' => 'Tipo de dono inválido.']);
         if (!ctype_digit($owner) || !$this->refs->exists($table, (int) $owner)) {
             throw new NotFoundException('Registro não encontrado.');

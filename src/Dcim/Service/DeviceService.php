@@ -6,6 +6,7 @@ namespace App\Dcim\Service;
 
 use App\Attachment\Service\AttachmentStorage;
 use App\Ui\ReadModel\ManageQuery;
+use App\Virtualization\Service\ClusterService;
 use App\Ui\Write\NotFoundException;
 use App\Ui\Write\Payload;
 use App\Ui\Write\Refs;
@@ -74,7 +75,7 @@ final readonly class DeviceService
             SELECT d.*, d.position::float8 AS position, b.name AS branch, l.name AS location, k.name AS rack, ro.name AS role, ro.color,
                    t.model AS device_type, t.u_height::float8 AS u_height, t.is_full_depth, m.name AS manufacturer,
                    a.uuid AS asset_uuid, a.name AS asset_name, a.inventory_number AS asset_inventory, a.serial_number AS asset_serial,
-                   host(ip.address) || '/' || masklen(ip.address) AS primary_ip
+                   host(ip.address) || '/' || masklen(ip.address) AS primary_ip, vc.name AS cluster, vct.name AS cluster_type
             FROM dcim_device d
             JOIN branch b ON b.id = d.branch_id
             JOIN dcim_device_role ro ON ro.id = d.role_id
@@ -84,6 +85,8 @@ final readonly class DeviceService
             LEFT JOIN dcim_rack k ON k.id = d.rack_id
             LEFT JOIN asset a ON a.id = d.asset_id
             LEFT JOIN ipam_ip_address ip ON ip.id = d.primary_ip_id
+            LEFT JOIN virt_cluster vc ON vc.id = d.cluster_id
+            LEFT JOIN virt_cluster_type vct ON vct.id = vc.type_id
             WHERE d.id = ?
             SQL, [$id]) ?: throw new NotFoundException('Equipamento não encontrado.');
         $d = Num::row($d, ['position', 'u_height']);
@@ -94,6 +97,14 @@ final readonly class DeviceService
             WHERE p.device_id = ? ORDER BY ip.address
             SQL, [$id]);
         $d['power'] = $this->powerSummary($id, $d['ports']);
+        // virtualização (ADR-0017): capacidade do host e VMs que rodam nele
+        $cap = ClusterService::HOST_CAPACITY;
+        $d['capacity'] = Num::row($this->db->fetchAssociative("SELECT $cap FROM dcim_device d WHERE d.id = ?", [$id]) ?: [], [], ['cpu_threads', 'memory_mb', 'storage_gb']);
+        $d['vms'] = Num::rows($this->db->fetchAllAssociative(<<<'SQL'
+            SELECT v.id, v.name, v.status, v.platform, v.vcpus::float8 AS vcpus, v.memory_mb, v.disk_gb,
+                   (SELECT host(ip.address) FROM ipam_ip_address ip WHERE ip.id = v.primary_ip_id) AS primary_ip
+            FROM virt_machine v WHERE v.device_id = ? ORDER BY v.name
+            SQL, [$id]), ['vcpus']);
         $d['attachments'] = $this->manage->attachments('device', $id);
         $d['type_photo'] = $this->db->fetchOne(
             "SELECT uuid FROM attachment WHERE owner_type = 'device_type' AND owner_id = ? AND kind = 'photo' ORDER BY created_at LIMIT 1", [$d['device_type_id']],
@@ -191,6 +202,10 @@ final readonly class DeviceService
         }
         $assetUuid = $p->string('asset_uuid', 36);
         $primaryIpId = $p->int('primary_ip_id', 1);
+        $clusterId = $p->int('cluster_id', 1);
+        if (null !== $clusterId && false === $this->db->fetchOne('SELECT 1 FROM virt_cluster WHERE id = ?', [$clusterId])) {
+            $p->error('cluster_id', 'Cluster não encontrado.');
+        }
         $current = null;
         if (null !== $id) {
             $current = $this->db->fetchAssociative('SELECT * FROM dcim_device WHERE id = ?', [$id]) ?: throw new NotFoundException('Equipamento não encontrado.');
@@ -280,7 +295,9 @@ final readonly class DeviceService
 
         $row = ['name' => $name, 'branch_id' => $branchId, 'location_id' => $locationId, 'rack_id' => $rackId, 'device_type_id' => $typeId, 'role_id' => $roleId,
             'status' => $status, 'position' => $position, 'face' => $face, 'serial' => $p->string('serial', 100), 'asset_tag' => $p->string('asset_tag', 100),
-            'asset_id' => $assetId, 'primary_ip_id' => $primaryIpId, 'description' => $p->string('description', 255), 'comments' => $p->string('comments', 10000)];
+            'asset_id' => $assetId, 'primary_ip_id' => $primaryIpId, 'description' => $p->string('description', 255), 'comments' => $p->string('comments', 10000),
+            'cluster_id' => $clusterId, 'cpu_threads' => $p->int('cpu_threads', 1, 100_000), 'memory_mb' => $p->int('memory_mb', 1, 1_000_000_000),
+            'storage_gb' => $p->int('storage_gb', 1, 1_000_000_000)];
         $copyInterfaces = $p->bool('copy_interfaces');
         $p->check();
 
@@ -300,6 +317,8 @@ final readonly class DeviceService
                 return $newId;
             }
             $this->db->update('dcim_device', $row + ['updated_at' => Refs::now()], ['id' => $id]);
+            // saiu do cluster: as VMs deixam de apontar para este host
+            $this->db->executeStatement('UPDATE virt_machine SET device_id = NULL WHERE device_id = ? AND cluster_id IS DISTINCT FROM ?', [$id, $row['cluster_id']]);
 
             return $id;
         });

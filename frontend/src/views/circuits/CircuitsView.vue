@@ -83,7 +83,7 @@ const end = (c: CircuitRow, s: 'A' | 'Z') => { const x = c.terminations?.[s]; re
         </table></div>
       </LoadState>
     </section>
-    <SpecForm v-if="creating" title="Novo circuito" :fields="fields" :initial="{ status: 'active' }" :save="(v) => circuits.save(null, toBody(v))" ok-text="Circuito cadastrado"
+    <SpecForm v-if="creating" ctx="circuit" title="Novo circuito" :fields="fields" :initial="{ status: 'active' }" :save="(v) => circuits.save(null, toBody(v))" ok-text="Circuito cadastrado"
       @close="creating = false" @saved="(id) => router.push(`/circuits/${id}`)" />
     <SpecForm v-if="typeForm" :title="typeForm === 'new' ? 'Novo tipo de circuito' : 'Editar tipo'" :fields="[{ key: 'name', label: 'Nome', required: true }, { key: 'description', label: 'Descrição', full: true }]"
       :initial="typeForm === 'new' ? {} : { ...typeForm }" :save="(v) => circuits.saveType(typeForm === 'new' ? null : (typeForm as CircuitType).id, v)" ok-text="Tipo salvo"

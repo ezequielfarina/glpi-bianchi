@@ -91,7 +91,7 @@ async function remove(): Promise<void> {
         </div>
         <LocationForm v-if="editing" :location="l" @close="editing = false" @saved="editing = false; reload()" />
         <LocationForm v-if="child" :preset="{ parent_id: l.id, branch_id: l.branch_id }" @close="child = false" @saved="(id) => { child = false; router.push(`/dcim/locations/${id}`) }" />
-        <SpecForm v-if="newRack" title="Novo rack" :fields="rackFields()" :initial="{ branch_id: l.branch_id, location_id: l.id, u_height: 42, width: 19, starting_unit: 1, status: 'active' }"
+        <SpecForm v-if="newRack" ctx="rack" title="Novo rack" :fields="rackFields()" :initial="{ branch_id: l.branch_id, location_id: l.id, u_height: 42, width: 19, starting_unit: 1, status: 'active' }"
           :save="(v) => dcim.saveRack(null, v)" ok-text="Rack cadastrado" @close="newRack = false" @saved="(id) => router.push(`/dcim/racks/${id}`)" />
         <DeviceFormModal v-if="newDevice" :preset="{ branch_id: l.branch_id ?? undefined, location_id: l.id }" @close="newDevice = false" @saved="(id) => router.push(`/dcim/devices/${id}`)" />
       </template>

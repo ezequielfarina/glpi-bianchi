@@ -90,7 +90,7 @@ async function remove(): Promise<void> {
             <AttachmentsPanel owner-type="rack" :owner="r.id" :items="r.attachments.filter((a) => a.kind === 'document')" title="Documentos" @changed="reload" />
           </div>
         </div>
-        <SpecForm v-if="editing" :title="`Editar ${r.name}`" :fields="rackFields()" :initial="{ name: r.name, status: r.status, u_height: r.u_height, width: r.width, starting_unit: r.starting_unit, outer_depth_mm: r.outer_depth_mm ?? '', role: r.role ?? '',
+        <SpecForm v-if="editing" ctx="rack" :title="`Editar ${r.name}`" :fields="rackFields()" :initial="{ name: r.name, status: r.status, u_height: r.u_height, width: r.width, starting_unit: r.starting_unit, outer_depth_mm: r.outer_depth_mm ?? '', role: r.role ?? '',
             facility_id: r.facility_id ?? '', serial: r.serial ?? '', asset_tag: r.asset_tag ?? '', desc_units: r.desc_units, description: r.description ?? '', comments: r.comments ?? '',
             branch_id: r.branch_id, location_id: r.location_id ?? '' }"
           :save="(v) => dcim.saveRack(r!.id, v)" ok-text="Rack atualizado" @close="editing = false" @saved="editing = false; reload()" />

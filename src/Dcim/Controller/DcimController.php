@@ -11,6 +11,7 @@ use App\Dcim\Service\DcimChoices;
 use App\Dcim\Service\DeviceService;
 use App\Dcim\Service\LocationService;
 use App\Dcim\Service\RackService;
+use App\Dcim\Service\TopologyService;
 use App\Ui\Controller\UiJson;
 use App\Ui\Write\NotFoundException;
 use App\Ui\Write\Refs;
@@ -41,6 +42,7 @@ final readonly class DcimController
         private CableService $cables,
         private CableTracer $tracer,
         private Refs $refs,
+        private TopologyService $topology,
     ) {
     }
 
@@ -302,6 +304,22 @@ final readonly class DcimController
     public function circuitTrace(int $id): JsonResponse
     {
         return $this->json($this->tracer->trace('circuit', $id));
+    }
+
+    // ------------------------------------------------------------------ topologia (ADR-0017)
+
+    /** Mapa da rede: nós e ligações. mode=logical (passivos colapsados) | physical (cabo a cabo). */
+    #[Route('/topology', name: 'topology', methods: ['GET'])]
+    public function topology(#[MapQueryParameter] ?int $branch = null, #[MapQueryParameter] string $mode = 'logical', #[MapQueryParameter] bool $vms = true): JsonResponse
+    {
+        return $this->json($this->topology->graph($branch, 'physical' === $mode ? 'physical' : 'logical', $vms));
+    }
+
+    /** Caminho do equipamento até o circuito de operadora mais próximo. */
+    #[Route('/devices/{id}/path-to-internet', name: 'path', methods: ['GET'], requirements: ['id' => '\d+'])]
+    public function path(int $id): JsonResponse
+    {
+        return $this->json($this->topology->pathToInternet($id));
     }
 
     // ------------------------------------------------------------------ cabos

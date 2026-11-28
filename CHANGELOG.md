@@ -5,6 +5,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 ## [Unreleased]
 
 ### Corrigido
+- Mapa/caminho: cache de vizinhos do `TopologyService` não sobrevive mais entre chamadas (resultado velho em processo longo).
 - Anexar arquivo em **filial** ou **nota fiscal** dava erro 500 (tabela fora da lista de validação).
 - Índice redundante `invoice(supplier_id)` removido (já coberto por `uniq_invoice_number`; `schema:validate` acusava diferença).
 - `install.sh`: `net.ipv4.ping_group_range` limitado ao `gid_map` do CT unprivileged (o ping do Diagnóstico ficava sem permissão); PostgreSQL só reinicia quando um parâmetro exige (`pending_restart`), senão `reload` — o restart incondicional derrubava a varredura em andamento.
@@ -20,6 +21,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Migration de seed compatível com DBAL 4 (`ParameterType`); `DEFAULT_URI`; `.env.test.local` e `make`/`jq` no install.
 
 ### Adicionado
+- **Virtualização e mapa da rede (ADR-0017)** — menu *Virtualização* e *Infraestrutura → Mapa da rede*:
+  - **Clusters** Proxmox VE, ESXi, Hyper-V, XCP-ng, KVM, AHV com hosts físicos (equipamentos do rack) e anéis de consumo × capacidade; capacidade do host lida do inventário do GLPI Agent quando não informada.
+  - **VMs** com vCPU, RAM, discos virtuais, interfaces (bridge, MAC, VLAN), IPs e IP primário, vínculo com o ativo, capturas de tela e documentos.
+  - **Caminho até a internet**, passo a passo e reverso: VM → virtualizador → host → cabos/patch panels → switches → firewall → ONT → circuito da operadora, com o que falta cadastrar quando não fecha.
+  - **Mapa da rede** 3D (WebGL) ou 2D, lógico ou físico, cores da função e do cabo, tráfego animado, busca e painel de detalhes ao clicar.
+  - **Ajuda em todos os campos**: ícone **!** com explicação e exemplo (passar o mouse ou tocar).
 - **Infraestrutura física e lógica no modelo do NetBox (ADR-0016)** — menu *Infraestrutura* e *IPAM*:
   - **Locais** por filial em árvore (prédio, andar, sala/CPD, posto de trabalho); **racks** com elevação frontal/traseira (clique na U vazia para instalar), ocupação e fotos.
   - **Tipos de equipamento** com modelo de portas (lote `Gi1/0/[1-48]`, par frontal/traseira para patch panel/tomada) e tipos genéricos prontos (patch panel, tomada, DIO com bandeja multiposição, switch, PDU, quadro, estação, AP).

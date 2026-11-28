@@ -6,6 +6,7 @@ namespace App\Ipam\Entity;
 
 use App\Dcim\Entity\Port;
 use App\Shared\Entity\TimestampableTrait;
+use App\Virtualization\Entity\VmInterface;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -51,6 +52,10 @@ class IpAddress
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $comments = null;
+
+    #[ORM\ManyToOne(targetEntity: VmInterface::class)]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?VmInterface $vmInterface = null;
 
     public function __construct(string $address)
     {
@@ -100,5 +105,10 @@ class IpAddress
     public function getComments(): ?string
     {
         return $this->comments;
+    }
+
+    public function getVmInterface(): ?VmInterface
+    {
+        return $this->vmInterface;
     }
 }

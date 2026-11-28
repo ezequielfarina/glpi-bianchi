@@ -135,13 +135,13 @@ const cls = (u: number) => (u >= 95 ? 'bad' : u >= 80 ? 'warn' : '')
             </section>
           </div>
         </div>
-        <SpecForm v-if="editing && ch" :title="`Editar ${p.prefix}`" :fields="prefixFields(ch, branches.map((b) => ({ value: b.id, label: b.name })), vlans)"
+        <SpecForm v-if="editing && ch" ctx="prefix" :title="`Editar ${p.prefix}`" :fields="prefixFields(ch, branches.map((b) => ({ value: b.id, label: b.name })), vlans)"
           :initial="{ prefix: p.prefix, status: p.status, vrf_id: p.vrf_id ?? '', branch_id: p.branch_id ?? '', vlan_id: p.vlan_id ?? '', role: p.role ?? '', is_pool: p.is_pool, mark_utilized: p.mark_utilized, description: p.description ?? '', comments: p.comments ?? '' }"
           :save="(v) => ipam.savePrefix(p!.id, v)" ok-text="Prefixo atualizado" @close="editing = false" @saved="editing = false; reload()" />
-        <SpecForm v-if="child !== null && ch" title="Nova sub-rede" :fields="prefixFields(ch, branches.map((b) => ({ value: b.id, label: b.name })), vlans)"
+        <SpecForm v-if="child !== null && ch" ctx="prefix" title="Nova sub-rede" :fields="prefixFields(ch, branches.map((b) => ({ value: b.id, label: b.name })), vlans)"
           :initial="{ prefix: child, status: 'active', vrf_id: p.vrf_id ?? '', branch_id: p.branch_id ?? '' }"
           :save="(v) => ipam.savePrefix(null, v)" ok-text="Sub-rede cadastrada" @close="child = null" @saved="child = null; reload()" />
-        <SpecForm v-if="newRange && ch" title="Nova faixa de IPs" :fields="rangeFields(ch)" :initial="{ status: 'active', vrf_id: p.vrf_id ?? '' }"
+        <SpecForm v-if="newRange && ch" ctx="range" title="Nova faixa de IPs" :fields="rangeFields(ch)" :initial="{ status: 'active', vrf_id: p.vrf_id ?? '' }"
           :save="(v) => ipam.saveRange(null, v)" ok-text="Faixa cadastrada" @close="newRange = false" @saved="newRange = false; reload()" />
         <IpForm v-if="newIp" :preset="{ address: newIp, vrf_id: p.vrf_id ?? '' }" @close="newIp = null" @saved="newIp = null; reload()" />
       </template>

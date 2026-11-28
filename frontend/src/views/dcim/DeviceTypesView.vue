@@ -79,9 +79,9 @@ const roleFields = [
         </table></div>
       </LoadState>
     </section>
-    <SpecForm v-if="creating" title="Novo tipo de equipamento" :fields="typeFields(roles)" :initial="{ u_height: '1', is_full_depth: true }"
+    <SpecForm v-if="creating" ctx="type" title="Novo tipo de equipamento" :fields="typeFields(roles)" :initial="{ u_height: '1', is_full_depth: true }"
       :save="(v) => dcim.saveType(null, v)" ok-text="Tipo cadastrado" @close="creating = false" @saved="(id) => router.push(`/dcim/device-types/${id}`)" />
-    <SpecForm v-if="role" :title="role === 'new' ? 'Nova função' : `Editar ${role.name}`" :fields="roleFields" :initial="role === 'new' ? { color: '2196f3' } : { ...role }"
+    <SpecForm v-if="role" ctx="role" :title="role === 'new' ? 'Nova função' : `Editar ${role.name}`" :fields="roleFields" :initial="role === 'new' ? { color: '2196f3' } : { ...role }"
       :save="(v) => dcim.saveRole(role === 'new' ? null : (role as DeviceRole).id, v)" ok-text="Função salva" @close="role = null" @saved="role = null; load()" />
   </div>
 </template>
