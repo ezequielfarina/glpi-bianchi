@@ -32,6 +32,10 @@ final readonly class UnifiClientFactory
     /** @param array{base_url: string, auth_mode: string, username: ?string, secret: ?string, cloud_host_id: ?string, verify_tls: bool, tls_pin: ?string} $cfg */
     public function fromConfig(array $cfg): UnifiConnection
     {
+        if ('cloud' !== $cfg['auth_mode']) {
+            NetworkGuard::assertInternal($cfg['base_url']);
+        }
+
         return new UnifiConnection($this->http, $cfg);
     }
 

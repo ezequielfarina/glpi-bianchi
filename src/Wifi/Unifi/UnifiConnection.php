@@ -24,6 +24,8 @@ final class UnifiConnection
     public const string UNIFI_OS = 'unifi_os';
     public const string CLASSIC = 'classic';
     private const string CLOUD_BASE = 'https://api.ui.com/v1/connector/consoles/';
+    /** maior lista real: ~300 MACs/rede, 70 redes; 16 MiB sobra muito e barra resposta maliciosa/gigante */
+    private const int MAX_RESPONSE = 16 * 1024 * 1024;
 
     private ?string $platform = null;
     /** @var array<string, string> */
@@ -191,7 +193,11 @@ final class UnifiConnection
 
             return $this->api($method, $path, $body, false);
         }
-        $raw = $r->getContent(false);
+        try {
+            $raw = $r->getContent(false);
+        } catch (TransportExceptionInterface $e) {
+            throw $e->getPrevious() instanceof UnifiException ? $e->getPrevious() : new UnifiException(self::transportMessage($e->getMessage(), $this->cfg['base_url']), 0, $e);
+        }
         $json = json_decode($raw, true);
         $msg = \is_array($json) ? (string) ($json['meta']['msg'] ?? '') : '';
         if (401 === $code || 'api.err.LoginRequired' === $msg) {
@@ -239,16 +245,41 @@ final class UnifiConnection
         if ('GET' !== $method && null !== $this->csrf) {
             $headers['X-Csrf-Token'] = $this->csrf;
         }
-        $opts += ['timeout' => 10, 'max_duration' => 25, 'max_redirects' => 0, 'headers' => $headers] + $this->tlsOptions();
-        try {
-            $r = $this->http->request($method, $url, $opts);
-            $r->getStatusCode(); // força a conexão aqui para traduzir erro de transporte
-            $this->capture($r);
+        $opts += ['timeout' => 10, 'max_duration' => 25, 'max_redirects' => 0, 'headers' => $headers,
+            'on_progress' => static function (int $dlNow): void {
+                if ($dlNow > self::MAX_RESPONSE) {
+                    throw new UnifiException('Resposta do controller grande demais (limite 16 MiB) — abortado.');
+                }
+            }] + $this->tlsOptions();
+        // GET e PUT (lista completa) são idempotentes: uma nova tentativa em falha passageira de rede/proxy
+        $attempts = \in_array($method, ['GET', 'PUT'], true) || str_ends_with($url, '/login') ? 2 : 1;
+        for ($i = 1;; ++$i) {
+            try {
+                $r = $this->http->request($method, $url, $opts);
+                $code = $r->getStatusCode(); // força a conexão aqui para traduzir erro de transporte
+                if ($i < $attempts && \in_array($code, [502, 503, 504], true)) {
+                    usleep(700_000);
+                    continue;
+                }
+                $this->capture($r);
 
-            return $r;
-        } catch (TransportExceptionInterface|TransportException $e) {
-            throw new UnifiException(self::transportMessage($e->getMessage(), $this->cfg['base_url']), 0, $e);
+                return $r;
+            } catch (TransportExceptionInterface|TransportException $e) {
+                if ($e->getPrevious() instanceof UnifiException) {
+                    throw $e->getPrevious();
+                }
+                if ($i < $attempts && !self::isTlsError($e->getMessage())) {
+                    usleep(700_000);
+                    continue;
+                }
+                throw new UnifiException(self::transportMessage($e->getMessage(), $this->cfg['base_url']), 0, $e);
+            }
         }
+    }
+
+    private static function isTlsError(string $error): bool
+    {
+        return str_contains($error, 'SSL') || str_contains($error, 'certificate') || str_contains($error, 'pinned') || str_contains($error, 'PINNEDPUBLICKEY');
     }
 
     /** @return array<string, mixed> */

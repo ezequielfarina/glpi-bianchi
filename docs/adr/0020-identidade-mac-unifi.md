@@ -37,7 +37,15 @@ APIs disponíveis (pesquisa de 2026-11):
 5. **Segurança**: senha/API key cifradas (SecretBox, contexto `unifi.secret:<id>`); TLS validado pela CA ou por
    **pin da chave pública** (certificado autoassinado do controller sem desligar a verificação); cadastro de
    controller só para administrador; aplicação auditada; o `x_passphrase` que o controller devolve no `GET`
-   nunca é guardado nem logado.
+   nunca é guardado nem logado. Controller só na **rede interna** (RFC 1918/CGNAT; loopback, link-local/metadata e internet
+   bloqueados, checado ao salvar e a cada conexão — anti-SSRF), resposta limitada a 16 MiB, e-mail/telefone mascarados para
+   o perfil Leitura (LGPD).
+6. **Robustez**: uma sessão por controller por requisição/comando (o UniFi bloqueia excesso de logins), uma nova tentativa
+   em falha passageira só para GET/PUT/login (idempotentes), uma sincronização por controller por vez, e recusa de
+   aplicação que deixaria a lista de permissão **vazia** com o filtro ligado (derrubaria todos da rede).
+7. **Cadastro**: MAC aleatório (bit localmente administrado) exige confirmação; ao menos uma rede; limite de 512 por rede
+   checado antes; identificar um MAC que já está no UniFi liga a identidade a todas as redes do controller onde ele aparece
+   e reativa cadastro revogado (senão a próxima aplicação o retiraria).
 
 ## Alternativas consideradas
 

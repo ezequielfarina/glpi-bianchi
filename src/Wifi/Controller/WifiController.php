@@ -11,6 +11,7 @@ use App\Wifi\Service\IdentityService;
 use App\Wifi\Service\SyncService;
 use App\Wifi\Service\WifiQuery;
 use App\Wifi\Service\WlanApplier;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -34,6 +35,7 @@ final readonly class WifiController
         private WlanApplier $applier,
         private IdentityService $identities,
         private WifiQuery $query,
+        private Security $security,
     ) {
     }
 
@@ -127,7 +129,7 @@ final readonly class WifiController
     #[Route('/wlans/{id}', name: 'wlan', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function wlan(int $id): JsonResponse
     {
-        return $this->json($this->query->wlan($id) + ['identities' => $this->identities->list(['wlan' => $id]), 'unknown' => $this->identities->unknown($id)]);
+        return $this->json($this->query->wlan($id) + ['identities' => $this->identities->list(['wlan' => $id], $this->pii()), 'unknown' => $this->identities->unknown($id)]);
     }
 
     #[Route('/wlans/{id}/apply', name: 'wlan_apply', methods: ['POST'], requirements: ['id' => '\d+'])]
@@ -164,13 +166,13 @@ final readonly class WifiController
         ?string $state = null
     ): JsonResponse {
         return $this->json(['items' => $this->identities->list(['q' => $q, 'wlan' => $wlan, 'status' => \in_array($status, ['active', 'revoked'], true) ? $status : null,
-            'state' => \array_key_exists((string) $state, IdentityService::STATES) ? $state : null])]);
+            'state' => \array_key_exists((string) $state, IdentityService::STATES) ? $state : null], $this->pii())]);
     }
 
     #[Route('/identities/{id}', name: 'identity', methods: ['GET'], requirements: ['id' => '\d+'])]
     public function identity(int $id): JsonResponse
     {
-        return $this->json($this->identities->detail($id));
+        return $this->json($this->identities->detail($id, $this->pii()));
     }
 
     #[Route('/lookup', name: 'lookup', methods: ['GET'])]
@@ -210,6 +212,12 @@ final readonly class WifiController
         $this->identities->delete($id);
 
         return $this->json(['deleted' => true]);
+    }
+
+    /** e-mail/telefone completos só para técnico/admin (LGPD: necessidade) */
+    private function pii(): bool
+    {
+        return $this->security->isGranted('ROLE_EDITOR');
     }
 
     /**

@@ -7,6 +7,7 @@ namespace App\Wifi\Service;
 use App\Ui\Write\NotFoundException;
 use App\Ui\Write\ValidationException;
 use App\Wifi\Unifi\UnifiException;
+use App\Wifi\Unifi\UnifiSessions;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -24,7 +25,7 @@ final readonly class WlanApplier
 
     public function __construct(
         private Connection $db,
-        private ControllerService $controllers,
+        private UnifiSessions $sessions,
         #[Autowire(service: 'monolog.logger.wifi')]
         private LoggerInterface $logger,
     ) {
@@ -79,7 +80,7 @@ final readonly class WlanApplier
         }
         $result = ['wlan_id' => $wlanId, 'changed' => false, 'added' => [], 'removed' => [], 'total' => 0, 'warnings' => [], 'error' => null];
 
-        $conn = $this->controllers->connect((int) $w['controller_id']);
+        $conn = $this->sessions->get((int) $w['controller_id']);
         try {
             $live = $conn->wlan((string) $w['site_ref'], (string) $w['external_id']);
             if ('deny' === $live['filter_policy']) {
@@ -90,6 +91,9 @@ final readonly class WlanApplier
             }
             $current = $live['macs'];
             $target = array_values(array_unique(array_merge(array_values(array_diff($current, array_keys($drop))), array_keys($want))));
+            if ([] === $target && [] !== $current && $live['filter_enabled']) {
+                throw new UnifiException('Retirar este(s) MAC(s) deixaria a lista de permissão VAZIA com o filtro ligado — ninguém mais conectaria nesta rede. Desligue o filtro no UniFi antes ou mantenha ao menos um aparelho.');
+            }
             if (\count($target) > self::MAX_MACS) {
                 throw new UnifiException(\sprintf('A lista ficaria com %d MACs; o UniFi aceita até %d por rede.', \count($target), self::MAX_MACS));
             }
@@ -129,10 +133,9 @@ final readonly class WlanApplier
                 [$e->getMessage(), $wlanId]
             );
             $this->logger->warning('Aplicação do filtro de MAC falhou', ['wlan' => $wlanId, 'error' => $e->getMessage()]);
+            $this->sessions->drop((int) $w['controller_id']);
 
             return $result;
-        } finally {
-            $conn->logout();
         }
 
         $this->db->transactional(function () use ($wlanId, $want, $drop, $current): void {
@@ -169,17 +172,13 @@ final readonly class WlanApplier
         if (null !== $result['error']) {
             throw new UnifiException($result['error']);
         }
-        $conn = $this->controllers->connect((int) $w['controller_id']);
-        try {
-            $live = $conn->wlan((string) $w['site_ref'], (string) $w['external_id']);
-            if ([] === $live['macs']) {
-                throw new ValidationException(['confirm' => 'A lista está vazia: ligar o filtro agora desconectaria todo mundo desta rede.']);
-            }
-            $conn->setMacFilter((string) $w['site_ref'], (string) $w['external_id'], $live['macs'], true, 'allow');
-            $check = $conn->wlan((string) $w['site_ref'], (string) $w['external_id']);
-        } finally {
-            $conn->logout();
+        $conn = $this->sessions->get((int) $w['controller_id']);
+        $live = $conn->wlan((string) $w['site_ref'], (string) $w['external_id']);
+        if ([] === $live['macs']) {
+            throw new ValidationException(['confirm' => 'A lista está vazia: ligar o filtro agora desconectaria todo mundo desta rede.']);
         }
+        $conn->setMacFilter((string) $w['site_ref'], (string) $w['external_id'], $live['macs'], true, 'allow');
+        $check = $conn->wlan((string) $w['site_ref'], (string) $w['external_id']);
         $this->db->executeStatement(
             'UPDATE unifi_wlan SET filter_enabled = ?, filter_policy = ?, remote_macs = CAST(? AS jsonb), updated_at = now() WHERE id = ?',
             [$check['filter_enabled'], $check['filter_policy'], json_encode($check['macs']), $wlanId],
@@ -212,6 +211,10 @@ final readonly class WlanApplier
         $device = trim(implode(' ', array_filter([$r['device_brand'], $r['device_model']])));
         $name = implode(' — ', array_filter([$r['person_name'], '' !== $device ? $device : $r['hostname']]));
         $note = implode(' · ', array_filter([$r['department'], null !== $r['registration'] ? 'mat. '.$r['registration'] : null]));
+
+        $clean = static fn (string $v): string => trim((string) preg_replace('/[\p{Cc}\p{Cf}]+/u', ' ', $v));
+        $name = $clean($name);
+        $note = $clean($note);
 
         return [mb_substr('' !== $name ? $name : (string) $r['mac'], 0, 64), mb_substr(('' !== $note ? $note.' ' : '').'(GLPI Bianchi #'.$r['identity_id'].')', 0, 255)];
     }

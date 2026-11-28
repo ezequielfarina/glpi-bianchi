@@ -19,6 +19,7 @@ final class TlsInspector
         if ('' === $host || 'https' !== parse_url($baseUrl, \PHP_URL_SCHEME)) {
             throw new UnifiException('O endereço do controller precisa começar com https://');
         }
+        NetworkGuard::assertInternal($baseUrl);
         $ctx = stream_context_create(['ssl' => ['capture_peer_cert' => true, 'verify_peer' => false, 'verify_peer_name' => false, 'SNI_enabled' => true, 'peer_name' => $host]]);
         $errno = 0;
         $errstr = '';

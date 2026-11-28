@@ -34,10 +34,11 @@ final readonly class IdentityService
 
     /**
      * @param array{q?: ?string, wlan?: ?int, status?: ?string, state?: ?string, id?: ?int} $f
+     * @param bool                                                                          $pii e-mail e telefone completos (técnico/admin); perfil Leitura vê mascarado — LGPD, necessidade
      *
      * @return list<array<string, mixed>>
      */
-    public function list(array $f = []): array
+    public function list(array $f = [], bool $pii = true): array
     {
         $rows = $this->db->fetchAllAssociative(<<<'SQL'
             SELECT i.id, i.mac, i.person_name, i.registration, i.department, i.email, i.phone, i.person_id, u.username AS person_username,
@@ -68,6 +69,10 @@ final readonly class IdentityService
             $r['wlans'] = json_decode((string) $r['wlans'], true);
             $r['vendor'] = $this->vendors->vendor(str_replace(':', '', (string) $r['mac']));
             $r['randomized'] = MacAddress::isRandomized((string) $r['mac']);
+            if (!$pii) {
+                $r['email'] = self::mask($r['email']);
+                $r['phone'] = self::mask($r['phone']);
+            }
         }
         unset($r);
 
@@ -75,9 +80,35 @@ final readonly class IdentityService
     }
 
     /** @return array<string, mixed> */
-    public function detail(int $id): array
+    public function detail(int $id, bool $pii = true): array
     {
-        return $this->list(['id' => $id])[0] ?? throw new NotFoundException('Identidade de MAC não encontrada.');
+        return $this->list(['id' => $id], $pii)[0] ?? throw new NotFoundException('Identidade de MAC não encontrada.');
+    }
+
+    /** Tira caracteres de controle/invisíveis (colados de planilha/WhatsApp) e espaços repetidos. */
+    private static function text(?string $v, bool $multiline = false): ?string
+    {
+        if (null === $v) {
+            return null;
+        }
+        $v = (string) preg_replace($multiline ? '/[^\P{Cc}\n\t]|\p{Cf}/u' : '/[\p{Cc}\p{Cf}]/u', $multiline ? '' : ' ', $v);
+        $v = trim((string) preg_replace($multiline ? '/[ \t]+/' : '/\s+/u', ' ', $v));
+
+        return '' === $v ? null : $v;
+    }
+
+    private static function mask(mixed $v): ?string
+    {
+        if (!\is_string($v) || '' === $v) {
+            return null;
+        }
+        if (str_contains($v, '@')) {
+            [$user, $domain] = explode('@', $v, 2);
+
+            return mb_substr($user, 0, 1).'•••@'.$domain;
+        }
+
+        return '••••'.mb_substr((string) preg_replace('/\D/', '', $v), -4);
     }
 
     /**
@@ -90,23 +121,42 @@ final readonly class IdentityService
         $current = null === $id ? null : $this->detail($id);
         $p = new Payload($data);
         $mac = MacAddress::normalize((string) ($p->string('mac', 40, required: true) ?? ''));
+        $other = null === $mac ? false : $this->db->fetchAssociative('SELECT coalesce(person_name, mac) AS who, status FROM mac_identity WHERE mac = ? AND id <> ?', [$mac, $id ?? 0]);
         if (null === $mac) {
             $p->error('mac', 'MAC inválido. Aceita AA:BB:CC:DD:EE:FF, AA-BB-…, AABB.CCDD.EEFF ou só os 12 dígitos.');
         } elseif (MacAddress::isMulticast($mac)) {
             $p->error('mac', 'Endereço multicast — não é MAC de aparelho.');
-        } elseif (false !== ($other = $this->db->fetchOne('SELECT coalesce(person_name, mac) FROM mac_identity WHERE mac = ? AND id <> ?', [$mac, $id ?? 0]))) {
-            $p->error('mac', 'Este MAC já está cadastrado ('.$other.').');
+        } elseif (false !== $other) {
+            $p->error('mac', 'revoked' === $other['status']
+                ? 'Este MAC já tem cadastro revogado ('.$other['who'].'): abra esse cadastro e salve com as redes para reativar.'
+                : 'Este MAC já está cadastrado ('.$other['who'].').');
+        } elseif (MacAddress::isRandomized($mac) && ($current['mac'] ?? null) !== $mac && !$p->bool('confirm_random')) {
+            $p->error('mac', 'MAC aleatório/privado: o aparelho usa outro endereço em cada rede e pode trocar sozinho. Desligue o "endereço privado" para esta rede no aparelho e confirme.');
         }
         if (null !== $current && $current['mac'] !== $mac && [] !== $current['wlans']) {
             $p->error('mac', 'Não dá para trocar o MAC de uma identidade que já está em redes: revogue e cadastre o novo.');
         }
-        $personName = $p->string('person_name', 120);
+        $personName = self::text($p->string('person_name', 120));
         $personId = $p->int('person_id', 1);
         $assetUuid = $p->string('asset_uuid', 36);
         $branchId = $p->int('branch_id', 1);
         $validUntil = $p->date('valid_until');
         if (null !== $validUntil && $validUntil < date('Y-m-d')) {
             $p->error('valid_until', 'A validade já passou.');
+        } elseif (null !== $validUntil && $validUntil > date('Y-m-d', strtotime('+5 years'))) {
+            $p->error('valid_until', 'Validade máxima: 5 anos. Para acesso permanente deixe em branco.');
+        }
+        $phone = $p->string('phone', 30);
+        if (null !== $phone && 1 !== preg_match('/^[0-9 ()+\-.]{6,30}$/', $phone)) {
+            $p->error('phone', 'Telefone/ramal: só números, espaço, ( ) + - .');
+        }
+        $registration = $p->string('registration', 40);
+        if (null !== $registration && 1 !== preg_match('/^[\p{L}0-9.\-\/]{1,40}$/u', $registration)) {
+            $p->error('registration', 'Matrícula: letras, números, ponto, hífen ou barra.');
+        }
+        $hostname = $p->string('hostname', 100);
+        if (null !== $hostname && 1 !== preg_match('/^[A-Za-z0-9._\-]{1,100}$/', $hostname)) {
+            $p->error('hostname', 'Nome na rede: letras sem acento, números, ponto, hífen ou sublinhado.');
         }
         $kind = $p->enum('device_kind', array_keys(self::DEVICE_KINDS), 'other');
         $wlanIds = [];
@@ -128,6 +178,22 @@ final readonly class IdentityService
                 $p->error('wlan_ids', "A rede \"$deny\" usa filtro de BLOQUEIO no UniFi — o painel só gerencia listas de permissão.");
             }
         }
+        if (null === $id && [] === $wlanIds && !$p->bool('no_wlan')) {
+            $p->error('wlan_ids', 'Escolha ao menos uma rede Wi-Fi onde liberar o aparelho.');
+        }
+        if (null !== $mac && [] !== $wlanIds) {
+            $full = $this->db->fetchOne(<<<'SQL'
+                SELECT w.name FROM unifi_wlan w
+                WHERE w.id = ANY(CAST(? AS int[])) AND NOT jsonb_exists(w.remote_macs, ?)
+                  AND NOT EXISTS (SELECT 1 FROM mac_wlan_assignment x WHERE x.wlan_id = w.id AND x.identity_id = ?)
+                  AND jsonb_array_length(w.remote_macs) + (SELECT count(*) FROM mac_wlan_assignment x JOIN mac_identity i ON i.id = x.identity_id
+                        WHERE x.wlan_id = w.id AND x.state = 'pending' AND NOT jsonb_exists(w.remote_macs, i.mac)) >= ?
+                LIMIT 1
+                SQL, ['{'.implode(',', $wlanIds).'}', $mac, $id ?? 0, WlanApplier::MAX_MACS]);
+            if (false !== $full) {
+                $p->error('wlan_ids', \sprintf('A rede "%s" já tem %d MACs, o máximo do UniFi. Revogue aparelhos antigos dela antes.', $full, WlanApplier::MAX_MACS));
+            }
+        }
         if (null === $personName && null === $personId && null === $assetUuid) {
             $p->error('person_name', 'Identifique o MAC: informe a pessoa, um usuário ou o patrimônio.');
         }
@@ -145,11 +211,11 @@ final readonly class IdentityService
             $p->error('branch_id', 'Filial não encontrada.');
         }
         $row = [
-            'mac' => $mac, 'person_name' => $personName, 'registration' => $p->string('registration', 40), 'department' => $p->string('department', 100),
-            'email' => $p->email('email'), 'phone' => $p->string('phone', 30), 'person_id' => $personId,
-            'device_kind' => $kind, 'device_brand' => $p->string('device_brand', 60), 'device_model' => $p->string('device_model', 100), 'hostname' => $p->string('hostname', 100),
+            'mac' => $mac, 'person_name' => $personName, 'registration' => $registration, 'department' => self::text($p->string('department', 100)),
+            'email' => $p->email('email'), 'phone' => $phone, 'person_id' => $personId,
+            'device_kind' => $kind, 'device_brand' => self::text($p->string('device_brand', 60)), 'device_model' => self::text($p->string('device_model', 100)), 'hostname' => $hostname,
             'asset_id' => false === $assetId ? null : $assetId, 'branch_id' => $branchId,
-            'valid_until' => null === $validUntil ? null : $validUntil.' 23:59:59 America/Sao_Paulo', 'notes' => $p->string('notes', 2000),
+            'valid_until' => null === $validUntil ? null : $validUntil.' 23:59:59 America/Sao_Paulo', 'notes' => self::text($p->string('notes', 2000), true),
         ];
         $p->check();
 
@@ -242,18 +308,18 @@ final readonly class IdentityService
         if (false === $remote) {
             throw new NotFoundException('Rede Wi-Fi não encontrada.');
         }
-        $managed = array_flip($this->db->fetchFirstColumn('SELECT i.mac FROM mac_wlan_assignment a JOIN mac_identity i ON i.id = a.identity_id WHERE a.wlan_id = ?', [$wlanId]));
-        $out = [];
-        foreach ((array) json_decode((string) $remote, true) as $mac) {
-            if (!\is_string($mac) || isset($managed[$mac])) {
-                continue;
-            }
-            $id = $this->db->fetchAssociative('SELECT id, person_name FROM mac_identity WHERE mac = ?', [$mac]);
-            $out[] = ['mac' => $mac, 'vendor' => $this->vendors->vendor(str_replace(':', '', $mac)), 'randomized' => MacAddress::isRandomized($mac),
-                'identity' => false === $id ? null : $id];
-        }
+        $rows = $this->db->fetchAllAssociative(<<<'SQL'
+            SELECT m.mac, i.id, i.person_name, i.status
+            FROM jsonb_array_elements_text(CAST(? AS jsonb)) m(mac)
+            LEFT JOIN mac_identity i ON i.mac = m.mac
+            WHERE NOT EXISTS (SELECT 1 FROM mac_wlan_assignment a JOIN mac_identity x ON x.id = a.identity_id WHERE a.wlan_id = ? AND x.mac = m.mac)
+            ORDER BY m.mac
+            SQL, [$remote, $wlanId]);
 
-        return $out;
+        return array_map(fn (array $r): array => [
+            'mac' => $r['mac'], 'vendor' => $this->vendors->vendor(str_replace(':', '', (string) $r['mac'])), 'randomized' => MacAddress::isRandomized((string) $r['mac']),
+            'identity' => null === $r['id'] ? null : ['id' => (int) $r['id'], 'person_name' => $r['person_name'], 'status' => $r['status']],
+        ], $rows);
     }
 
     /**
@@ -264,28 +330,42 @@ final readonly class IdentityService
     public function adopt(int $wlanId, array $data): int
     {
         $mac = MacAddress::normalize((string) ($data['mac'] ?? ''));
-        $remote = $this->db->fetchOne('SELECT remote_macs FROM unifi_wlan WHERE id = ?', [$wlanId]);
-        if (false === $remote) {
+        $w = $this->db->fetchAssociative('SELECT w.remote_macs, s.controller_id FROM unifi_wlan w JOIN unifi_site s ON s.id = w.site_id WHERE w.id = ?', [$wlanId]);
+        if (false === $w) {
             throw new NotFoundException('Rede Wi-Fi não encontrada.');
         }
-        if (null === $mac || !\in_array($mac, (array) json_decode((string) $remote, true), true)) {
+        if (null === $mac || !\in_array($mac, (array) json_decode((string) $w['remote_macs'], true), true)) {
             throw new ValidationException(['mac' => 'Este MAC não está no filtro desta rede no UniFi (sincronize de novo).']);
         }
-        $existing = $this->db->fetchOne('SELECT id FROM mac_identity WHERE mac = ?', [$mac]);
+        $existing = $this->db->fetchAssociative('SELECT id, status, valid_until FROM mac_identity WHERE mac = ?', [$mac]);
 
-        return $this->db->transactional(function () use ($existing, $data, $mac, $wlanId): int {
+        return $this->db->transactional(function () use ($existing, $data, $mac, $wlanId, $w): int {
             if (false === $existing) {
                 $data['mac'] = $mac;
-                unset($data['wlan_ids']);
+                $data['confirm_random'] = true; // já está no UniFi: identificar não muda o acesso
+                $data['no_wlan'] = true;
+                unset($data['wlan_ids'], $data['apply']);
                 $id = $this->save(null, $data)['id'];
                 $this->db->executeStatement("UPDATE mac_identity SET source = 'imported' WHERE id = ?", [$id]);
             } else {
-                $id = (int) $existing;
+                $id = (int) $existing['id'];
+                // revogado/vencido e ainda no UniFi: identificar = manter o acesso (senão a próxima aplicação o retiraria)
+                $this->db->executeStatement(
+                    "UPDATE mac_identity SET status = 'active', valid_until = CASE WHEN valid_until <= now() THEN NULL ELSE valid_until END, updated_at = now() WHERE id = ?",
+                    [$id]
+                );
             }
-            $this->db->executeStatement(<<<'SQL'
-                INSERT INTO mac_wlan_assignment (identity_id, wlan_id, state, synced_at, created_by, created_at, updated_at) VALUES (?, ?, 'synced', now(), ?, now(), now())
-                ON CONFLICT (identity_id, wlan_id) DO UPDATE SET state = 'synced', last_error = NULL, synced_at = now(), updated_at = now()
-                SQL, [$id, $wlanId, $this->actor->name()]);
+            // o mesmo aparelho costuma estar em várias redes do controller (Mobile + CelGestores): liga em todas onde já está
+            $wlans = array_map('intval', $this->db->fetchFirstColumn(<<<'SQL'
+                SELECT w.id FROM unifi_wlan w JOIN unifi_site s ON s.id = w.site_id
+                WHERE s.controller_id = ? AND w.present AND jsonb_exists(w.remote_macs, ?)
+                SQL, [$w['controller_id'], $mac]));
+            foreach (array_unique([$wlanId, ...(false === ($data['all_wlans'] ?? true) ? [] : $wlans)]) as $wl) {
+                $this->db->executeStatement(<<<'SQL'
+                    INSERT INTO mac_wlan_assignment (identity_id, wlan_id, state, synced_at, created_by, created_at, updated_at) VALUES (?, ?, 'synced', now(), ?, now(), now())
+                    ON CONFLICT (identity_id, wlan_id) DO UPDATE SET state = 'synced', last_error = NULL, synced_at = now(), updated_at = now()
+                    SQL, [$id, $wl, $this->actor->name()]);
+            }
 
             return $id;
         });

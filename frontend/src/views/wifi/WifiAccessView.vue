@@ -9,7 +9,7 @@ import type { IconName } from '../../components/AppIcon.vue'
 import { dateOnly, relative } from '../../lib/format'
 import { canEdit, isAdmin } from '../../lib/session'
 import { notify } from '../../lib/toast'
-import { applySummary, KIND_ICON, macUp, STATE, wifi, type Identity, type TreeController, type TreeWlan, type WlanDetail } from '../../lib/wifi'
+import { applySummary, filterTree, KIND_ICON, macUp, STATE, useOpenSites, wifi, type Identity, type TreeController, type TreeSite, type TreeWlan, type WlanDetail } from '../../lib/wifi'
 
 // Acesso Wi-Fi por MAC (ADR-0020): escolhe a rede → vê quem está liberado e o que está no UniFi sem identificação.
 const route = useRoute()
@@ -44,6 +44,8 @@ void loadTree()
 watch(selected, (id) => { void router.replace({ query: id ? { wlan: String(id) } : {} }); void loadWlan() }, { immediate: true })
 async function refresh(): Promise<void> { await Promise.all([loadTree(), loadWlan()]) }
 
+const currentCtl = computed(() => tree.value.find((c) => c.sites.some((x) => x.wlans.some((w) => w.id === selected.value))) ?? null)
+const stale = computed(() => !!detail.value?.synced_at && Date.now() - new Date(detail.value.synced_at).getTime() > 30 * 60_000)
 const current = computed<TreeWlan | null>(() => tree.value.flatMap((c) => c.sites.flatMap((s) => s.wlans)).find((w) => w.id === selected.value) ?? null)
 const shown = computed(() => {
   const s = q.value.trim().toLowerCase()
@@ -87,6 +89,19 @@ async function enableFilter(): Promise<void> {
   catch (e) { notify('warn', 'Filtro não ligado', e instanceof Error ? e.message : String(e)) } finally { busy.value = null }
 }
 async function saved(): Promise<void> { editing.value = undefined; adoptMac.value = null; await refresh() }
+// árvore: sites recolhíveis (como o menu lateral), busca e "só com filtro"
+const sites = useOpenSites('bianchi.wifi.openSites')
+const tick = ref(0) // reatividade do Set do localStorage
+const treeQ = ref('')
+const onlyFilter = ref((() => { try { return localStorage.getItem('bianchi.wifi.onlyFilter') === '1' } catch { return false } })())
+watch(onlyFilter, (v) => { try { localStorage.setItem('bianchi.wifi.onlyFilter', v ? '1' : '0') } catch { /* sem storage */ } })
+const shownTree = computed(() => filterTree(tree.value, treeQ.value, onlyFilter.value, selected.value ? [selected.value] : []))
+const siteOpen = (id: number): boolean => { void tick.value; return !!treeQ.value || sites.isOpen(id) }
+const siteStats = (s: TreeSite) => ({ macs: s.wlans.reduce((n, w) => n + w.remote_count, 0), alert: s.wlans.reduce((n, w) => n + w.pending + w.errors, 0) })
+watch([tree, selected], () => {
+  const site = tree.value.flatMap((c) => c.sites).find((x) => x.wlans.some((w) => w.id === selected.value))
+  if (site) { sites.ensure(site.id); tick.value++ }
+})
 const kindIcon = (k: string) => (KIND_ICON[k] ?? 'wifi') as IconName
 const totalUnknown = computed(() => tree.value.reduce((n, c) => n + c.sites.reduce((m, s) => m + s.wlans.reduce((x, w) => x + w.unknown, 0), 0), 0))
 </script>
@@ -113,31 +128,45 @@ const totalUnknown = computed(() => tree.value.reduce((n, c) => n + c.sites.redu
 
       <div v-else class="wf">
         <aside class="panel tree">
-          <div v-for="c in tree" :key="c.id" class="ctl">
+          <div class="tree-tools">
+            <input v-model="treeQ" class="input search" type="search" placeholder="Buscar rede ou site…" aria-label="Buscar rede ou site" />
+            <label class="only" title="Esconde redes sem filtro de MAC e sem MACs (visitantes, refeitório…)"><input v-model="onlyFilter" type="checkbox" /> Só com filtro</label>
+          </div>
+          <div v-for="c in shownTree" :key="c.id" class="ctl">
             <div class="ctl-head">
               <span class="dot" :class="c.last_error ? 'bad' : c.last_sync_at ? 'ok' : ''" />
               <div class="grow"><b>{{ c.name }}</b>
                 <div class="muted dc-small">{{ c.version ? `Network ${c.version} · ` : '' }}{{ c.last_sync_at ? `lido ${relative(c.last_sync_at)}` : 'nunca sincronizado' }}</div></div>
-              <button v-if="canEdit" class="btn btn-icon" type="button" :disabled="!!busy" :aria-label="`Sincronizar ${c.name}`" title="Sincronizar sites e redes"
+              <button v-if="canEdit" class="btn btn-icon" type="button" :disabled="!!busy" :aria-label="`Sincronizar ${c.name}`" title="Sincronizar todos os sites"
                 @click="sync(c)"><AppIcon name="refresh" :size="15" :class="{ spin: busy === `sync-${c.id}` }" /></button>
             </div>
             <p v-if="c.last_error" class="ctl-err">{{ c.last_error }}</p>
-            <div v-for="s in c.sites" :key="s.id" class="site">
-              <div class="site-name"><AppIcon name="building" :size="13" /> <span class="grow">{{ s.name }}<span v-if="s.branch" class="muted"> · {{ s.branch }}</span></span>
+            <div v-for="s in c.sites" :key="s.id" class="site" :class="{ open: siteOpen(s.id) }">
+              <div class="site-row">
+                <button type="button" class="site-name" :aria-expanded="siteOpen(s.id)" :aria-controls="`site-${s.id}`" @click="sites.toggle(s.id); tick++">
+                  <AppIcon name="chevron" :size="13" class="chev" />
+                  <AppIcon name="building" :size="13" />
+                  <span class="grow sn">{{ s.name }}<span v-if="s.branch" class="muted"> · {{ s.branch }}</span></span>
+                  <span v-if="!siteOpen(s.id) && siteStats(s).alert" class="cnt bad" :title="`${siteStats(s).alert} pendência(s)/erro(s)`">{{ siteStats(s).alert }}</span>
+                  <span v-if="!siteOpen(s.id)" class="cnt" :title="`${s.wlans.length} rede(s) · ${siteStats(s).macs} MAC(s) no UniFi`">{{ s.wlans.length }}</span>
+                </button>
                 <button v-if="canEdit" class="site-sync" type="button" :disabled="!!busy" :aria-label="`Sincronizar ${s.name}`" title="Sincronizar este site"
-                  @click="syncSite(s.id, s.name)"><AppIcon name="refresh" :size="13" :class="{ spin: busy === `site-${s.id}` }" /></button></div>
-              <button v-for="w in s.wlans" :key="w.id" type="button" class="wlan" :class="{ active: w.id === selected }" @click="selected = w.id">
-                <AppIcon name="wifi" :size="15" />
-                <span class="grow wn">{{ w.name }}</span>
-                <span v-if="w.pending" class="cnt warn" :title="`${w.pending} aguardando aplicar`">{{ w.pending }}</span>
-                <span v-if="w.errors" class="cnt bad" :title="`${w.errors} com erro`">{{ w.errors }}</span>
-                <span class="cnt" :title="`${w.remote_count} MAC(s) no filtro do UniFi`">{{ w.remote_count }}</span>
-                <span class="lock" :class="w.filter_policy === 'deny' ? 'deny' : w.filter_enabled ? 'on' : 'off'"
-                  :title="w.filter_policy === 'deny' ? 'Filtro em modo bloqueio' : w.filter_enabled ? 'Filtro de MAC ligado' : 'Filtro de MAC desligado'" />
-              </button>
-              <p v-if="!s.wlans.length" class="muted dc-small pad">Sem redes Wi-Fi.</p>
+                  @click="syncSite(s.id, s.name)"><AppIcon name="refresh" :size="13" :class="{ spin: busy === `site-${s.id}` }" /></button>
+              </div>
+              <div v-show="siteOpen(s.id)" :id="`site-${s.id}`" class="site-wlans">
+                <button v-for="w in s.wlans" :key="w.id" type="button" class="wlan" :class="{ active: w.id === selected }" @click="selected = w.id">
+                  <AppIcon name="wifi" :size="15" />
+                  <span class="grow wn">{{ w.name }}</span>
+                  <span v-if="w.pending" class="cnt warn" :title="`${w.pending} aguardando aplicar`">{{ w.pending }}</span>
+                  <span v-if="w.errors" class="cnt bad" :title="`${w.errors} com erro`">{{ w.errors }}</span>
+                  <span class="cnt" :title="`${w.remote_count} MAC(s) no filtro do UniFi`">{{ w.remote_count }}</span>
+                  <span class="lock" :class="w.filter_policy === 'deny' ? 'deny' : w.filter_enabled ? 'on' : 'off'"
+                    :title="w.filter_policy === 'deny' ? 'Filtro em modo bloqueio' : w.filter_enabled ? 'Filtro de MAC ligado' : 'Filtro de MAC desligado'" />
+                </button>
+                <p v-if="!s.wlans.length" class="muted dc-small pad">Sem redes Wi-Fi.</p>
+              </div>
             </div>
-            <p v-if="!c.sites.length" class="muted dc-small pad">Sincronize para trazer os sites.</p>
+            <p v-if="!c.sites.length" class="muted dc-small pad">{{ treeQ || onlyFilter ? 'Nada com esse filtro.' : 'Sincronize para trazer os sites.' }}</p>
           </div>
           <p v-if="totalUnknown" class="tree-foot muted dc-small"><AppIcon name="conflict" :size="13" /> {{ totalUnknown }} MAC(s) no UniFi sem identificação</p>
         </aside>
@@ -147,7 +176,8 @@ const totalUnknown = computed(() => tree.value.reduce((n, c) => n + c.sites.redu
             <div class="wl-title">
               <span class="big-ico" :class="current.filter_policy === 'deny' ? 'deny' : current.filter_enabled ? 'on' : 'off'"><AppIcon name="wifi" :size="22" /></span>
               <div><h2>{{ detail.name }}</h2>
-                <p class="muted">{{ detail.site }} · {{ detail.controller }} · {{ detail.security || 'segurança ?' }}{{ detail.enabled ? '' : ' · rede desativada' }}</p></div>
+                <p class="muted">{{ detail.site }} · {{ detail.controller }} · {{ detail.security || 'segurança ?' }}{{ detail.enabled ? '' : ' · rede desativada' }}
+                  · <span :class="{ 'warn-t': stale }" :title="detail.synced_at ?? ''">lida {{ relative(detail.synced_at) }}</span></p></div>
             </div>
             <div class="actions">
               <button v-if="canEdit" class="btn" type="button" :disabled="!!busy" :title="`Reler do UniFi as redes de ${detail.site}`" @click="syncSite(detail.site_id, detail.site)">
@@ -159,6 +189,11 @@ const totalUnknown = computed(() => tree.value.reduce((n, c) => n + c.sites.redu
             </div>
           </div>
 
+          <div v-if="currentCtl?.last_error" class="banner bad"><AppIcon name="alert" :size="16" /><span>
+            <b>Falha na última comunicação com o controller:</b> {{ currentCtl.last_error }} Os números abaixo podem estar desatualizados; cadastros ficam
+            <b>aguardando aplicar</b> e vão sozinhos quando o UniFi voltar (a cada 10 min).</span></div>
+          <div v-else-if="stale" class="banner warn"><AppIcon name="refresh" :size="16" /><span>
+            A lista desta rede foi lida do UniFi {{ relative(detail.synced_at) }}. Se alguém mexeu direto no UniFi, clique em <b>Sincronizar site</b> para conferir.</span></div>
           <div v-if="current.filter_policy === 'deny'" class="banner bad"><AppIcon name="alert" :size="16" /><span>
             Esta rede usa o filtro em modo <b>bloqueio</b> (a lista é de quem NÃO entra). O painel só gerencia listas de permissão — altere no UniFi se quiser usar aqui.</span></div>
           <div v-else-if="!current.filter_enabled" class="banner warn"><AppIcon name="alert" :size="16" /><span>
@@ -201,15 +236,17 @@ const totalUnknown = computed(() => tree.value.reduce((n, c) => n + c.sites.redu
             </table></div>
           </template>
           <template v-else>
-            <p class="hint tab-hint">MACs que já estavam no filtro desta rede no UniFi e o painel não conhece. Ficam como estão; identifique para saber de quem é cada um.</p>
+            <p class="hint tab-hint">MACs que já estavam no filtro desta rede no UniFi e o painel não conhece. Ficam como estão; identifique para saber de quem é cada um —
+              o cadastro é ligado a <b>todas</b> as redes deste controller onde o MAC já está.</p>
             <p v-if="!detail.unknown.length" class="empty muted">Tudo identificado. 👍</p>
             <div v-else class="table-wrap"><table class="table">
               <thead><tr><th>MAC</th><th>Fabricante</th><th>Cadastro</th><th /></tr></thead>
               <tbody><tr v-for="u in detail.unknown" :key="u.mac">
                 <td class="mono">{{ macUp(u.mac) }}</td>
                 <td>{{ u.randomized ? 'MAC aleatório (celular/notebook com endereço privado)' : u.vendor ?? 'desconhecido' }}</td>
-                <td class="muted">{{ u.identity ? `já identificado (${u.identity.person_name ?? 'sem nome'}) em outra rede` : '—' }}</td>
-                <td class="row-actions"><button v-if="canEdit" class="btn btn-sm" type="button" @click="adoptMac = u.mac"><AppIcon name="fingerprint" :size="14" /> {{ u.identity ? 'Vincular' : 'Identificar' }}</button></td>
+                <td class="muted"><template v-if="u.identity?.status === 'revoked'"><span class="warn-t">cadastro revogado</span> ({{ u.identity.person_name ?? 'sem nome' }}) — mas continua no UniFi</template>
+                  <template v-else-if="u.identity">já identificado ({{ u.identity.person_name ?? 'sem nome' }}) em outra rede</template><template v-else>—</template></td>
+                <td class="row-actions"><button v-if="canEdit" class="btn btn-sm" type="button" @click="adoptMac = u.mac"><AppIcon name="fingerprint" :size="14" /> {{ u.identity?.status === 'revoked' ? 'Reativar' : u.identity ? 'Vincular' : 'Identificar' }}</button></td>
               </tr></tbody>
             </table></div>
           </template>
@@ -243,11 +280,21 @@ const totalUnknown = computed(() => tree.value.reduce((n, c) => n + c.sites.redu
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--text-3); flex: none; }
 .dot.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 .dot.bad { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
-.site { margin: 4px 0 8px; }
+.tree-tools { display: grid; gap: 6px; padding: 2px 4px 10px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.tree-tools .input { height: 34px; }
+.only { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); cursor: pointer; padding-left: 2px; }
+.site { margin: 2px 0; }
+.site-row { display: flex; align-items: center; gap: 2px; }
+.site-row .site-name { flex: 1; min-width: 0; border: 0; background: none; cursor: pointer; border-radius: 8px; font: inherit; text-align: left; }
+.site-row .site-name:hover { background: var(--panel-hover); color: var(--text); }
+.sn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chev { transition: transform .15s ease; flex: none; }
+.site.open .chev { transform: rotate(90deg); }
+.site-wlans { padding: 2px 0 6px 8px; margin-left: 8px; border-left: 1px solid var(--border); }
 .site-sync { margin-left: auto; display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 7px; background: none; color: var(--text-3); cursor: pointer; opacity: 0; transition: opacity .15s ease; }
-.site:hover .site-sync, .site-sync:focus-visible, .site-sync:has(.spin) { opacity: 1; }
+.site-row:hover .site-sync, .site-sync:focus-visible, .site-sync:has(.spin) { opacity: 1; }
 .site-sync:hover { background: var(--panel-hover); color: var(--accent-text); }
-.site-name { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-2); padding: 4px 6px; text-transform: uppercase; letter-spacing: .03em; }
+.site-name { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-2); padding: 6px 6px; text-transform: uppercase; letter-spacing: .03em; }
 .wlan { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--text); cursor: pointer; text-align: left; font: inherit; }
 .wlan:hover { background: var(--panel-hover); }
 .wlan.active { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent-text); }

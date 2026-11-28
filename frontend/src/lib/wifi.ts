@@ -31,7 +31,7 @@ export interface Identity {
   valid_until: string | null; status: 'active' | 'revoked'; source: 'panel' | 'imported'; notes: string | null; created_by: string | null; created_at: string; updated_at: string
   expired: boolean; wlans: IdentityWlan[]; vendor: string | null; randomized: boolean
 }
-export interface UnknownMac { mac: string; vendor: string | null; randomized: boolean; identity: { id: number; person_name: string | null } | null }
+export interface UnknownMac { mac: string; vendor: string | null; randomized: boolean; identity: { id: number; person_name: string | null; status: 'active' | 'revoked' } | null }
 export interface WlanDetail {
   id: number; name: string; enabled: boolean; security: string | null; filter_enabled: boolean; filter_policy: 'allow' | 'deny' | null; synced_at: string | null; present: boolean
   remote_count: number; site_id: number; site: string; site_ref: string; controller_id: number; controller: string; base_url: string; auth_mode: string
@@ -72,6 +72,44 @@ export const wifi = {
   saveIdentity: (id: number | null, b: Body) => send<{ id: number; applied: ApplyResult[] }>(id ? 'PUT' : 'POST', id ? `/wifi/identities/${id}` : '/wifi/identities', b),
   revoke: (id: number, apply: boolean) => send<{ id: number; applied: ApplyResult[] }>('POST', `/wifi/identities/${id}/revoke`, { apply }),
   deleteIdentity: (id: number) => send<{ deleted: boolean }>('DELETE', `/wifi/identities/${id}`),
+}
+
+/** Filtra a árvore por nome de rede/site e (opcional) só redes com filtro de MAC; sites vazios somem. */
+export function filterTree(tree: TreeController[], q: string, onlyFilter: boolean, keep: number[] = []): TreeController[] {
+  const s = q.trim().toLowerCase()
+  return tree.map((c) => ({
+    ...c,
+    sites: c.sites.map((site) => ({
+      ...site,
+      wlans: site.wlans.filter((w) => keep.includes(w.id) || ((!onlyFilter || w.filter_enabled || w.remote_count > 0)
+        && (!s || w.name.toLowerCase().includes(s) || site.name.toLowerCase().includes(s)))),
+    })).filter((site) => site.wlans.length > 0 || (!s && !onlyFilter)),
+  }))
+}
+
+/** Estado aberto/fechado dos sites, lembrado no navegador (falha de storage não quebra a tela). */
+export function useOpenSites(key: string) {
+  let initial: number[] = []
+  try { initial = JSON.parse(localStorage.getItem(key) ?? '[]') as number[] } catch { /* storage indisponível */ }
+  const open = new Set<number>(Array.isArray(initial) ? initial : [])
+  const save = () => { try { localStorage.setItem(key, JSON.stringify([...open])) } catch { /* idem */ } }
+  return {
+    isOpen: (id: number) => open.has(id),
+    toggle: (id: number) => { if (open.has(id)) open.delete(id); else open.add(id); save() },
+    ensure: (id: number) => { if (!open.has(id)) { open.add(id); save() } },
+  }
+}
+
+/** Validação do MAC no navegador (o backend valida de novo). */
+export function macCheck(input: string): { ok: boolean; mac: string | null; random: boolean; msg: string | null } {
+  const hex = input.replace(/[^0-9a-f]/gi, '').toLowerCase()
+  if (!input.trim()) return { ok: false, mac: null, random: false, msg: null }
+  if (/[^0-9a-f:\-.\s]/i.test(input)) return { ok: false, mac: null, random: false, msg: 'Só dígitos hexadecimais (0–9, A–F) e separadores : - .' }
+  if (hex.length !== 12) return { ok: false, mac: null, random: false, msg: `${hex.length}/12 dígitos` }
+  if (hex === '000000000000' || hex === 'ffffffffffff') return { ok: false, mac: null, random: false, msg: 'MAC inválido.' }
+  const first = parseInt(hex.slice(0, 2), 16)
+  if (first & 1) return { ok: false, mac: null, random: false, msg: 'Endereço multicast — não é MAC de aparelho.' }
+  return { ok: true, mac: hex.match(/../g)!.join(':'), random: !!(first & 2), msg: null }
 }
 
 /** aa:bb:cc:dd:ee:ff para exibição em maiúsculas, como no UniFi */

@@ -15,6 +15,13 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
   apelido "Pessoa — Aparelho" no cliente do UniFi, aviso de filtro desligado e de MAC aleatório, exportação CSV.
 - **Trocar senha/API key** do controller: a credencial nova é testada no UniFi antes de gravar (erro de digitação não derruba a integração).
 - **Sincronizar site**: relê só as redes de um site (árvore e cabeçalho da rede).
+- Árvore e seletor de redes com **sites recolhíveis**, busca e "Só com filtro"; aviso de controller com falha e de lista lida há mais de 30 min.
+- Validações do cadastro: MAC em tempo real, **MAC aleatório exige confirmação**, ao menos uma rede, limite de 512 por rede, formato de telefone/matrícula/hostname,
+  validade até 5 anos, limpeza de caracteres invisíveis colados de planilha.
+- "Identificar" liga o MAC a todas as redes do controller onde ele já está e **reativa** cadastro revogado (antes a aplicação seguinte o retirava do UniFi).
+- Segurança/robustez: controller só na rede interna (anti-SSRF), resposta limitada, uma sessão por requisição (sem bloqueio por excesso de logins),
+  nova tentativa em falha passageira, trava de sincronização por controller, recusa de deixar a lista de permissão vazia com o filtro ligado,
+  e-mail/telefone mascarados para o perfil Leitura.
 - Timer `bianchi-wifi-sync` (10 min) e comando `app:wifi:sync`; todas as ações na auditoria (módulo Wi-Fi).
 
 ### Corrigido — scanner de rede

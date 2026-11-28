@@ -31,6 +31,8 @@ final class FakeUnifi implements HttpClientInterface
     public static bool $down = false;
     public static bool $ignoreWrites = false;
     public static string $pass = self::PASS;
+    /** quantas respostas 503 devolver antes de voltar ao normal (falha passageira) */
+    public static int $fail503 = 0;
 
     public function __construct()
     {
@@ -42,11 +44,12 @@ final class FakeUnifi implements HttpClientInterface
         self::$down = false;
         self::$ignoreWrites = false;
         self::$pass = self::PASS;
+        self::$fail503 = 0;
         self::$calls = [];
         self::$sites = [
             'default' => ['desc' => 'Matriz', 'users' => [], 'wlans' => [
                 'w1' => ['_id' => 'w1', 'name' => 'BIANCHI-CORP', 'enabled' => true, 'security' => 'wpapsk', 'wpa_mode' => 'wpa2', 'x_passphrase' => self::PASSPHRASE,
-                    'mac_filter_enabled' => true, 'mac_filter_policy' => 'allow', 'mac_filter_list' => ['AA:BB:CC:00:00:01', 'aa:bb:cc:00:00:02']],
+                    'mac_filter_enabled' => true, 'mac_filter_policy' => 'allow', 'mac_filter_list' => ['A4:BB:CC:00:00:01', 'a4:bb:cc:00:00:02']],
                 'w2' => ['_id' => 'w2', 'name' => 'BIANCHI-VISITANTE', 'enabled' => true, 'security' => 'wpapsk', 'x_passphrase' => self::PASSPHRASE,
                     'mac_filter_enabled' => false, 'mac_filter_policy' => 'allow', 'mac_filter_list' => []],
             ]],
@@ -62,6 +65,11 @@ final class FakeUnifi implements HttpClientInterface
     {
         if (self::$down) {
             return new MockResponse('', ['error' => 'Connection refused']);
+        }
+        if (self::$fail503 > 0 && 'GET' === $method) {
+            --self::$fail503;
+
+            return new MockResponse('<html>503</html>', ['http_code' => 503]);
         }
         $path = (string) parse_url($url, \PHP_URL_PATH);
         $headers = [];

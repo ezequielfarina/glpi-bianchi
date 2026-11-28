@@ -97,42 +97,43 @@ final class WifiAccessTest extends WebTestCase
         self::assertSame(2, $this->treeWlan($tree, $corp)['unknown']);
 
         // MAC em qualquer formato, aplicado na hora; os 2 MACs que já estavam no UniFi continuam
-        $r = $this->call('POST', '/api/ui/wifi/identities', ['mac' => 'AA-BB-CC-00-00-10', 'person_name' => 'Maria Souza', 'department' => 'Financeiro',
+        $r = $this->call('POST', '/api/ui/wifi/identities', ['mac' => 'A4-BB-CC-00-00-10', 'person_name' => 'Maria Souza', 'department' => 'Financeiro',
             'registration' => '1234', 'device_kind' => 'phone', 'device_brand' => 'Samsung', 'device_model' => 'Galaxy S23', 'wlan_ids' => [$corp], 'apply' => true], 201);
         $maria = (int) $r['id'];
         self::assertNull($r['applied'][0]['error']);
-        self::assertSame(['aa:bb:cc:00:00:10'], $r['applied'][0]['added']);
+        self::assertSame(['a4:bb:cc:00:00:10'], $r['applied'][0]['added']);
         self::assertSame(3, $r['applied'][0]['total']);
-        self::assertSame(['aa:bb:cc:00:00:01', 'aa:bb:cc:00:00:02', 'aa:bb:cc:00:00:10'], $this->remote('default', 'w1'));
+        self::assertSame(['a4:bb:cc:00:00:01', 'a4:bb:cc:00:00:02', 'a4:bb:cc:00:00:10'], $this->remote('default', 'w1'));
         self::assertSame(FakeUnifi::PASSPHRASE, FakeUnifi::$sites['default']['wlans']['w1']['x_passphrase']);
         $put = array_values(array_filter(FakeUnifi::$calls, static fn (array $c): bool => 'PUT' === $c['method']));
         self::assertSame(['mac_filter_enabled', 'mac_filter_list', 'mac_filter_policy'], self::sortedKeys($put[0]['body']));
-        self::assertSame('Maria Souza — Samsung Galaxy S23', FakeUnifi::$sites['default']['users']['aa:bb:cc:00:00:10']['name']);
+        self::assertSame('Maria Souza — Samsung Galaxy S23', FakeUnifi::$sites['default']['users']['a4:bb:cc:00:00:10']['name']);
 
         // mesmo MAC de novo: recusado
-        $this->call('POST', '/api/ui/wifi/identities', ['mac' => 'aabbcc000010', 'person_name' => 'Outro'], 422);
+        $this->call('POST', '/api/ui/wifi/identities', ['mac' => 'a4bbcc000010', 'person_name' => 'Outro'], 422);
 
         // MAC que já estava no UniFi: identifica sem regravar a rede
         $detail = $this->call('GET', "/api/ui/wifi/wlans/$corp");
         self::assertStringNotContainsString(FakeUnifi::PASSPHRASE, (string) json_encode($detail));
-        self::assertSame(['aa:bb:cc:00:00:01', 'aa:bb:cc:00:00:02'], array_column($detail['unknown'], 'mac'));
-        $this->call('POST', "/api/ui/wifi/wlans/$corp/adopt", ['mac' => 'aa:bb:cc:00:00:01', 'person_name' => 'João', 'device_kind' => 'notebook'], 201);
-        self::assertSame(['aa:bb:cc:00:00:02'], array_column($this->call('GET', "/api/ui/wifi/wlans/$corp")['unknown'], 'mac'));
+        self::assertSame(['a4:bb:cc:00:00:01', 'a4:bb:cc:00:00:02'], array_column($detail['unknown'], 'mac'));
+        $this->call('POST', "/api/ui/wifi/wlans/$corp/adopt", ['mac' => 'a4:bb:cc:00:00:01', 'person_name' => 'João', 'device_kind' => 'notebook'], 201);
+        self::assertSame(['a4:bb:cc:00:00:02'], array_column($this->call('GET', "/api/ui/wifi/wlans/$corp")['unknown'], 'mac'));
 
         // revogar: sai só o MAC dela
         $rev = $this->call('POST', "/api/ui/wifi/identities/$maria/revoke", ['apply' => true]);
-        self::assertSame(['aa:bb:cc:00:00:10'], $rev['applied'][0]['removed']);
-        self::assertSame(['aa:bb:cc:00:00:01', 'aa:bb:cc:00:00:02'], $this->remote('default', 'w1'));
+        self::assertSame(['a4:bb:cc:00:00:10'], $rev['applied'][0]['removed']);
+        self::assertSame(['a4:bb:cc:00:00:01', 'a4:bb:cc:00:00:02'], $this->remote('default', 'w1'));
         $this->call('DELETE', "/api/ui/wifi/identities/$maria");
 
         // rede com filtro desligado: grava e avisa; rede em modo bloqueio: recusa
-        $g = $this->call('POST', '/api/ui/wifi/identities', ['mac' => '02:11:22:33:44:55', 'person_name' => 'Visitante', 'wlan_ids' => [$guest], 'apply' => true], 201);
+        $this->call('POST', '/api/ui/wifi/identities', ['mac' => '02:11:22:33:44:55', 'person_name' => 'Visitante', 'wlan_ids' => [$guest]], 422); // aleatório sem confirmar
+        $g = $this->call('POST', '/api/ui/wifi/identities', ['mac' => '02:11:22:33:44:55', 'person_name' => 'Visitante', 'wlan_ids' => [$guest], 'confirm_random' => true, 'apply' => true], 201);
         self::assertStringContainsString('DESLIGADO', $g['applied'][0]['warnings'][0]);
         $this->call('POST', '/api/ui/wifi/identities', ['mac' => '00:11:22:33:44:66', 'person_name' => 'X', 'wlan_ids' => [$deny]], 422);
         self::assertTrue($this->call('GET', '/api/ui/wifi/lookup?mac=02-11-22-33-44-55')['randomized']);
 
         // removido direto no UniFi → sincronização marca erro
-        FakeUnifi::$sites['default']['wlans']['w1']['mac_filter_list'] = ['aa:bb:cc:00:00:02'];
+        FakeUnifi::$sites['default']['wlans']['w1']['mac_filter_list'] = ['a4:bb:cc:00:00:02'];
         self::assertSame(1, $this->call('POST', "/api/ui/wifi/sync/$cid")['drift']);
 
         $actions = $this->db->fetchFirstColumn("SELECT action FROM audit_log WHERE module = 'wifi' ORDER BY id");
@@ -150,33 +151,33 @@ final class WifiAccessTest extends WebTestCase
         $guest = $this->wlanId('BIANCHI-VISITANTE');
 
         FakeUnifi::$down = true;
-        $r = $this->call('POST', '/api/ui/wifi/identities', ['mac' => 'aa:bb:cc:00:00:20', 'person_name' => 'Ana', 'wlan_ids' => [$corp], 'apply' => true], 201);
+        $r = $this->call('POST', '/api/ui/wifi/identities', ['mac' => 'a4:bb:cc:00:00:20', 'person_name' => 'Ana', 'wlan_ids' => [$corp], 'apply' => true], 201);
         self::assertStringContainsString('recusada', (string) $r['applied'][0]['error']);
         self::assertSame('pending', $this->db->fetchOne('SELECT state FROM mac_wlan_assignment WHERE identity_id = ?', [$r['id']]));
 
         FakeUnifi::$down = false;
         self::assertSame(0, $this->runSync());
         self::assertSame('synced', $this->db->fetchOne('SELECT state FROM mac_wlan_assignment WHERE identity_id = ?', [$r['id']]));
-        self::assertContains('aa:bb:cc:00:00:20', $this->remote('default', 'w1'));
+        self::assertContains('a4:bb:cc:00:00:20', $this->remote('default', 'w1'));
 
         // validade vencida: o timer revoga e tira da rede
         $this->db->executeStatement("UPDATE mac_identity SET valid_until = now() - interval '1 minute' WHERE id = ?", [$r['id']]);
         self::assertSame(0, $this->runSync());
         self::assertSame('revoked', $this->db->fetchOne('SELECT status FROM mac_identity WHERE id = ?', [$r['id']]));
-        self::assertNotContains('aa:bb:cc:00:00:20', $this->remote('default', 'w1'));
+        self::assertNotContains('a4:bb:cc:00:00:20', $this->remote('default', 'w1'));
 
         // conferência depois de gravar: UniFi "aceita" mas não grava → erro, não "synced"
         FakeUnifi::$ignoreWrites = true;
-        $x = $this->call('POST', '/api/ui/wifi/identities', ['mac' => 'aa:bb:cc:00:00:30', 'person_name' => 'Rui', 'wlan_ids' => [$corp], 'apply' => true], 201);
+        $x = $this->call('POST', '/api/ui/wifi/identities', ['mac' => 'a4:bb:cc:00:00:30', 'person_name' => 'Rui', 'wlan_ids' => [$corp], 'apply' => true], 201);
         self::assertStringContainsString('não confere', (string) $x['applied'][0]['error']);
         FakeUnifi::$ignoreWrites = false;
 
         // ligar filtro: exige o nome exato e é só admin
-        $this->call('POST', '/api/ui/wifi/identities', ['mac' => 'aa:bb:cc:00:00:40', 'person_name' => 'Visit', 'wlan_ids' => [$guest]], 201);
+        $this->call('POST', '/api/ui/wifi/identities', ['mac' => 'a4:bb:cc:00:00:40', 'person_name' => 'Visit', 'wlan_ids' => [$guest]], 201);
         $this->call('POST', "/api/ui/wifi/wlans/$guest/filter", ['confirm' => 'errado'], 422);
         $on = $this->call('POST', "/api/ui/wifi/wlans/$guest/filter", ['confirm' => 'BIANCHI-VISITANTE']);
         self::assertTrue($on['filter_enabled']);
-        self::assertSame(['aa:bb:cc:00:00:40'], $this->remote('default', 'w2'));
+        self::assertSame(['a4:bb:cc:00:00:40'], $this->remote('default', 'w2'));
 
         $this->client->restart();
         $this->loginAs($this->client, 'editor');
@@ -215,7 +216,7 @@ final class WifiAccessTest extends WebTestCase
         $this->call('POST', "/api/ui/wifi/sync/$cid");
         $site = (int) $this->db->fetchOne("SELECT id FROM unifi_site WHERE site_ref = 'default'");
         FakeUnifi::$sites['default']['wlans']['w9'] = ['_id' => 'w9', 'name' => 'NOVA-REDE', 'enabled' => true, 'security' => 'wpapsk', 'x_passphrase' => FakeUnifi::PASSPHRASE,
-            'mac_filter_enabled' => true, 'mac_filter_policy' => 'allow', 'mac_filter_list' => ['aa:bb:cc:00:00:99']];
+            'mac_filter_enabled' => true, 'mac_filter_policy' => 'allow', 'mac_filter_list' => ['a4:bb:cc:00:00:99']];
         unset(FakeUnifi::$sites['default']['wlans']['w2']);
         $r = $this->call('POST', "/api/ui/wifi/sites/$site/sync");
         self::assertSame(['site' => 'Matriz', 'wlans' => 2, 'drift' => 0], $r);
@@ -227,6 +228,88 @@ final class WifiAccessTest extends WebTestCase
         $this->loginAs($this->client, 'editor');
         $this->call('POST', "/api/ui/wifi/controllers/$cid/credential", ['secret' => 'x'], 403);
         $this->call('POST', "/api/ui/wifi/sites/$site/sync");
+    }
+
+    public function testValidationsAndAdoptSafety(): void
+    {
+        $this->loginAs($this->client, 'admin');
+        $cid = $this->controller();
+        $this->call('POST', "/api/ui/wifi/sync/$cid");
+        $corp = $this->wlanId('BIANCHI-CORP');
+        $guest = $this->wlanId('BIANCHI-VISITANTE');
+        $base = ['person_name' => 'Teste', 'wlan_ids' => [$corp]];
+
+        $err = fn (array $body): array => (array) ($this->call('POST', '/api/ui/wifi/identities', $body, 422)['errors'] ?? []);
+        self::assertArrayHasKey('wlan_ids', $err(['mac' => '00:1b:63:00:00:01', 'person_name' => 'Sem rede']));
+        self::assertArrayHasKey('mac', $err(['mac' => '01:00:5e:00:00:01'] + $base));
+        self::assertArrayHasKey('phone', $err(['mac' => '00:1b:63:00:00:01', 'phone' => '<script>'] + $base));
+        self::assertArrayHasKey('registration', $err(['mac' => '00:1b:63:00:00:01', 'registration' => '12 34'] + $base));
+        self::assertArrayHasKey('hostname', $err(['mac' => '00:1b:63:00:00:01', 'hostname' => 'nome com espaço'] + $base));
+        self::assertArrayHasKey('valid_until', $err(['mac' => '00:1b:63:00:00:01', 'valid_until' => date('Y-m-d', strtotime('+6 years'))] + $base));
+
+        // caracteres de controle colados de planilha somem
+        $id = (int) $this->call('POST', '/api/ui/wifi/identities', ['mac' => '00:1b:63:00:00:01', 'person_name' => "Ana\u{200B}\tLima\n", 'wlan_ids' => [$corp]], 201)['id'];
+        self::assertSame('Ana Lima', $this->db->fetchOne('SELECT person_name FROM mac_identity WHERE id = ?', [$id]));
+
+        // limite de 512 por rede
+        FakeUnifi::$sites['default']['wlans']['w2']['mac_filter_list'] = array_map(static fn (int $i): string => \sprintf('00:1b:63:01:%02x:%02x', intdiv($i, 256), $i % 256), range(0, 511));
+        $this->call('POST', "/api/ui/wifi/sync/$cid");
+        self::assertStringContainsString('512', (string) ($err(['mac' => '00:1b:63:00:00:02', 'person_name' => 'Cheia', 'wlan_ids' => [$guest]])['wlan_ids'] ?? ''));
+
+        // identificar MAC revogado que continua no UniFi: reativa e liga em TODAS as redes onde ele está
+        FakeUnifi::$sites['default']['wlans']['w1']['mac_filter_list'][] = '00:1b:63:00:00:09';
+        FakeUnifi::$sites['default']['wlans']['w2']['mac_filter_list'][511] = '00:1b:63:00:00:09';
+        $this->call('POST', "/api/ui/wifi/sync/$cid");
+        $old = (int) $this->db->fetchOne("INSERT INTO mac_identity (mac, person_name, device_kind, status, source, created_at, updated_at) VALUES ('00:1b:63:00:00:09', 'Ex-func', 'phone', 'revoked', 'panel', now(), now()) RETURNING id");
+        $unknown = $this->call('GET', "/api/ui/wifi/wlans/$corp")['unknown'];
+        self::assertSame('revoked', array_values(array_filter($unknown, static fn (array $u): bool => '00:1b:63:00:00:09' === $u['mac']))[0]['identity']['status']);
+        $this->call('POST', "/api/ui/wifi/wlans/$corp/adopt", ['mac' => '00:1b:63:00:00:09', 'person_name' => 'Ex-func'], 201);
+        self::assertSame('active', $this->db->fetchOne('SELECT status FROM mac_identity WHERE id = ?', [$old]));
+        self::assertSame(2, (int) $this->db->fetchOne("SELECT count(*) FROM mac_wlan_assignment WHERE identity_id = ? AND state = 'synced'", [$old]));
+        $this->call('POST', "/api/ui/wifi/wlans/$corp/apply");
+        self::assertContains('00:1b:63:00:00:09', $this->remote('default', 'w1'), 'aplicar não pode tirar o MAC identificado');
+
+        // perfil Leitura não vê e-mail/telefone completos
+        $this->call('PUT', "/api/ui/wifi/identities/$id", ['mac' => '00:1b:63:00:00:01', 'person_name' => 'Ana Lima', 'email' => 'ana.lima@empresa.com.br', 'phone' => '(44) 99999-1234', 'wlan_ids' => [$corp]]);
+        $this->client->restart();
+        $this->loginAs($this->client, 'viewer');
+        $v = $this->call('GET', "/api/ui/wifi/identities/$id");
+        self::assertSame('a•••@empresa.com.br', $v['email']);
+        self::assertSame('••••1234', $v['phone']);
+    }
+
+    public function testSafetyGuardsAndTransientFailures(): void
+    {
+        $this->loginAs($this->client, 'admin');
+        // SSRF: controller fora da rede interna
+        foreach (['https://127.0.0.1:8443', 'https://169.254.169.254', 'https://8.8.8.8:8443'] as $url) {
+            $e = $this->call('POST', '/api/ui/wifi/controllers', ['base_url' => $url] + $this->controllerBody(), 422);
+            self::assertStringContainsString('rede interna', (string) ($e['errors']['base_url'] ?? ''), $url);
+            $this->call('POST', '/api/ui/wifi/controllers/tls-inspect', ['base_url' => $url], 502);
+        }
+        $cid = $this->controller();
+        $this->call('POST', "/api/ui/wifi/sync/$cid");
+        $iot = (int) $this->db->fetchOne("INSERT INTO unifi_wlan (site_id, external_id, name, filter_enabled, filter_policy, remote_macs, created_at, updated_at)
+            SELECT id, 'w7', 'IOT', true, 'allow', '[]', now(), now() FROM unifi_site WHERE site_ref = 'default' RETURNING id");
+        FakeUnifi::$sites['default']['wlans']['w7'] = ['_id' => 'w7', 'name' => 'IOT', 'enabled' => true, 'security' => 'wpapsk', 'x_passphrase' => FakeUnifi::PASSPHRASE,
+            'mac_filter_enabled' => true, 'mac_filter_policy' => 'allow', 'mac_filter_list' => []];
+
+        // falha passageira (503) numa leitura: nova tentativa e segue
+        $r = $this->call('POST', '/api/ui/wifi/identities', ['mac' => '00:1b:63:00:00:30', 'person_name' => 'Sensor', 'wlan_ids' => [$iot]], 201);
+        FakeUnifi::$fail503 = 1;
+        $a = $this->call('POST', "/api/ui/wifi/wlans/$iot/apply");
+        self::assertNull($a['error']);
+        self::assertSame(['00:1b:63:00:00:30'], $this->remote('default', 'w7'));
+
+        // revogar o único MAC com filtro ligado esvaziaria a lista → todo mundo cairia: recusado
+        $rev = $this->call('POST', '/api/ui/wifi/identities/'.$r['id'].'/revoke', ['apply' => true]);
+        self::assertStringContainsString('VAZIA', (string) $rev['applied'][0]['error']);
+        self::assertSame(['00:1b:63:00:00:30'], $this->remote('default', 'w7'));
+
+        // um login por requisição, não um por rede
+        FakeUnifi::$calls = [];
+        $this->call('POST', '/api/ui/wifi/identities', ['mac' => '00:1b:63:00:00:31', 'person_name' => 'Multi', 'wlan_ids' => [$iot, $this->wlanId('BIANCHI-CORP')], 'apply' => true], 201);
+        self::assertSame(1, \count(array_filter(FakeUnifi::$calls, static fn (array $c): bool => '/api/login' === $c['path'])));
     }
 
     private function runSync(): int

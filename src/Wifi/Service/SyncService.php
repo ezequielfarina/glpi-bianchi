@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Wifi\Service;
 
 use App\Ui\Write\NotFoundException;
+use App\Ui\Write\ValidationException;
 use App\Wifi\Unifi\UnifiException;
+use App\Wifi\Unifi\UnifiSessions;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -17,9 +19,11 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  */
 final readonly class SyncService
 {
+    private const int LOCK_CLASS = 0x57534E43; // 'WSNC'
+
     public function __construct(
         private Connection $db,
-        private ControllerService $controllers,
+        private UnifiSessions $sessions,
         #[Autowire(service: 'monolog.logger.wifi')]
         private LoggerInterface $logger,
     ) {
@@ -28,7 +32,13 @@ final readonly class SyncService
     /** @return array{sites: int, wlans: int, drift: int, version: ?string} */
     public function sync(int $controllerId): array
     {
-        $conn = $this->controllers->connect($controllerId);
+        return $this->locked($controllerId, fn (): array => $this->doSync($controllerId));
+    }
+
+    /** @return array{sites: int, wlans: int, drift: int, version: ?string} */
+    private function doSync(int $controllerId): array
+    {
+        $conn = $this->sessions->get($controllerId);
         try {
             $sites = $conn->sites();
             $wlansBySite = [];
@@ -40,9 +50,8 @@ final readonly class SyncService
         } catch (UnifiException $e) {
             $this->db->executeStatement('UPDATE unifi_controller SET last_error = ?, updated_at = now() WHERE id = ?', [$e->getMessage(), $controllerId]);
             $this->logger->warning('Sincronização UniFi falhou', ['controller' => $controllerId, 'error' => $e->getMessage()]);
+            $this->sessions->drop($controllerId);
             throw $e;
-        } finally {
-            $conn->logout();
         }
 
         $count = ['sites' => 0, 'wlans' => 0, 'drift' => 0, 'version' => $version];
@@ -85,15 +94,15 @@ final readonly class SyncService
     {
         $site = $this->db->fetchAssociative('SELECT id, controller_id, site_ref, coalesce(description, site_ref) AS name FROM unifi_site WHERE id = ? AND present', [$siteId])
             ?: throw new NotFoundException('Site não encontrado (sincronize o controller inteiro).');
-        $conn = $this->controllers->connect((int) $site['controller_id']);
-        try {
-            $wlans = $conn->wlans((string) $site['site_ref']);
-        } catch (UnifiException $e) {
-            $this->logger->warning('Sincronização do site UniFi falhou', ['site' => $siteId, 'error' => $e->getMessage()]);
-            throw $e;
-        } finally {
-            $conn->logout();
-        }
+        $wlans = $this->locked((int) $site['controller_id'], function () use ($site, $siteId): array {
+            try {
+                return $this->sessions->get((int) $site['controller_id'])->wlans((string) $site['site_ref']);
+            } catch (UnifiException $e) {
+                $this->logger->warning('Sincronização do site UniFi falhou', ['site' => $siteId, 'error' => $e->getMessage()]);
+                $this->sessions->drop((int) $site['controller_id']);
+                throw $e;
+            }
+        });
         $r = $this->db->transactional(function () use ($siteId, $wlans): array {
             $r = $this->storeWlans($siteId, $wlans);
             $this->db->executeStatement('UPDATE unifi_site SET synced_at = now(), updated_at = now() WHERE id = ?', [$siteId]);
@@ -103,6 +112,27 @@ final readonly class SyncService
         $this->logger->info('Sincronização do site UniFi concluída', ['site' => $siteId, 'wlans' => $r[0], 'drift' => $r[1]]);
 
         return ['site' => (string) $site['name'], 'wlans' => $r[0], 'drift' => $r[1]];
+    }
+
+    /**
+     * Uma sincronização por controller por vez (botão × timer de 10 min).
+     *
+     * @template T
+     *
+     * @param callable(): T $fn
+     *
+     * @return T
+     */
+    private function locked(int $controllerId, callable $fn): mixed
+    {
+        if (!(bool) $this->db->fetchOne('SELECT pg_try_advisory_lock(?, ?)', [self::LOCK_CLASS, $controllerId])) {
+            throw new ValidationException(['controller' => 'Já existe uma sincronização deste controller em andamento. Aguarde alguns segundos.']);
+        }
+        try {
+            return $fn();
+        } finally {
+            $this->db->fetchOne('SELECT pg_advisory_unlock(?, ?)', [self::LOCK_CLASS, $controllerId]);
+        }
     }
 
     /**

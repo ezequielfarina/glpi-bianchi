@@ -8,6 +8,7 @@ use App\Shared\Security\SecretBox;
 use App\Ui\Write\NotFoundException;
 use App\Ui\Write\Payload;
 use App\Ui\Write\ValidationException;
+use App\Wifi\Unifi\NetworkGuard;
 use App\Wifi\Unifi\TlsInspector;
 use App\Wifi\Unifi\UnifiClientFactory;
 use App\Wifi\Unifi\UnifiConnection;
@@ -75,6 +76,12 @@ final readonly class ControllerService
             }
         } elseif (1 !== preg_match('#^https://[A-Za-z0-9.\-\[\]:]+(:\d{1,5})?$#', $baseUrl)) {
             $p->error('base_url', 'Use https://IP-ou-nome:porta (ex.: https://192.168.10.5:8443), sem caminho.');
+        } else {
+            try {
+                NetworkGuard::assertInternal($baseUrl);
+            } catch (UnifiException $e) {
+                $p->error('base_url', $e->getMessage());
+            }
         }
         if ('local' === $mode && null === $username) {
             $p->error('username', 'Informe o usuário do admin local do UniFi.');

@@ -92,6 +92,11 @@ end
   alguém removeu o MAC direto no UniFi — **Conferir e aplicar** recoloca; ou revogue) · *Saindo*.
 - **Ligar filtro** (administrador): se a rede está com o filtro desligado, a lista é gravada mas não barra ninguém. Cadastre/identifique
   todos os aparelhos legítimos e só então ligue — pede o nome exato da rede.
+- **MAC aleatório** (iPhone "Endereço privado", Android "MAC aleatório", Windows "endereços aleatórios"): o painel exige confirmar que a opção foi
+  desligada para a rede — senão o aparelho troca de MAC e cai.
+- Limite do UniFi: **512 MACs por rede**; o cadastro avisa antes. O painel também recusa retirar o último MAC de uma rede com filtro ligado
+  (lista vazia = ninguém conecta).
+- O controller precisa estar na **rede interna** (10/8, 172.16/12, 192.168/16, 100.64/10): loopback, 169.254.x e IP público são recusados.
 - Redes com filtro em modo **bloqueio** (*deny*) não são gerenciadas: incluir um MAC ali bloquearia o aparelho.
 
 ### O que o painel envia ao UniFi

@@ -6,7 +6,7 @@ import HelpTip from '../HelpTip.vue'
 import { api } from '../../lib/api'
 import type { BranchRow } from '../../lib/types'
 import { notify } from '../../lib/toast'
-import { applySummary, macUp, wifi, type Identity, type MacLookup, type TreeController, type WifiChoices } from '../../lib/wifi'
+import { applySummary, filterTree, macCheck, macUp, useOpenSites, wifi, type Identity, type MacLookup, type TreeController, type WifiChoices } from '../../lib/wifi'
 import { clean, useForm } from '../forms/useForm'
 
 // Cadastro do MAC com pessoa + aparelho + validade e as redes onde liberar (ADR-0020).
@@ -31,12 +31,36 @@ void wifi.choices().then((c) => { ch.value = c })
 void wifi.tree().then((r) => { tree.value = r.items })
 void api.branches().then((r) => { branches.value = r.items })
 
+const check = computed(() => macCheck(f.mac))
+const macChanged = computed(() => !i || (check.value.mac ?? '') !== i.mac)
+const confirmRandom = ref(false)
+const needsRandomConfirm = computed(() => check.value.ok && check.value.random && macChanged.value && !adopting.value)
+
+// seletor de redes: sites recolhíveis + busca (66 redes não cabem como lista solta)
+const sites = useOpenSites('bianchi.wifi.modalSites')
+const tick = ref(0)
+const wq = ref('')
+const pickTree = computed(() => filterTree(tree.value, wq.value, false))
+const siteOpen = (id: number): boolean => { void tick.value; return !!wq.value || sites.isOpen(id) }
+const toggleSite = (id: number) => { sites.toggle(id); tick.value++ }
+const selectedIn = (ws: { id: number }[]) => ws.filter((w) => wlanIds.value.includes(w.id)).length
+const allWlans = computed(() => tree.value.flatMap((c) => c.sites.flatMap((s) => s.wlans.map((w) => ({ ...w, site: s.name, siteId: s.id })))))
+const chosen = computed(() => allWlans.value.filter((w) => wlanIds.value.includes(w.id)))
+const full = (w: { id: number; remote_count: number }) => w.remote_count >= 512 && !wlanIds.value.includes(w.id)
+watch(tree, () => { for (const w of chosen.value) sites.ensure(w.siteId); tick.value++ })
+const blocker = computed(() => {
+  if (!check.value.ok) return 'Informe um MAC válido.'
+  if (needsRandomConfirm.value && !confirmRandom.value) return 'Confirme o MAC aleatório.'
+  if (!adopting.value && !i && !wlanIds.value.length) return 'Escolha ao menos uma rede.'
+  return null
+})
+
 const info = ref<MacLookup | null>(null)
 const assetName = ref(i?.asset_name ?? '')
 let t: number | undefined
 watch(() => f.mac, (m) => {
   window.clearTimeout(t)
-  if (m.replace(/[^0-9a-f]/gi, '').length !== 12) { info.value = null; return }
+  if (!macCheck(m).ok) { info.value = null; return }
   t = window.setTimeout(async () => {
     try {
       info.value = await wifi.lookup(m)
@@ -53,11 +77,13 @@ function useAsset(a: MacLookup['assets'][number]): void {
 }
 const denyWlan = (policy: string | null) => policy === 'deny'
 function toggle(id: number): void {
+  if (!wlanIds.value.includes(id) && full(allWlans.value.find((w) => w.id === id) ?? { id, remote_count: 0 })) return
   wlanIds.value = wlanIds.value.includes(id) ? wlanIds.value.filter((x) => x !== id) : [...wlanIds.value, id]
 }
 
 async function save(): Promise<void> {
-  const body = { ...clean({ ...f }), wlan_ids: adopting.value ? undefined : wlanIds.value, apply: applyNow.value }
+  if (blocker.value) { notify('warn', blocker.value); return }
+  const body = { ...clean({ ...f }), wlan_ids: adopting.value ? undefined : wlanIds.value, apply: applyNow.value, confirm_random: confirmRandom.value || undefined }
   if (adopting.value) {
     const r = await submit(() => wifi.adopt(props.adoptWlan!, body), 'MAC identificado')
     if (r) emit('saved', r.id)
@@ -81,12 +107,16 @@ async function save(): Promise<void> {
         <div class="field"><label for="mi-mac">Endereço MAC *<HelpTip ctx="mac" k="mac" label="MAC" /></label>
           <input id="mi-mac" v-model="f.mac" class="input mono" placeholder="A4:5E:60:12:34:56" autocomplete="off" :disabled="adopting" :aria-invalid="!!errors.mac" />
           <span v-if="errors.mac" class="err">{{ errors.mac }}</span>
-          <span v-else-if="duplicate" class="err">Já cadastrado ({{ duplicate.person_name ?? 'sem nome' }}).</span>
+          <span v-else-if="f.mac && !check.ok && check.msg" class="err">{{ check.msg }}</span>
+          <span v-else-if="duplicate" class="err">Já cadastrado ({{ duplicate.person_name ?? 'sem nome' }}{{ duplicate.status === 'revoked' ? ', revogado — abra esse cadastro para reativar' : '' }}).</span>
           <span v-else-if="info" class="hint">
             <template v-if="info.randomized"><b class="warn-t">MAC aleatório/privado</b> — o aparelho troca por rede: desligue "endereço privado" nesta rede antes de cadastrar.</template>
             <template v-else>{{ info.vendor ?? 'Fabricante desconhecido' }}</template>
             <template v-if="info.in_wlans.length"> · já no UniFi em {{ info.in_wlans.map((w) => w.name).join(', ') }}</template>
           </span></div>
+        <label v-if="needsRandomConfirm" class="check full rnd"><input v-model="confirmRandom" type="checkbox" />
+          <span><b>MAC aleatório/privado.</b> No aparelho, desliguei "Endereço privado" (iPhone) / "MAC aleatório" (Android) / "Endereços de hardware aleatórios" (Windows)
+          para esta rede e o MAC acima é o que aparece com isso desligado.</span></label>
         <div class="field"><label for="mi-kind">Tipo<HelpTip ctx="mac" k="device_kind" label="Tipo" /></label>
           <select id="mi-kind" v-model="f.device_kind" class="input"><option v-for="o in ch?.device_kinds ?? []" :key="o.value" :value="o.value">{{ o.label }}</option></select></div>
         <div class="field"><label for="mi-brand">Marca</label><input id="mi-brand" v-model="f.device_brand" class="input" placeholder="Samsung" /></div>
@@ -117,23 +147,44 @@ async function save(): Promise<void> {
         <div class="field"><label for="mi-phone">Telefone / ramal</label><input id="mi-phone" v-model="f.phone" class="input" placeholder="(11) 9 9999-0000" /></div>
       </fieldset>
 
-      <fieldset v-if="!adopting" class="full block">
-        <legend><AppIcon name="wifi" :size="15" /> Redes Wi-Fi<HelpTip ctx="mac" k="wlans" label="Redes" /></legend>
+      <fieldset v-if="!adopting" class="full block nets">
+        <legend><AppIcon name="wifi" :size="15" /> Redes Wi-Fi *<HelpTip ctx="mac" k="wlans" label="Redes" /></legend>
         <p v-if="!tree.length" class="hint full">Nenhum controller sincronizado. Um administrador cadastra em Wi-Fi → Controllers UniFi.</p>
-        <div v-for="c in tree" :key="c.id" class="full ctrl">
-          <div v-for="s in c.sites" :key="s.id" class="site">
-            <div class="site-name"><AppIcon name="building" :size="13" /> {{ s.name }} <span class="muted">· {{ c.name }}</span></div>
-            <label v-for="w in s.wlans" :key="w.id" class="wl" :class="{ on: wlanIds.includes(w.id), off: denyWlan(w.filter_policy) }">
-              <input type="checkbox" :checked="wlanIds.includes(w.id)" :disabled="denyWlan(w.filter_policy)" @change="toggle(w.id)" />
-              <span class="wn">{{ w.name }}</span>
-              <span v-if="denyWlan(w.filter_policy)" class="pill pill-bad">bloqueio</span>
-              <span v-else-if="!w.filter_enabled" class="pill pill-warn" title="O filtro está desligado no UniFi: a lista é gravada mas não barra ninguém">filtro desligado</span>
-              <span v-else class="pill pill-ok">filtro ligado</span>
-            </label>
+        <template v-else>
+          <div class="full chosen">
+            <span v-if="!chosen.length" class="muted">Nenhuma rede escolhida.</span>
+            <button v-for="w in chosen" :key="w.id" type="button" class="chip" :title="`Tirar ${w.name} (${w.site})`" @click="toggle(w.id)">
+              {{ w.name }} <span class="muted">· {{ w.site }}</span> <AppIcon name="close" :size="11" /></button>
           </div>
-        </div>
+          <input v-model="wq" class="input full" type="search" placeholder="Buscar rede ou site (ex.: CelGestores, Maringa)…" aria-label="Buscar rede" />
+          <div class="full picker">
+            <template v-for="c in pickTree" :key="c.id">
+              <div v-for="s in c.sites" :key="s.id" class="psite" :class="{ open: siteOpen(s.id) }">
+                <button type="button" class="psite-head" :aria-expanded="siteOpen(s.id)" @click="toggleSite(s.id)">
+                  <AppIcon name="chevron" :size="13" class="chev" /><AppIcon name="building" :size="13" />
+                  <span class="grow">{{ s.name }}</span>
+                  <span v-if="selectedIn(s.wlans)" class="cnt sel">{{ selectedIn(s.wlans) }} escolhida(s)</span>
+                  <span class="muted dc-small">{{ s.wlans.length }} rede(s)</span>
+                </button>
+                <div v-show="siteOpen(s.id)" class="pwlans">
+                  <label v-for="w in s.wlans" :key="w.id" class="wl" :class="{ on: wlanIds.includes(w.id), off: denyWlan(w.filter_policy) || full(w) }">
+                    <input type="checkbox" :checked="wlanIds.includes(w.id)" :disabled="denyWlan(w.filter_policy) || full(w)" @change="toggle(w.id)" />
+                    <span class="wn">{{ w.name }}</span>
+                    <span v-if="denyWlan(w.filter_policy)" class="pill pill-bad">bloqueio</span>
+                    <span v-else-if="full(w)" class="pill pill-bad">cheia (512)</span>
+                    <span v-else-if="!w.filter_enabled" class="pill pill-warn" title="O filtro está desligado no UniFi: a lista é gravada mas não barra ninguém">filtro desligado</span>
+                    <span v-else class="pill pill-ok" :title="`${w.remote_count} de 512 MACs`">{{ w.remote_count }}/512</span>
+                  </label>
+                </div>
+              </div>
+            </template>
+            <p v-if="!pickTree.some((c) => c.sites.length)" class="muted pad">Nenhuma rede com "{{ wq }}".</p>
+          </div>
+        </template>
         <span v-if="errors.wlan_ids" class="err full">{{ errors.wlan_ids }}</span>
       </fieldset>
+      <p v-else class="hint full adopt-hint"><AppIcon name="wifi" :size="14" /><span>O MAC já está no UniFi: ao salvar, o cadastro é ligado a <b>todas</b> as redes deste controller
+        onde ele aparece — nada é regravado no UniFi.</span></p>
 
       <div class="field"><label for="mi-valid">Válido até<HelpTip ctx="mac" k="valid_until" label="Validade" /></label>
         <input id="mi-valid" v-model="f.valid_until" class="input" type="date" :aria-invalid="!!errors.valid_until" /><span v-if="errors.valid_until" class="err">{{ errors.valid_until }}</span></div>
@@ -141,7 +192,8 @@ async function save(): Promise<void> {
       <label v-if="!adopting" class="check full"><input v-model="applyNow" type="checkbox" /> Aplicar no UniFi agora (senão vai na próxima sincronização, em até 10 min)</label>
       <div class="form-actions full">
         <button class="btn" type="button" @click="emit('close')">Cancelar</button>
-        <button class="btn btn-primary" type="submit" :disabled="saving || !!duplicate">{{ saving ? (applyNow ? 'Salvando e aplicando…' : 'Salvando…') : 'Salvar' }}</button>
+        <span v-if="blocker && f.mac" class="muted dc-small why">{{ blocker }}</span>
+        <button class="btn btn-primary" type="submit" :disabled="saving || !!duplicate || !!blocker">{{ saving ? (applyNow ? 'Salvando e aplicando…' : 'Salvando…') : 'Salvar' }}</button>
       </div>
     </form>
   </AppModal>
@@ -155,6 +207,27 @@ async function save(): Promise<void> {
 .linked { display: flex; align-items: center; gap: 6px; min-height: 36px; }
 .sugg { display: block; margin: 0 0 4px; text-align: left; }
 .warn-t { color: var(--warn-text); }
+.nets { grid-template-columns: 1fr; }
+.chosen { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 30px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 99px; border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  background: var(--accent-soft); color: var(--accent-text); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.chip:hover { border-color: var(--bad); }
+.picker { max-height: 300px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 4px; }
+.psite-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: 8px; border: 0; border-radius: 8px; background: none; color: var(--text); font: inherit; font-weight: 600;
+  font-size: 13px; cursor: pointer; text-align: left; }
+.psite-head:hover { background: var(--panel-hover); }
+.psite .chev { transition: transform .15s ease; }
+.psite.open .chev { transform: rotate(90deg); }
+.grow { flex: 1; min-width: 0; }
+.pwlans { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 8px 10px 28px; }
+.cnt { font-size: 11px; padding: 0 7px; border-radius: 99px; background: var(--muted-soft); color: var(--text-2); }
+.cnt.sel { background: var(--accent-soft); color: var(--accent-text); }
+.pad { padding: 8px; margin: 0; }
+.rnd { align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: var(--warn-soft); color: var(--warn-text); line-height: 1.45; }
+.rnd input { margin-top: 3px; }
+.adopt-hint { display: flex; gap: 8px; align-items: flex-start; }
+.adopt-hint :deep(svg) { flex: none; margin-top: 2px; }
+.why { margin-right: auto; align-self: center; }
 .ctrl { display: grid; gap: 10px; }
 .site-name { font-size: 12.5px; font-weight: 600; margin: 2px 0 6px; display: flex; align-items: center; gap: 6px; }
 .site { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
