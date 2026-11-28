@@ -7,7 +7,7 @@ import type { IconName } from '../../components/AppIcon.vue'
 import { dateOnly } from '../../lib/format'
 import { canEdit } from '../../lib/session'
 import { notify } from '../../lib/toast'
-import { applySummary, KIND_ICON, macUp, STATE, wifi, type Identity } from '../../lib/wifi'
+import { applySummary, KIND_ICON, macCheck, macUp, STATE, wifi, type Identity, type MacLookup } from '../../lib/wifi'
 
 // Todas as identidades de MAC, em todas as redes (ADR-0020).
 const items = ref<Identity[]>([])
@@ -18,7 +18,13 @@ const status = ref('active')
 const state = ref('')
 const editing = ref<Identity | null | undefined>(undefined)
 let t: number | undefined
+// busca por MAC completo sem cadastro: mostra onde ele está liberado no UniFi
+const where = ref<MacLookup | null>(null)
+const adopt = ref<{ wlan: number; mac: string } | null>(null)
 async function load(): Promise<void> {
+  const m = macCheck(q.value)
+  where.value = null
+  if (m.ok) { try { where.value = await wifi.lookup(m.mac!) } catch { /* só complemento */ } }
   try { items.value = (await wifi.identities({ q: q.value.trim() || undefined, status: status.value || undefined, state: state.value || undefined })).items; error.value = null }
   catch (e) { error.value = e instanceof Error ? e.message : String(e) } finally { loading.value = false }
 }
@@ -68,6 +74,15 @@ function exportCsv(): void {
           <option v-for="(s, k) in STATE" :key="k" :value="k">{{ s.label }}</option></select>
         <input v-model="q" class="input search" type="search" placeholder="MAC (com ou sem separador), pessoa, matrícula, setor, modelo…" aria-label="Buscar" />
       </div>
+      <div v-if="where && where.in_wlans.some((w) => !w.identified)" class="where">
+        <AppIcon name="conflict" :size="16" />
+        <div><b>{{ macUp(where.mac) }}</b> está liberado no UniFi <b>sem identificação</b>{{ where.vendor ? ` (${where.vendor})` : '' }} em:
+          <ul><li v-for="w in where.in_wlans.filter((x) => !x.identified)" :key="w.id">
+            <AppIcon name="building" :size="13" /> {{ w.site }} › <RouterLink :to="{ path: '/wifi', query: { wlan: w.id } }">{{ w.name }}</RouterLink>
+            <button v-if="canEdit && !w.deny" class="btn btn-sm" type="button" @click="adopt = { wlan: w.id, mac: where.mac }"><AppIcon name="fingerprint" :size="13" /> Identificar</button>
+          </li></ul></div>
+      </div>
+      <p v-else-if="where && !where.in_wlans.length && !items.length" class="where muted"><AppIcon name="wifi" :size="16" /> {{ macUp(where.mac) }} não está em nenhuma rede do UniFi (última sincronização).</p>
       <LoadState :loading="loading && !items.length" :error="error" :rows="6" @retry="load">
         <p v-if="!items.length" class="empty">Nenhum MAC{{ q || state ? ' com esses filtros' : '' }}.</p>
         <div v-else class="table-wrap"><table class="table">
@@ -90,12 +105,17 @@ function exportCsv(): void {
         </table></div>
       </LoadState>
     </section>
+    <MacIdentityModal v-if="adopt" :adopt-wlan="adopt.wlan" :adopt-mac="adopt.mac" @close="adopt = null" @saved="adopt = null; load()" />
     <MacIdentityModal v-if="editing !== undefined" :identity="editing" @close="editing = undefined" @saved="editing = undefined; load()" />
   </div>
 </template>
 
 <style scoped>
 .empty { padding: 0 20px 20px; }
+.where { display: flex; gap: 10px; align-items: flex-start; margin: 0 20px 14px; padding: 10px 12px; border-radius: 12px; background: var(--warn-soft); color: var(--warn-text); font-size: 13px; }
+.where :deep(svg) { flex: none; margin-top: 2px; }
+.where ul { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.where li { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: var(--text); }
 .dev { display: inline-flex; align-items: center; gap: 6px; }
 .dim { opacity: .5; }
 .bad-t { color: var(--bad-text); }

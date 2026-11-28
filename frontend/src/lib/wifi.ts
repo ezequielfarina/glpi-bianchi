@@ -38,10 +38,14 @@ export interface WlanDetail {
   identities: Identity[]; unknown: UnknownMac[]
 }
 export interface ApplyResult { wlan_id: number; changed: boolean; added: string[]; removed: string[]; total: number; warnings: string[]; error: string | null }
+/** Rede onde o MAC está liberado no UniFi (última sincronização). */
+export interface MacLocation {
+  id: number; name: string; site_id: number; site: string; controller: string; filter_enabled: boolean; deny: boolean; synced_at: string | null; identified: boolean
+}
 export interface MacLookup {
   mac: string; vendor: string | null; randomized: boolean; identity: { id: number; person_name: string | null; status: string } | null
   assets: { asset_uuid: string; name: string; inventory_number: string | null; branch_id: number | null; branch: string | null; port: string }[]
-  in_wlans: { id: number; name: string; site: string }[]
+  in_wlans: MacLocation[]
 }
 
 export const STATE: Record<AssignState, { label: string; cls: string }> = {

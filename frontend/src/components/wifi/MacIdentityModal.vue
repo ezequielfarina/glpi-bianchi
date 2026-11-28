@@ -68,6 +68,15 @@ watch(() => f.mac, (m) => {
     } catch { info.value = null }
   }, 300)
 }, { immediate: true })
+// onde o MAC já está liberado no UniFi sem identidade (ou fora deste cadastro)
+const mine = computed(() => new Set(i?.wlans.map((w) => w.wlan_id) ?? []))
+const loose = computed(() => (info.value?.in_wlans ?? []).filter((w) => !w.identified && !w.deny))
+const identifiedElsewhere = computed(() => (info.value?.in_wlans ?? []).filter((w) => w.identified && !mine.value.has(w.id)))
+const pendingLoose = computed(() => loose.value.filter((w) => !wlanIds.value.includes(w.id)))
+function markLoose(): void {
+  for (const w of pendingLoose.value) { if (!wlanIds.value.includes(w.id)) wlanIds.value = [...wlanIds.value, w.id]; sites.ensure(w.site_id) }
+  tick.value++
+}
 const duplicate = computed(() => info.value?.identity && info.value.identity.id !== i?.id ? info.value.identity : null)
 function useAsset(a: MacLookup['assets'][number]): void {
   f.asset_uuid = a.asset_uuid
@@ -112,8 +121,22 @@ async function save(): Promise<void> {
           <span v-else-if="info" class="hint">
             <template v-if="info.randomized"><b class="warn-t">MAC aleatório/privado</b> — o aparelho troca por rede: desligue "endereço privado" nesta rede antes de cadastrar.</template>
             <template v-else>{{ info.vendor ?? 'Fabricante desconhecido' }}</template>
-            <template v-if="info.in_wlans.length"> · já no UniFi em {{ info.in_wlans.map((w) => w.name).join(', ') }}</template>
           </span></div>
+        <div v-if="loose.length" class="full found">
+          <div class="found-head"><AppIcon name="conflict" :size="15" />
+            <b>Este MAC já está liberado no UniFi sem identificação</b> em {{ loose.length }} rede(s):</div>
+          <ul>
+            <li v-for="w in loose" :key="w.id">
+              <AppIcon name="building" :size="13" /> <b>{{ w.site }}</b> <span class="muted">›</span> <AppIcon name="wifi" :size="13" /> <b>{{ w.name }}</b>
+              <span class="muted dc-small">{{ tree.length > 1 ? `· ${w.controller} ` : '' }}{{ w.filter_enabled ? '· filtro ligado' : '· filtro desligado' }}</span>
+              <span v-if="!adopting && wlanIds.includes(w.id)" class="pill pill-ok">marcada</span>
+            </li>
+          </ul>
+          <p class="muted dc-small">{{ adopting ? 'Ao salvar, a identidade é ligada a todas essas redes.' : 'Marque essas redes para que o cadastro passe a identificar o MAC nelas — o UniFi não muda, ele já está liberado.' }}</p>
+          <button v-if="!adopting && pendingLoose.length" type="button" class="btn btn-sm" @click="markLoose">
+            <AppIcon name="check" :size="14" /> Marcar {{ pendingLoose.length === 1 ? 'esta rede' : `estas ${pendingLoose.length} redes` }}</button>
+        </div>
+        <p v-if="identifiedElsewhere.length" class="full hint">Já identificado em: {{ identifiedElsewhere.map((w) => `${w.site} › ${w.name}`).join(', ') }}.</p>
         <label v-if="needsRandomConfirm" class="check full rnd"><input v-model="confirmRandom" type="checkbox" />
           <span><b>MAC aleatório/privado.</b> No aparelho, desliguei "Endereço privado" (iPhone) / "MAC aleatório" (Android) / "Endereços de hardware aleatórios" (Windows)
           para esta rede e o MAC acima é o que aparece com isso desligado.</span></label>
@@ -223,6 +246,12 @@ async function save(): Promise<void> {
 .cnt { font-size: 11px; padding: 0 7px; border-radius: 99px; background: var(--muted-soft); color: var(--text-2); }
 .cnt.sel { background: var(--accent-soft); color: var(--accent-text); }
 .pad { padding: 8px; margin: 0; }
+.found { border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); background: var(--warn-soft); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
+.found-head { display: flex; align-items: center; gap: 6px; color: var(--warn-text); }
+.found ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.found li { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 13px; }
+.found p { margin: 0; }
+.found .btn { justify-self: start; }
 .rnd { align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: var(--warn-soft); color: var(--warn-text); line-height: 1.45; }
 .rnd input { margin-top: 3px; }
 .adopt-hint { display: flex; gap: 8px; align-items: flex-start; }

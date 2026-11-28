@@ -22,6 +22,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 - Segurança/robustez: controller só na rede interna (anti-SSRF), resposta limitada, uma sessão por requisição (sem bloqueio por excesso de logins),
   nova tentativa em falha passageira, trava de sincronização por controller, recusa de deixar a lista de permissão vazia com o filtro ligado,
   e-mail/telefone mascarados para o perfil Leitura.
+- Cadastro e busca por MAC mostram **em qual site › rede** o MAC já está liberado no UniFi sem identificação, com "Marcar estas redes" / "Identificar".
 - Timer `bianchi-wifi-sync` (10 min) e comando `app:wifi:sync`; todas as ações na auditoria (módulo Wi-Fi).
 
 ### Corrigido — scanner de rede

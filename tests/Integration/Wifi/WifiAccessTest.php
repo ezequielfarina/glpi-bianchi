@@ -131,6 +131,14 @@ final class WifiAccessTest extends WebTestCase
         self::assertStringContainsString('DESLIGADO', $g['applied'][0]['warnings'][0]);
         $this->call('POST', '/api/ui/wifi/identities', ['mac' => '00:11:22:33:44:66', 'person_name' => 'X', 'wlan_ids' => [$deny]], 422);
         self::assertTrue($this->call('GET', '/api/ui/wifi/lookup?mac=02-11-22-33-44-55')['randomized']);
+        // MAC liberado sem identificação: o lookup diz em qual site e rede está
+        $lk = $this->call('GET', '/api/ui/wifi/lookup?mac=A4BBCC000002');
+        self::assertNull($lk['identity']);
+        self::assertSame(
+            [['site' => 'Matriz', 'name' => 'BIANCHI-CORP', 'identified' => false]],
+            array_map(static fn (array $w): array => ['site' => $w['site'], 'name' => $w['name'], 'identified' => $w['identified']], $lk['in_wlans'])
+        );
+        self::assertTrue($this->call('GET', '/api/ui/wifi/lookup?mac=a4:bb:cc:00:00:01')['in_wlans'][0]['identified']);
 
         // removido direto no UniFi → sincronização marca erro
         FakeUnifi::$sites['default']['wlans']['w1']['mac_filter_list'] = ['a4:bb:cc:00:00:02'];

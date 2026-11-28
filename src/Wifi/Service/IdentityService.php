@@ -286,10 +286,15 @@ final readonly class IdentityService
             WHERE lower(p.mac_address) = ? ORDER BY a.name LIMIT 10
             SQL, [$mac]);
         $identity = $this->db->fetchAssociative('SELECT id, person_name, status FROM mac_identity WHERE mac = ?', [$mac]);
-        $inWlans = $this->db->fetchAllAssociative(<<<'SQL'
-            SELECT w.id, w.name, coalesce(s.description, s.site_ref) AS site FROM unifi_wlan w JOIN unifi_site s ON s.id = w.site_id
-            WHERE w.present AND jsonb_exists(w.remote_macs, ?) ORDER BY w.name
-            SQL, [$mac]);
+        // onde o MAC está liberado no UniFi (última sincronização) e se lá ele já tem identidade gerenciada
+        $inWlans = array_map(static fn (array $r): array => ['id' => (int) $r['id'], 'site_id' => (int) $r['site_id'], 'identified' => (bool) $r['identified'],
+            'filter_enabled' => (bool) $r['filter_enabled'], 'deny' => 'deny' === $r['filter_policy']] + $r, $this->db->fetchAllAssociative(<<<'SQL'
+                SELECT w.id, w.name, s.id AS site_id, coalesce(s.description, s.site_ref) AS site, c.name AS controller, w.filter_enabled, w.filter_policy, w.synced_at,
+                       EXISTS (SELECT 1 FROM mac_wlan_assignment a JOIN mac_identity i ON i.id = a.identity_id WHERE a.wlan_id = w.id AND i.mac = :mac) AS identified
+                FROM unifi_wlan w JOIN unifi_site s ON s.id = w.site_id AND s.present JOIN unifi_controller c ON c.id = s.controller_id
+                WHERE w.present AND jsonb_exists(w.remote_macs, :mac)
+                ORDER BY c.name, site, w.name
+                SQL, ['mac' => $mac]));
 
         return [
             'mac' => $mac, 'vendor' => $this->vendors->vendor(str_replace(':', '', $mac)), 'randomized' => MacAddress::isRandomized($mac),
