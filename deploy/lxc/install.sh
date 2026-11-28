@@ -272,6 +272,13 @@ for f in bianchi-scan-scheduler.service bianchi-scan-scheduler.timer; do
 done
 systemctl daemon-reload
 systemctl enable --now bianchi-scan-scheduler.timer
+# Filtro de MAC do UniFi (timer a cada 10 min) — ADR-0020
+for f in bianchi-wifi-sync.service bianchi-wifi-sync.timer; do
+    sed "s#@APP_DIR@#${APP_DIR}#g; s#@APP_USER@#${APP_USER}#g; s#@PHP_VER@#${PHP_VER}#g" \
+        "$SCRIPT_DIR/systemd/$f" > "/etc/systemd/system/$f"
+done
+systemctl daemon-reload
+systemctl enable --now bianchi-wifi-sync.timer
 # Diagnóstico (ping sem root para o PHP-FPM): ICMP datagram socket liberado para todos os grupos.
 # O sysctl é por namespace de rede (vale só dentro do CT) e a faixa precisa caber no gid_map do
 # user namespace: em CT unprivileged o máximo é 65535 — "0 2147483647" ali dá EINVAL.

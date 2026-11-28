@@ -1,0 +1,20 @@
+# Filtro de MAC do UniFi (ADR-0020): revoga acessos vencidos, relê sites/redes dos controllers
+# e reaplica o que ficou pendente. Ativado a cada 10 minutos por bianchi-wifi-sync.timer.
+[Unit]
+Description=GLPI Bianchi - sincronização do filtro de MAC no UniFi
+After=postgresql.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=@APP_USER@
+Group=@APP_USER@
+WorkingDirectory=@APP_DIR@
+ExecStart=/usr/bin/php@PHP_VER@ bin/console app:wifi:sync --no-interaction --no-ansi
+# controller fora do ar ou pendência com erro → unit "failed" (visível no Zabbix/systemctl --failed)
+TimeoutStartSec=300
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ReadWritePaths=@APP_DIR@/var

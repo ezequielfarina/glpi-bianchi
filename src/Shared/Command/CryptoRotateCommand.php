@@ -35,6 +35,7 @@ final class CryptoRotateCommand extends Command
         ['license', 'license_key', 'license.key', 'id'],
         ['notification_channel', 'target', 'channel.target', 'id'],
         ['scan_schedule', 'snmp_community', 'scan.community', 'id'],
+        ['unifi_controller', 'secret', 'unifi.secret:{id}', 'id'],
     ];
 
     public function __construct(

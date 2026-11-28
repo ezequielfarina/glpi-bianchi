@@ -56,6 +56,9 @@ security:
         # ferramentas (scanner de rede etc.): técnico ou admin, inclusive leitura dos resultados
         # canais de notificação (destino = segredo): só admin
         - { path: ^/api/ui/tools/channels, roles: ROLE_ADMIN }
+        # Wi-Fi/UniFi: cadastro de controller (credencial) e ligar o filtro de MAC: só admin; o resto da escrita segue a regra geral
+        - { path: ^/api/ui/wifi/controllers, roles: ROLE_ADMIN }
+        - { path: ^/api/ui/wifi/wlans/\d+/filter$, roles: ROLE_ADMIN }
         - { path: ^/api/ui/tools, roles: ROLE_EDITOR }
         # ver chave de licença é sensível: técnico ou admin (fica no log)
         - { path: ^/api/ui/licenses/\d+/key$, roles: ROLE_EDITOR }

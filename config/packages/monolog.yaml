@@ -2,6 +2,7 @@ monolog:
     channels:
         - deprecation
         - inventory
+        - wifi
 
 when@dev:
     monolog:

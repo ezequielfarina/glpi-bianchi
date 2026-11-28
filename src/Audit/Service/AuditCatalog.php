@@ -18,7 +18,7 @@ final class AuditCatalog
         'licenses' => 'Licenças', 'attachments' => 'Anexos', 'lookups' => 'Cadastros auxiliares', 'stock' => 'Estoque',
         'invoices' => 'Notas fiscais', 'tools' => 'Ferramentas', 'monitor' => 'Monitoramento', 'users' => 'Usuários',
         'account' => 'Minha conta', 'settings' => 'Configurações', 'agents' => 'Agentes',
-        'dcim' => 'Infraestrutura física', 'cabling' => 'Cabeamento', 'ipam' => 'IPAM', 'circuits' => 'Circuitos', 'virtualization' => 'Virtualização', 'other' => 'Outros',
+        'dcim' => 'Infraestrutura física', 'cabling' => 'Cabeamento', 'ipam' => 'IPAM', 'circuits' => 'Circuitos', 'virtualization' => 'Virtualização', 'wifi' => 'Wi-Fi (UniFi)', 'other' => 'Outros',
     ];
 
     /** @var array<string, array{0: string, 1: string, 2: string, 3: string|null, 4: string|null}> */
@@ -181,6 +181,21 @@ final class AuditCatalog
         'ui_virt_disk_delete' => ['vm_disk.deleted', 'Disco da VM excluído', 'virtualization', 'vm_disk', 'id'],
         // configurações
         'ui_settings_update' => ['settings.updated', 'Configurações alteradas', 'settings', null, null],
+        // Wi-Fi / UniFi (ADR-0020)
+        'ui_wifi_controller_create' => ['unifi_controller.created', 'Controller UniFi cadastrado', 'wifi', 'unifi_controller', null],
+        'ui_wifi_controller_update' => ['unifi_controller.updated', 'Controller UniFi alterado', 'wifi', 'unifi_controller', 'id'],
+        'ui_wifi_controller_delete' => ['unifi_controller.deleted', 'Controller UniFi excluído', 'wifi', 'unifi_controller', 'id'],
+        'ui_wifi_controller_tls' => ['unifi_controller.tls_inspected', 'Certificado do controller UniFi lido', 'wifi', null, null],
+        'ui_wifi_controller_test' => ['unifi_controller.tested', 'Conexão com controller UniFi testada', 'wifi', 'unifi_controller', 'id'],
+        'ui_wifi_sync' => ['unifi_controller.synced', 'Sites e redes Wi-Fi sincronizados do UniFi', 'wifi', 'unifi_controller', 'id'],
+        'ui_wifi_site_update' => ['unifi_site.updated', 'Site UniFi vinculado à filial', 'wifi', 'unifi_site', 'id'],
+        'ui_wifi_wlan_apply' => ['unifi_wlan.applied', 'Filtro de MAC aplicado no UniFi', 'wifi', 'unifi_wlan', 'id'],
+        'ui_wifi_wlan_filter' => ['unifi_wlan.filter_enabled', 'Filtro de MAC LIGADO no UniFi', 'wifi', 'unifi_wlan', 'id'],
+        'ui_wifi_wlan_adopt' => ['mac_identity.adopted', 'MAC do UniFi identificado', 'wifi', 'unifi_wlan', 'id'],
+        'ui_wifi_identity_create' => ['mac_identity.created', 'Identidade de MAC cadastrada', 'wifi', 'mac_identity', null],
+        'ui_wifi_identity_update' => ['mac_identity.updated', 'Identidade de MAC alterada', 'wifi', 'mac_identity', 'id'],
+        'ui_wifi_identity_revoke' => ['mac_identity.revoked', 'Acesso Wi-Fi revogado', 'wifi', 'mac_identity', 'id'],
+        'ui_wifi_identity_delete' => ['mac_identity.deleted', 'Identidade de MAC excluída', 'wifi', 'mac_identity', 'id'],
     ];
 
     /** Leituras sensíveis também auditadas (GET). */

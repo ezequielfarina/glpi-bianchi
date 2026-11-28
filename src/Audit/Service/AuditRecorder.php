@@ -79,6 +79,10 @@ final readonly class AuditRecorder
             'vm' === $type && $isInt => "SELECT v.name || ' — ' || c.name FROM virt_machine v JOIN virt_cluster c ON c.id = v.cluster_id WHERE v.id = ?",
             'vm_interface' === $type && $isInt => "SELECT v.name || ' ' || i.name FROM virt_interface i JOIN virt_machine v ON v.id = i.vm_id WHERE i.id = ?",
             'vm_disk' === $type && $isInt => "SELECT v.name || ' ' || k.name FROM virt_disk k JOIN virt_machine v ON v.id = k.vm_id WHERE k.id = ?",
+            'unifi_controller' === $type && $isInt => 'SELECT name FROM unifi_controller WHERE id = ?',
+            'unifi_site' === $type && $isInt => "SELECT coalesce(s.description, s.site_ref) || ' — ' || c.name FROM unifi_site s JOIN unifi_controller c ON c.id = s.controller_id WHERE s.id = ?",
+            'unifi_wlan' === $type && $isInt => "SELECT w.name || ' @ ' || coalesce(s.description, s.site_ref) FROM unifi_wlan w JOIN unifi_site s ON s.id = w.site_id WHERE w.id = ?",
+            'mac_identity' === $type && $isInt => "SELECT mac || coalesce(' — ' || person_name, '') FROM mac_identity WHERE id = ?",
             'agent' === $type => 'SELECT ? ',
             default => null,
         };

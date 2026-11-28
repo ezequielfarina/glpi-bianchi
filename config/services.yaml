@@ -58,3 +58,9 @@ when@test:
         App\Tools\Scanner\NmapRunner:
             arguments:
                 $nmapBinary: '%kernel.project_dir%/tests/Fixtures/nmap/fake-nmap.sh'
+        # controller UniFi falso (tests/Support/FakeUnifi.php) — os testes não falam com a rede
+        App\Tests\Support\FakeUnifi: ~
+        App\Wifi\Unifi\UnifiClientFactory:
+            autowire: true
+            arguments:
+                $http: '@App\Tests\Support\FakeUnifi'
