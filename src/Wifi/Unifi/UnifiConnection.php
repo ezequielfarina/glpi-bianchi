@@ -221,8 +221,7 @@ final class UnifiConnection
         $r = $this->send('POST', $this->root().($os ? '/api/auth/login' : '/api/login'), ['json' => ['username' => $user, 'password' => $pass, 'remember' => false]], false);
         $code = $r->getStatusCode();
         if (200 !== $code) {
-            $hint = 499 === $code || 429 === $code ? ' (muitas tentativas: aguarde alguns minutos)' : '';
-            throw new UnifiException("Login no UniFi recusado (HTTP $code)$hint. Use um admin LOCAL, sem 2FA e com \"acesso remoto\" desligado.");
+            throw new UnifiException(self::loginMessage($code, $r->getContent(false)));
         }
         $this->loggedIn = true;
     }
@@ -327,6 +326,21 @@ final class UnifiConnection
             'id' => (string) ($w['_id'] ?? ''), 'name' => (string) ($w['name'] ?? '?'), 'enabled' => (bool) ($w['enabled'] ?? true), 'security' => $security,
             'filter_enabled' => (bool) ($w['mac_filter_enabled'] ?? false), 'filter_policy' => $policy, 'macs' => array_values(array_unique($macs)),
         ];
+    }
+
+    /** Motivo do login recusado a partir do `meta.msg` do UniFi (api.err.*). */
+    private static function loginMessage(int $code, string $body): string
+    {
+        $json = json_decode($body, true);
+        $msg = \is_array($json) ? (string) ($json['meta']['msg'] ?? '') : '';
+
+        return match (true) {
+            str_contains($msg, '2fa') || str_contains($msg, 'Ubic2fa') || str_contains($msg, 'MFA') => 'Login no UniFi recusado: a conta exige 2FA. Use um admin LOCAL ("Remote Access" desmarcado), sem 2FA.',
+            'api.err.Invalid' === $msg || 'api.err.InvalidCredentials' === $msg || (400 === $code && '' === $msg) => 'Login no UniFi recusado: usuário ou senha incorretos. Confira em "Trocar senha" (o navegador pode ter preenchido a senha sozinho).',
+            str_contains($msg, 'LoginBlocked') || str_contains($msg, 'Throttle') || 429 === $code || 499 === $code => 'Login no UniFi bloqueado por excesso de tentativas. Aguarde alguns minutos e teste de novo.',
+            str_contains($msg, 'Ubic') || str_contains($msg, 'Sso') => 'Login no UniFi recusado: conta de nuvem (ui.com). Use um admin LOCAL ("Remote Access" desmarcado).',
+            default => \sprintf('Login no UniFi recusado (HTTP %d%s). Use um admin LOCAL, sem 2FA e com "Remote Access" desmarcado.', $code, '' !== $msg ? ': '.$msg : ''),
+        };
     }
 
     private static function str(mixed $v): ?string

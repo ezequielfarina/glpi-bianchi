@@ -167,9 +167,10 @@ const PLATFORM: Record<string, string> = { unifi_os: 'UniFi OS', classic: 'Contr
           <span v-if="errors.tls_pin" class="err">{{ errors.tls_pin }}</span></div>
 
         <div v-if="f.auth_mode === 'local'" class="field"><label for="uc-user">Usuário (admin local) *<HelpTip ctx="unifi" k="username" label="Usuário" /></label>
-          <input id="uc-user" v-model="f.username" class="input" autocomplete="off" placeholder="glpi-bianchi" :aria-invalid="!!errors.username" /><span v-if="errors.username" class="err">{{ errors.username }}</span></div>
+          <input id="uc-user" v-model="f.username" class="input" autocomplete="off" data-lpignore="true" placeholder="glpi-bianchi" :aria-invalid="!!errors.username" /><span v-if="errors.username" class="err">{{ errors.username }}</span></div>
         <div class="field" :class="{ full: f.auth_mode !== 'local' }"><label for="uc-secret">{{ f.auth_mode === 'local' ? 'Senha' : 'API key' }}{{ hasSecret ? '' : ' *' }}<HelpTip ctx="unifi" k="secret" label="Credencial" /></label>
-          <input id="uc-secret" v-model="f.secret" class="input" type="password" autocomplete="new-password" :placeholder="hasSecret ? '•••••• (mantida — preencha só para trocar)' : ''" :aria-invalid="!!errors.secret" />
+          <input id="uc-secret" v-model="f.secret" class="input" type="password" autocomplete="new-password" readonly data-lpignore="true" data-1p-ignore
+            @focus="($event.target as HTMLInputElement).removeAttribute('readonly')" :placeholder="hasSecret ? '•••••• (mantida — preencha só para trocar)' : ''" :aria-invalid="!!errors.secret" />
           <span v-if="errors.secret" class="err">{{ errors.secret }}</span></div>
         <label class="check full"><input v-model="f.write_client_alias" type="checkbox" /> Gravar "Pessoa — Aparelho" como nome do cliente no UniFi<HelpTip ctx="unifi" k="write_client_alias" label="Apelido" /></label>
         <label class="check full"><input v-model="f.enabled" type="checkbox" /> Ativo (sincroniza a cada 10 minutos)</label>
@@ -186,7 +187,8 @@ const PLATFORM: Record<string, string> = { unifi_os: 'UniFi OS', classic: 'Contr
         <div v-if="cred.auth_mode === 'local'" class="field"><label for="cr-user">Usuário</label>
           <input id="cr-user" v-model="credForm.username" class="input" autocomplete="off" /></div>
         <div class="field"><label for="cr-secret">{{ cred.auth_mode === 'local' ? 'Senha nova' : 'API key nova' }}</label>
-          <div class="row"><input id="cr-secret" v-model="credForm.secret" class="input" :type="credForm.show ? 'text' : 'password'" autocomplete="new-password" :aria-invalid="!!credError" />
+          <div class="row"><input id="cr-secret" v-model="credForm.secret" class="input" :type="credForm.show ? 'text' : 'password'" autocomplete="new-password" readonly data-lpignore="true" data-1p-ignore
+              @focus="($event.target as HTMLInputElement).removeAttribute('readonly')" :aria-invalid="!!credError" />
             <button class="btn btn-icon" type="button" :aria-label="credForm.show ? 'Ocultar' : 'Mostrar'" @click="credForm.show = !credForm.show"><AppIcon name="eye" :size="15" /></button></div>
           <span v-if="credError" class="err">{{ credError }}</span></div>
         <div class="form-actions"><button class="btn" type="button" @click="cred = null">Cancelar</button>

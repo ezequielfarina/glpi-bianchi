@@ -62,7 +62,7 @@ final class WifiAccessTest extends WebTestCase
         $this->call('PUT', "/api/ui/wifi/controllers/$id", ['secret' => 'errada'] + $this->controllerBody());
         $bad = $this->call('POST', "/api/ui/wifi/controllers/$id/test");
         self::assertFalse($bad['ok']);
-        self::assertStringContainsString('recusado', (string) $bad['error']);
+        self::assertStringContainsString('usuário ou senha incorretos', (string) $bad['error']);
 
         $audit = (string) $this->db->fetchOne("SELECT string_agg(coalesce(details::text, ''), ' ') FROM audit_log WHERE module = 'wifi'");
         self::assertStringNotContainsString(FakeUnifi::PASS, $audit);
