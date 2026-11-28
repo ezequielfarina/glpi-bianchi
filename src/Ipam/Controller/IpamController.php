@@ -37,17 +37,17 @@ final readonly class IpamController
         return $this->json([
             'prefix_status' => $map(PrefixService::STATUS), 'range_status' => $map(PrefixService::RANGE_STATUS),
             'ip_status' => $map(IpAddressService::STATUS), 'ip_roles' => $map(IpAddressService::ROLES), 'vlan_status' => $map(VlanService::VLAN_STATUS),
-            'vrfs' => $this->vlans->vrfs(), 'vlan_groups' => $this->vlans->groups(),
+            'vlan_groups' => $this->vlans->groups(),
         ]);
     }
 
     // ------------------------------------------------------------------ prefixos
 
     #[Route('/prefixes', name: 'prefixes', methods: ['GET'])]
-    public function prefixes(#[MapQueryParameter] ?string $q = null, #[MapQueryParameter] ?int $vrf = null, #[MapQueryParameter] ?int $branch = null,
+    public function prefixes(#[MapQueryParameter] ?string $q = null, #[MapQueryParameter] ?int $branch = null,
         #[MapQueryParameter] ?string $status = null, #[MapQueryParameter] ?int $family = null, #[MapQueryParameter] ?string $within = null): JsonResponse
     {
-        return $this->json(['items' => $this->prefixes->list(['q' => $q, 'vrf' => $vrf, 'branch' => $branch, 'status' => $status, 'family' => $family, 'within' => $within])]);
+        return $this->json(['items' => $this->prefixes->list(['q' => $q, 'branch' => $branch, 'status' => $status, 'family' => $family, 'within' => $within])]);
     }
 
     #[Route('/prefixes/{id}', name: 'prefix', methods: ['GET'], requirements: ['id' => '\d+'])]
@@ -85,9 +85,9 @@ final readonly class IpamController
     // ------------------------------------------------------------------ faixas
 
     #[Route('/ranges', name: 'ranges', methods: ['GET'])]
-    public function ranges(#[MapQueryParameter] ?string $q = null, #[MapQueryParameter] ?int $vrf = null, #[MapQueryParameter] ?string $status = null): JsonResponse
+    public function ranges(#[MapQueryParameter] ?string $q = null, #[MapQueryParameter] ?string $status = null): JsonResponse
     {
-        return $this->json(['items' => $this->prefixes->ranges(['q' => $q, 'vrf' => $vrf, 'status' => $status])]);
+        return $this->json(['items' => $this->prefixes->ranges(['q' => $q, 'status' => $status])]);
     }
 
     #[Route('/ranges/{id}/next-ip', name: 'range_next_ip', methods: ['GET'], requirements: ['id' => '\d+'])]
@@ -119,11 +119,11 @@ final readonly class IpamController
     // ------------------------------------------------------------------ IPs
 
     #[Route('/ip-addresses', name: 'ips', methods: ['GET'])]
-    public function ips(#[MapQueryParameter] ?string $q = null, #[MapQueryParameter] ?int $vrf = null, #[MapQueryParameter] ?string $status = null,
+    public function ips(#[MapQueryParameter] ?string $q = null, #[MapQueryParameter] ?string $status = null,
         #[MapQueryParameter] ?string $role = null, #[MapQueryParameter] ?int $branch = null, #[MapQueryParameter] ?int $device = null,
         #[MapQueryParameter] ?bool $assigned = null): JsonResponse
     {
-        return $this->json(['items' => $this->ips->list(['q' => $q, 'vrf' => $vrf, 'status' => $status, 'role' => $role, 'branch' => $branch,
+        return $this->json(['items' => $this->ips->list(['q' => $q, 'status' => $status, 'role' => $role, 'branch' => $branch,
             'device' => $device, 'assigned' => $assigned])]);
     }
 
@@ -154,32 +154,6 @@ final readonly class IpamController
     }
 
     // ------------------------------------------------------------------ VRF, grupos, VLANs
-
-    #[Route('/vrfs', name: 'vrfs', methods: ['GET'])]
-    public function vrfs(): JsonResponse
-    {
-        return $this->json(['items' => $this->vlans->vrfs()]);
-    }
-
-    #[Route('/vrfs', name: 'vrf_create', methods: ['POST'])]
-    public function vrfCreate(Request $request): JsonResponse
-    {
-        return $this->json(['id' => $this->vlans->saveVrf(null, $this->body($request))], Response::HTTP_CREATED);
-    }
-
-    #[Route('/vrfs/{id}', name: 'vrf_update', methods: ['PUT'], requirements: ['id' => '\d+'])]
-    public function vrfUpdate(int $id, Request $request): JsonResponse
-    {
-        return $this->json(['id' => $this->vlans->saveVrf($id, $this->body($request))]);
-    }
-
-    #[Route('/vrfs/{id}', name: 'vrf_delete', methods: ['DELETE'], requirements: ['id' => '\d+'])]
-    public function vrfDelete(int $id): JsonResponse
-    {
-        $this->vlans->deleteVrf($id);
-
-        return $this->json(['deleted' => true]);
-    }
 
     #[Route('/vlan-groups', name: 'vlan_groups', methods: ['GET'])]
     public function vlanGroups(): JsonResponse

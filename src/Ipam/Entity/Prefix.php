@@ -27,10 +27,6 @@ class Prefix
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Vrf::class)]
-    #[ORM\JoinColumn(onDelete: 'RESTRICT')]
-    private ?Vrf $vrf = null;
-
     #[ORM\ManyToOne(targetEntity: Branch::class)]
     #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?Branch $branch = null;
@@ -72,11 +68,6 @@ class Prefix
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getVrf(): ?Vrf
-    {
-        return $this->vrf;
     }
 
     public function getBranch(): ?Branch

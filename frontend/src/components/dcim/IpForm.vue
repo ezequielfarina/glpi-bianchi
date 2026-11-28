@@ -13,11 +13,10 @@ const hint = ref('')
 void ipamChoices(true).then((c) => { ch.value = c })
 void ipam.prefixes(props.branchId ? { branch: props.branchId } : {}).then((r) => { prefixes.value = r.items.filter((p) => p.status !== 'container') })
 const i = props.ip
-const initial: Record<string, unknown> = { address: i?.address ?? '', vrf_id: i?.vrf_id ?? '', port_id: i?.port_id ?? '', vm_interface_id: i?.vm_interface_id ?? '', status: i?.status ?? 'active', role: i?.role ?? '',
+const initial: Record<string, unknown> = { address: i?.address ?? '', port_id: i?.port_id ?? '', vm_interface_id: i?.vm_interface_id ?? '', status: i?.status ?? 'active', role: i?.role ?? '',
   dns_name: i?.dns_name ?? '', description: i?.description ?? '', comments: i?.comments ?? '', make_primary: i?.is_primary ?? false, ...props.preset }
 const fields = computed<FieldSpec[]>(() => [
   { key: 'address', label: 'Endereço', required: true, mono: true, placeholder: '192.168.10.20/24', hint: 'Sem máscara, usa a do prefixo que contém o IP.' },
-  { key: 'vrf_id', label: 'VRF', type: 'select', options: (ch.value?.vrfs ?? []).map((v) => ({ value: v.id, label: v.name })), hint: 'Vazio = tabela global' },
   ...(props.ports ? [{ key: 'port_id', label: 'Interface', type: 'select' as const, options: props.ports.map((p) => ({ value: p.id, label: p.name })) }] : []),
   ...(props.vmInterfaces ? [{ key: 'vm_interface_id', label: 'Interface da VM', type: 'select' as const, options: props.vmInterfaces.map((p) => ({ value: p.id, label: p.name })) }] : []),
   { key: 'status', label: 'Situação', type: 'select', required: true, options: ch.value?.ip_status ?? [] },
@@ -29,8 +28,7 @@ const fields = computed<FieldSpec[]>(() => [
 async function fill(v: Record<string, unknown>): Promise<void> {
   if (!prefixId.value) return
   const r = await ipam.nextIp(Number(prefixId.value))
-  const p = prefixes.value.find((x) => x.id === prefixId.value)
-  if (r.address) { v.address = r.address; v.vrf_id = p?.vrf_id ?? ''; hint.value = '' } else hint.value = 'Prefixo sem IP livre.'
+  if (r.address) { v.address = r.address; hint.value = '' } else hint.value = 'Prefixo sem IP livre.'
 }
 </script>
 

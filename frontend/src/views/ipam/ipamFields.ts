@@ -6,7 +6,6 @@ export function prefixFields(ch: IpamChoices, branches: Opt[], vlans: VlanRow[])
   return [
     { key: 'prefix', label: 'Prefixo', required: true, mono: true, placeholder: '192.168.10.0/24' },
     { key: 'status', label: 'Situação', type: 'select', required: true, options: ch.prefix_status, hint: 'Contêiner agrupa sub-redes (ex.: o /16 da filial).' },
-    { key: 'vrf_id', label: 'VRF', type: 'select', options: ch.vrfs.map((v) => ({ value: v.id, label: v.name })) },
     { key: 'branch_id', label: 'Filial', type: 'select', options: branches },
     { key: 'vlan_id', label: 'VLAN', type: 'select', options: vlans.map((v) => ({ value: v.id, label: `${v.vid} — ${v.name}${v.group ? ` (${v.group})` : ''}` })) },
     { key: 'role', label: 'Papel', placeholder: 'ex.: Dados, Voz, Câmeras, Gerência, Convidados' },
@@ -20,7 +19,6 @@ export function rangeFields(ch: IpamChoices): FieldSpec[] {
   return [
     { key: 'start_address', label: 'Início', required: true, mono: true, placeholder: '192.168.10.100' },
     { key: 'end_address', label: 'Fim', required: true, mono: true, placeholder: '192.168.10.200' },
-    { key: 'vrf_id', label: 'VRF', type: 'select', options: ch.vrfs.map((v) => ({ value: v.id, label: v.name })) },
     { key: 'status', label: 'Situação', type: 'select', required: true, options: ch.range_status },
     { key: 'role', label: 'Papel', placeholder: 'ex.: DHCP, impressoras, reservado' },
     { key: 'mark_utilized', label: 'Contar a faixa inteira como utilizada (pool DHCP)', type: 'check', full: true },

@@ -38,7 +38,6 @@ async function remove(): Promise<void> {
           <dl class="dc-kv top">
             <dt>Equipamento</dt><dd><template v-if="ip.device_id"><RouterLink :to="`/dcim/devices/${ip.device_id}`" class="dc-link">{{ ip.device }}</RouterLink> · interface <span class="mono">{{ ip.port }}</span> · {{ ip.branch }}</template><template v-else-if="ip.vm_id">VM <RouterLink :to="`/virtualization/vms/${ip.vm_id}`" class="dc-link">{{ ip.vm }}</RouterLink> · interface <span class="mono">{{ ip.vm_interface }}</span></template><span v-else class="muted">sem interface</span></dd>
             <dt>Prefixo</dt><dd><RouterLink v-if="ip.prefix_id" :to="`/ipam/prefixes/${ip.prefix_id}`" class="dc-link mono">{{ ip.prefix }}</RouterLink><span v-else class="muted">fora de prefixo cadastrado</span></dd>
-            <dt>VRF</dt><dd>{{ ip.vrf ?? 'Global' }}</dd>
             <dt>Papel</dt><dd>{{ ip.role ?? '—' }}</dd>
             <template v-if="ip.comments"><dt>Observações</dt><dd class="pre">{{ ip.comments }}</dd></template>
           </dl>

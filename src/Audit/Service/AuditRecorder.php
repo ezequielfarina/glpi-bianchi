@@ -69,7 +69,6 @@ final readonly class AuditRecorder
             'prefix' === $type && $isInt => "SELECT prefix::text || coalesce(' — ' || description, '') FROM ipam_prefix WHERE id = ?",
             'ip_range' === $type && $isInt => "SELECT host(start_address) || ' – ' || host(end_address) FROM ipam_ip_range WHERE id = ?",
             'ip_address' === $type && $isInt => "SELECT host(address) || '/' || masklen(address) || coalesce(' — ' || dns_name, '') FROM ipam_ip_address WHERE id = ?",
-            'vrf' === $type && $isInt => 'SELECT name FROM ipam_vrf WHERE id = ?',
             'vlan_group' === $type && $isInt => 'SELECT name FROM ipam_vlan_group WHERE id = ?',
             'vlan' === $type && $isInt => "SELECT vid || ' — ' || name FROM ipam_vlan WHERE id = ?",
             'circuit_type' === $type && $isInt => 'SELECT name FROM circuit_type WHERE id = ?',

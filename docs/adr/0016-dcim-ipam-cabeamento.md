@@ -94,7 +94,7 @@ Diferença em relação ao NetBox: o caminho é **calculado sob demanda**, não 
 
 ### 7. IPAM
 
-- **`ipam_vrf`** (RD, `enforce_unique`).
+- ~~**`ipam_vrf`** (RD, `enforce_unique`).~~ Removida no [ADR-0021](0021-remover-vrf.md): ambiente só com tabela global + VLANs.
 - **`ipam_prefix`**:
   - coluna `CIDR` com índice GiST `inet_ops`;
   - hierarquia **calculada** por `<<` (sem `parent_id`, como no NetBox);

@@ -16,7 +16,6 @@ const router = useRouter()
 const tab = ref<'ips' | 'ranges'>(route.query.tab === 'ranges' ? 'ranges' : 'ips')
 const ch = ref<IpamChoices | null>(null)
 const branches = ref<BranchRow[]>([])
-const vrf = ref<number | null>(null)
 const branch = ref<number | null>(null)
 const status = ref('')
 const assigned = ref<'' | 'yes' | 'no'>('')
@@ -32,12 +31,12 @@ void api.branches().then((r) => { branches.value = r.items })
 let t: number | undefined
 async function load(): Promise<void> {
   try {
-    if (tab.value === 'ips') ips.value = (await ipam.ips({ vrf: vrf.value, branch: branch.value, status: status.value || undefined, q: q.value.trim() || undefined, assigned: assigned.value === '' ? null : assigned.value === 'yes' })).items
-    else ranges.value = (await ipam.ranges({ vrf: vrf.value, status: status.value || undefined, q: q.value.trim() || undefined })).items
+    if (tab.value === 'ips') ips.value = (await ipam.ips({ branch: branch.value, status: status.value || undefined, q: q.value.trim() || undefined, assigned: assigned.value === '' ? null : assigned.value === 'yes' })).items
+    else ranges.value = (await ipam.ranges({ status: status.value || undefined, q: q.value.trim() || undefined })).items
     error.value = null
   } catch (e) { error.value = e instanceof Error ? e.message : String(e) } finally { loading.value = false }
 }
-watch([tab, vrf, branch, status, assigned], load, { immediate: true })
+watch([tab, branch, status, assigned], load, { immediate: true })
 watch(q, () => { window.clearTimeout(t); t = window.setTimeout(load, 250) })
 async function removeRange(r: RangeRow): Promise<void> {
   if (!window.confirm(`Excluir a faixa ${r.start_address} – ${r.end_address}?`)) return
@@ -66,7 +65,6 @@ async function nextIn(r: RangeRow): Promise<void> {
         <button type="button" role="tab" class="tab" :class="{ active: tab === 'ranges' }" @click="tab = 'ranges'">Faixas (DHCP, reservas)</button>
       </div>
       <div class="dc-filters">
-        <select v-model="vrf" class="input" aria-label="VRF"><option :value="null">Todas as VRFs</option><option :value="0">Global</option><option v-for="v in ch?.vrfs ?? []" :key="v.id" :value="v.id">{{ v.name }}</option></select>
         <template v-if="tab === 'ips'">
           <select v-model="branch" class="input" aria-label="Filial"><option :value="null">Todas as filiais</option><option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option></select>
           <select v-model="assigned" class="input" aria-label="Atribuição"><option value="">Atribuídos ou não</option><option value="yes">Em interface</option><option value="no">Sem interface</option></select>
@@ -80,7 +78,7 @@ async function nextIn(r: RangeRow): Promise<void> {
           <div v-else class="table-wrap"><table class="table">
             <thead><tr><th>Endereço</th><th>Situação</th><th>Equipamento / interface</th><th>Prefixo</th><th>DNS / descrição</th></tr></thead>
             <tbody><tr v-for="i in ips" :key="i.id" class="dc-clickable" @click="router.push(`/ipam/ip-addresses/${i.id}`)">
-              <td class="mono"><RouterLink :to="`/ipam/ip-addresses/${i.id}`" class="dc-strong" @click.stop>{{ i.address }}</RouterLink> <span v-if="i.vrf" class="pill pill-muted">{{ i.vrf }}</span></td>
+              <td class="mono"><RouterLink :to="`/ipam/ip-addresses/${i.id}`" class="dc-strong" @click.stop>{{ i.address }}</RouterLink></td>
               <td><span class="pill" :class="IP_STATUS[i.status]?.cls">{{ IP_STATUS[i.status]?.label }}</span><span v-if="i.role" class="pill pill-muted">{{ i.role }}</span><span v-if="i.is_primary" class="pill pill-accent">primário</span></td>
               <td><template v-if="i.device_id"><RouterLink :to="`/dcim/devices/${i.device_id}`" class="dc-link" @click.stop>{{ i.device }}</RouterLink> <span class="mono">{{ i.port }}</span> <span class="muted dc-small">{{ i.branch }}</span></template>
                 <template v-else-if="i.vm_id"><AppIcon name="vm" :size="13" /> <RouterLink :to="`/virtualization/vms/${i.vm_id}`" class="dc-link" @click.stop>{{ i.vm }}</RouterLink> <span class="mono">{{ i.vm_interface }}</span></template></td>
@@ -94,7 +92,7 @@ async function nextIn(r: RangeRow): Promise<void> {
           <div v-else class="table-wrap"><table class="table">
             <thead><tr><th>Faixa</th><th>Situação</th><th>Papel</th><th class="num">Em uso</th><th>Descrição</th><th /></tr></thead>
             <tbody><tr v-for="r in ranges" :key="r.id">
-              <td class="mono">{{ r.start_address }} – {{ r.end_address }} <span class="muted">/{{ r.len }}</span> <span v-if="r.vrf" class="pill pill-muted">{{ r.vrf }}</span></td>
+              <td class="mono">{{ r.start_address }} – {{ r.end_address }} <span class="muted">/{{ r.len }}</span></td>
               <td><span class="pill" :class="IP_STATUS[r.status]?.cls">{{ r.status_label }}</span><span v-if="r.mark_utilized" class="pill pill-info">conta como usada</span></td>
               <td>{{ r.role }}</td><td class="num">{{ r.used }}/{{ r.size }}</td><td class="muted">{{ r.description }}</td>
               <td class="dc-actions-row"><button class="btn btn-icon" type="button" aria-label="Próximo IP livre" title="Próximo IP livre" @click="nextIn(r)"><AppIcon name="search" :size="14" /></button>
@@ -105,9 +103,9 @@ async function nextIn(r: RangeRow): Promise<void> {
         </template>
       </LoadState>
     </section>
-    <IpForm v-if="creating" :preset="{ vrf_id: vrf || '' }" @close="creating = false" @saved="(id) => router.push(`/ipam/ip-addresses/${id}`)" />
+    <IpForm v-if="creating" @close="creating = false" @saved="(id) => router.push(`/ipam/ip-addresses/${id}`)" />
     <SpecForm v-if="editRange && ch" ctx="range" :title="editRange === 'new' ? 'Nova faixa de IPs' : 'Editar faixa'" :fields="rangeFields(ch)"
-      :initial="editRange === 'new' ? { status: 'active', vrf_id: vrf || '' } : { start_address: `${editRange.start_address}/${editRange.len}`, end_address: editRange.end_address, vrf_id: editRange.vrf_id ?? '', status: editRange.status, role: editRange.role ?? '', mark_utilized: editRange.mark_utilized, description: editRange.description ?? '' }"
+      :initial="editRange === 'new' ? { status: 'active' } : { start_address: `${editRange.start_address}/${editRange.len}`, end_address: editRange.end_address, status: editRange.status, role: editRange.role ?? '', mark_utilized: editRange.mark_utilized, description: editRange.description ?? '' }"
       :save="(v) => ipam.saveRange(editRange === 'new' ? null : (editRange as RangeRow).id, v)" ok-text="Faixa salva" @close="editRange = null" @saved="editRange = null; load()" />
   </div>
 </template>

@@ -25,10 +25,6 @@ class IpRange
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Vrf::class)]
-    #[ORM\JoinColumn(onDelete: 'RESTRICT')]
-    private ?Vrf $vrf = null;
-
     #[ORM\Column(type: 'inet')]
     private string $startAddress;
 
@@ -56,11 +52,6 @@ class IpRange
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getVrf(): ?Vrf
-    {
-        return $this->vrf;
     }
 
     public function getStartAddress(): string

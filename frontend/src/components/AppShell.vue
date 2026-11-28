@@ -31,7 +31,7 @@ const allNav: { to: string; label: string; icon: IconName; group?: string; admin
   { to: '/wifi/controllers', label: 'Controllers UniFi', icon: 'settings', admin: true },
   { to: '/ipam/prefixes', label: 'Prefixos', icon: 'hash', group: 'IPAM' },
   { to: '/ipam/ip-addresses', label: 'Endereços IP', icon: 'network' },
-  { to: '/ipam/vlans', label: 'VLANs e VRFs', icon: 'layers' },
+  { to: '/ipam/vlans', label: 'VLANs', icon: 'layers' },
   { to: '/stock', label: 'Estoque', icon: 'box', group: 'Estoque', badge: 'stock' },
   { to: '/invoices', label: 'Notas fiscais', icon: 'file' },
   { to: '/licenses', label: 'Licenças', icon: 'key', group: 'Gestão' },

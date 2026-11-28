@@ -13,7 +13,6 @@ export const HELP: Record<string, Help> = {
   role: { t: 'Para que serve, em texto livre, para agrupar e filtrar.', ex: 'Dados, Voz, Câmeras, Gerência' },
   serial: { t: 'Número de série do fabricante (etiqueta traseira ou "show version").', ex: 'FGT60FTK2209XXXX' },
   asset_tag: { t: 'Número de patrimônio da empresa (plaqueta).', ex: '000123' },
-  vrf_id: { t: 'Tabela de roteamento. Deixe vazio na maioria dos casos (tabela global). Use VRF quando houver redes sobrepostas ou separação lógica.', ex: 'CORPORATIVA' },
 
   // locais
   'location.name': { t: 'Nome do local como as pessoas chamam. Para mesas, inclua número e setor.', ex: 'Mesa 14 — Financeiro' },
@@ -104,8 +103,6 @@ export const HELP: Record<string, Help> = {
   'vlan.name': { t: 'Nome curto da VLAN.', ex: 'DADOS' },
   'vlan.group_id': { t: 'Grupo de VLANs (normalmente um por filial). O VID é único dentro do grupo.', ex: 'VLANs Matriz' },
   'vlan_group.min_vid': { t: 'Menor VID permitido no grupo.', ex: '1' },
-  'vrf.rd': { t: 'Route distinguisher (MPLS/BGP). Opcional.', ex: '65000:10' },
-  'vrf.enforce_unique': { t: 'Impede IP/prefixo repetido dentro da VRF.' },
 
   // virtualização
   'cluster.name': { t: 'Nome do cluster/datacenter virtual como aparece no hipervisor.', ex: 'PVE-MATRIZ' },

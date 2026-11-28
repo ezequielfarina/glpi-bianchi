@@ -111,22 +111,22 @@ final class DcimApiTest extends WebTestCase
 
     public function testIpam(): void
     {
-        $vrf = $this->id('POST', '/api/ui/ipam/vrfs', ['name' => 'TESTE']);
-        $prefix = $this->id('POST', '/api/ui/ipam/prefixes', ['prefix' => '172.30.5.9/24', 'vrf_id' => $vrf, 'branch_id' => $this->branch]);
-        $this->call('POST', '/api/ui/ipam/prefixes', ['prefix' => '172.30.5.0/24', 'vrf_id' => $vrf], 422);
-        $range = $this->id('POST', '/api/ui/ipam/ranges', ['start_address' => '172.30.5.1', 'end_address' => '172.30.5.10', 'vrf_id' => $vrf]);
+        $this->call('GET', '/api/ui/ipam/vrfs', null, 404); // VRF removida (ADR-0021)
+        $prefix = $this->id('POST', '/api/ui/ipam/prefixes', ['prefix' => '172.30.5.9/24', 'branch_id' => $this->branch]);
+        $this->call('POST', '/api/ui/ipam/prefixes', ['prefix' => '172.30.5.0/24'], 422);
+        $range = $this->id('POST', '/api/ui/ipam/ranges', ['start_address' => '172.30.5.1', 'end_address' => '172.30.5.10']);
         self::assertSame('172.30.5.11/24', $this->call('GET', "/api/ui/ipam/prefixes/$prefix/next-ip")['address']);
 
         $dev = $this->id('POST', '/api/ui/dcim/devices', ['name' => 'FW-T', 'device_type_id' => $this->type('Switch 24 portas + 4 SFP+'), 'branch_id' => $this->branch]);
-        $ip = $this->id('POST', '/api/ui/ipam/ip-addresses', ['address' => '172.30.5.11', 'vrf_id' => $vrf, 'port_id' => $this->port($dev, 'interface', '1'), 'make_primary' => true]);
+        $ip = $this->id('POST', '/api/ui/ipam/ip-addresses', ['address' => '172.30.5.11', 'port_id' => $this->port($dev, 'interface', '1'), 'make_primary' => true]);
         self::assertSame('172.30.5.11/24', $this->call('GET', "/api/ui/ipam/ip-addresses/$ip")['address']);
         self::assertSame($ip, (int) $this->db->fetchOne('SELECT primary_ip_id FROM dcim_device WHERE id = ?', [$dev]));
-        $this->call('POST', '/api/ui/ipam/ip-addresses', ['address' => '172.30.5.11/24', 'vrf_id' => $vrf], 422);
-        $this->call('POST', '/api/ui/ipam/ip-addresses', ['address' => '172.30.5.255/24', 'vrf_id' => $vrf], 422);
+        $this->call('POST', '/api/ui/ipam/ip-addresses', ['address' => '172.30.5.11/24'], 422);
+        $this->call('POST', '/api/ui/ipam/ip-addresses', ['address' => '172.30.5.255/24'], 422);
         self::assertSame('172.30.5.12/24', $this->call('GET', "/api/ui/ipam/prefixes/$prefix/next-ip")['address']);
         // como no NetBox (Prefix.get_utilization): a faixa só conta inteira se marcada como utilizada
         self::assertEqualsWithDelta(round(100 * 1 / 254, 1), $this->call('GET', "/api/ui/ipam/prefixes/$prefix")['utilization'], 0.01);
-        $this->call('PUT', "/api/ui/ipam/ranges/$range", ['start_address' => '172.30.5.1', 'end_address' => '172.30.5.10', 'vrf_id' => $vrf, 'mark_utilized' => true]);
+        $this->call('PUT', "/api/ui/ipam/ranges/$range", ['start_address' => '172.30.5.1', 'end_address' => '172.30.5.10', 'mark_utilized' => true]);
         self::assertEqualsWithDelta(round(100 * 11 / 254, 1), $this->call('GET', "/api/ui/ipam/prefixes/$prefix")['utilization'], 0.01);
     }
 

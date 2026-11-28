@@ -20,7 +20,7 @@ Os cadastros são manuais nesta fase. O inventário do GLPI Agent continua sendo
 | | **Tipos de equipamento** | modelos com as portas já definidas (o equipamento nasce com as portas) e as funções (cores) |
 | IPAM | **Prefixos** | redes em árvore (contêiner /16 da filial → /24 por VLAN), utilização, próximo IP livre, blocos livres |
 | | **Endereços IP** | quem usa cada IP (equipamento + interface); faixas (pool DHCP, reservas) |
-| | **VLANs e VRFs** | VLANs por grupo/filial, portas e prefixos de cada uma; VRFs |
+| | **VLANs** | VLANs por grupo/filial, portas e prefixos de cada uma |
 
 ## Primeiro uso, passo a passo
 
@@ -100,7 +100,7 @@ A foto do **tipo** aparece em todos os equipamentos daquele modelo.
 | Equipamento de **profundidade total** ocupa a U nas duas faces; meia profundidade deixa a outra face livre | ocupação real do rack |
 | 0U (tomada, AP, ONT) não tem posição no rack | |
 | Excluir equipamento/porta exclui os **cabos** ligados nele | sem cabo "pela metade" |
-| IP único por VRF (e na tabela global); rede e broadcast recusados no IPv4 comum | `ENFORCE_GLOBAL_UNIQUE` / `IPAddress.clean()` |
+| IP único (tabela global; VRF removida — ADR-0021); rede e broadcast recusados no IPv4 comum | `ENFORCE_GLOBAL_UNIQUE` / `IPAddress.clean()` |
 | Prefixo duplicado recusado; faixas não se sobrepõem | |
 | "Próximo IP livre" pula IPs cadastrados **e faixas** (o pool DHCP nunca é sugerido para IP fixo) | |
 
@@ -133,7 +133,7 @@ GROUP BY r.id, b.name ORDER BY 3 DESC;
 
 -- IPs cadastrados fora de qualquer prefixo
 SELECT host(i.address) FROM ipam_ip_address i
-WHERE NOT EXISTS (SELECT 1 FROM ipam_prefix p WHERE p.vrf_id IS NOT DISTINCT FROM i.vrf_id AND inet(host(i.address)) <<= p.prefix);
+WHERE NOT EXISTS (SELECT 1 FROM ipam_prefix p WHERE inet(host(i.address)) <<= p.prefix);
 
 -- Portas de switch livres por equipamento
 SELECT d.name, count(*) FILTER (WHERE t.id IS NULL AND NOT p.mark_connected) AS livres, count(*) AS total

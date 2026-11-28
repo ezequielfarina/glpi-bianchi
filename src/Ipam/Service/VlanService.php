@@ -11,8 +11,8 @@ use App\Ui\Write\ValidationException;
 use Doctrine\DBAL\Connection;
 
 /**
- * VRFs, grupos de VLAN e VLANs (ADR-0016 §7). Porta de `ipam.VRF`, `ipam.VLANGroup` e `ipam.VLAN`
- * (netbox/ipam/models/vrfs.py, vlans.py): VID único no grupo e dentro da faixa do grupo.
+ * Grupos de VLAN e VLANs (ADR-0016 §7; VRF removida no ADR-0021). Porta de `ipam.VLANGroup` e `ipam.VLAN`
+ * (netbox/ipam/models/vlans.py): VID único no grupo e dentro da faixa do grupo.
  */
 final readonly class VlanService
 {
@@ -20,58 +20,6 @@ final readonly class VlanService
 
     public function __construct(private Connection $db)
     {
-    }
-
-    // ------------------------------------------------------------------ VRF
-
-    /** @return list<array<string, mixed>> */
-    public function vrfs(): array
-    {
-        return $this->db->fetchAllAssociative(<<<'SQL'
-            SELECT v.id, v.name, v.rd, v.enforce_unique, v.description,
-                   (SELECT count(*) FROM ipam_prefix p WHERE p.vrf_id = v.id) AS prefixes,
-                   (SELECT count(*) FROM ipam_ip_address i WHERE i.vrf_id = v.id) AS ips
-            FROM ipam_vrf v ORDER BY v.name
-            SQL);
-    }
-
-    /** @param array<string, mixed> $data */
-    public function saveVrf(?int $id, array $data): int
-    {
-        $p = new Payload($data);
-        $name = $p->string('name', 100, required: true);
-        $rd = $p->string('rd', 21);
-        if (null !== $rd && 1 !== preg_match('/^(\d{1,10}|\d{1,3}(\.\d{1,3}){3}):\d{1,10}$/', $rd)) {
-            $p->error('rd', 'RD no formato ASN:nn ou IP:nn (ex.: 65000:10).');
-        }
-        if (null !== $name && false !== $this->db->fetchOne('SELECT 1 FROM ipam_vrf WHERE lower(name) = lower(?) AND id <> ?', [$name, $id ?? 0])) {
-            $p->error('name', 'Já existe uma VRF com esse nome.');
-        }
-        if (null !== $rd && false !== $this->db->fetchOne('SELECT 1 FROM ipam_vrf WHERE rd = ? AND id <> ?', [$rd, $id ?? 0])) {
-            $p->error('rd', 'RD já usado por outra VRF.');
-        }
-        $p->check();
-        $row = ['name' => $name, 'rd' => $rd, 'enforce_unique' => $p->bool('enforce_unique', true) ? 'true' : 'false', 'description' => $p->string('description', 255)];
-        if (null === $id) {
-            return (int) $this->db->fetchOne('INSERT INTO ipam_vrf (name, rd, enforce_unique, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
-                [...array_values($row), Refs::now(), Refs::now()]);
-        }
-        if (0 === $this->db->update('ipam_vrf', $row + ['updated_at' => Refs::now()], ['id' => $id])) {
-            throw new NotFoundException('VRF não encontrada.');
-        }
-
-        return $id;
-    }
-
-    public function deleteVrf(int $id): void
-    {
-        $use = (int) $this->db->fetchOne('SELECT (SELECT count(*) FROM ipam_prefix WHERE vrf_id = :id) + (SELECT count(*) FROM ipam_ip_address WHERE vrf_id = :id) + (SELECT count(*) FROM ipam_ip_range WHERE vrf_id = :id)', ['id' => $id]);
-        if ($use > 0) {
-            throw new ValidationException(['id' => \sprintf('A VRF ainda tem %d prefixo(s)/faixa(s)/IP(s).', $use)]);
-        }
-        if (0 === $this->db->executeStatement('DELETE FROM ipam_vrf WHERE id = ?', [$id])) {
-            throw new NotFoundException('VRF não encontrada.');
-        }
     }
 
     // ------------------------------------------------------------------ grupos

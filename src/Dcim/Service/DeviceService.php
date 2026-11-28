@@ -92,8 +92,8 @@ final readonly class DeviceService
         $d = Num::row($d, ['position', 'u_height']);
         $d['ports'] = $this->ports($id);
         $d['ips'] = $this->db->fetchAllAssociative(<<<'SQL'
-            SELECT ip.id, host(ip.address) || '/' || masklen(ip.address) AS address, ip.status, ip.role, ip.dns_name, p.id AS port_id, p.name AS port, v.name AS vrf
-            FROM ipam_ip_address ip JOIN dcim_port p ON p.id = ip.port_id LEFT JOIN ipam_vrf v ON v.id = ip.vrf_id
+            SELECT ip.id, host(ip.address) || '/' || masklen(ip.address) AS address, ip.status, ip.role, ip.dns_name, p.id AS port_id, p.name AS port
+            FROM ipam_ip_address ip JOIN dcim_port p ON p.id = ip.port_id
             WHERE p.device_id = ? ORDER BY ip.address
             SQL, [$id]);
         $d['power'] = $this->powerSummary($id, $d['ports']);

@@ -79,8 +79,6 @@ erDiagram
     circuit_termination |o--o| dcim_cable_termination : ""
     supplier ||--o{ circuit : "operadora"
     circuit ||--o{ circuit_termination : "lados A/Z"
-    ipam_vrf ||--o{ ipam_prefix : ""
-    ipam_vrf ||--o{ ipam_ip_address : ""
     ipam_vlan ||--o{ ipam_prefix : ""
     ipam_vlan_group ||--o{ ipam_vlan : ""
     dcim_port ||--o{ ipam_ip_address : "IP na interface"
@@ -215,10 +213,9 @@ erDiagram
 | `dcim_cable_termination` | ponta A/B do cabo em **porta ou terminação de circuito** (FK real) | CHECK `num_nonnulls = 1`; UNIQUE por porta/terminação → no máximo um cabo; CASCADE |
 | `circuit_type` / `circuit` | circuito de operadora: `supplier_id` (operadora), tipo, `cid`, status, banda (kbps), datas, contrato | UNIQUE `(supplier_id, cid)` |
 | `circuit_termination` | lado A/Z: filial/local **ou** `provider_network`, cross-connect, entrega, velocidades | UNIQUE `(circuit_id, term_side)` |
-| `ipam_vrf` | VRF, RD, `enforce_unique` | |
-| `ipam_prefix` | `prefix CIDR`, VRF, filial, local, VLAN, status (container/active/reserved/deprecated), papel, `is_pool`, `mark_utilized` | hierarquia por contenção (`<<`), índice GiST `inet_ops`; duplicado recusado no serviço |
+| `ipam_prefix` | `prefix CIDR`, filial, local, VLAN, status (container/active/reserved/deprecated), papel, `is_pool`, `mark_utilized` | hierarquia por contenção (`<<`), índice GiST `inet_ops`; duplicado recusado no serviço |
 | `ipam_ip_range` | faixa `start_address`–`end_address` (INET com máscara), status, papel, `mark_utilized` | CHECK mesma família/máscara e início ≤ fim; sobreposição recusada no serviço |
-| `ipam_ip_address` | `address INET` com máscara, VRF, `port_id` (interface), status, papel, DNS | GiST `inet_ops`; unicidade por VRF no serviço sob `pg_advisory_xact_lock` |
+| `ipam_ip_address` | `address INET` com máscara, `port_id` (interface), status, papel, DNS | GiST `inet_ops`; unicidade global (sem VRF — ADR-0021) no serviço sob `pg_advisory_xact_lock` |
 | `ipam_vlan_group` / `ipam_vlan` | grupo com faixa de VID; VLAN (VID 1–4094, único no grupo) | não confundir com `vlan` (VLANs vistas pelo agente) |
 
 ### Virtualização (ADR-0017)

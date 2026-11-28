@@ -13,7 +13,6 @@ const router = useRouter()
 const ch = ref<IpamChoices | null>(null)
 const branches = ref<BranchRow[]>([])
 const vlans = ref<VlanRow[]>([])
-const vrf = ref<number | null>(null)
 const branch = ref<number | null>(null)
 const status = ref('')
 const q = ref('')
@@ -26,10 +25,10 @@ void api.branches().then((r) => { branches.value = r.items })
 void ipam.vlans().then((r) => { vlans.value = r.items })
 let t: number | undefined
 async function load(): Promise<void> {
-  try { items.value = (await ipam.prefixes({ vrf: vrf.value, branch: branch.value, status: status.value || undefined, q: q.value.trim() || undefined })).items; error.value = null }
+  try { items.value = (await ipam.prefixes({ branch: branch.value, status: status.value || undefined, q: q.value.trim() || undefined })).items; error.value = null }
   catch (e) { error.value = e instanceof Error ? e.message : String(e) } finally { loading.value = false }
 }
-watch([vrf, branch, status], load, { immediate: true })
+watch([branch, status], load, { immediate: true })
 watch(q, () => { window.clearTimeout(t); t = window.setTimeout(load, 250) })
 const minDepth = computed(() => Math.min(...items.value.map((p) => p.depth), 0))
 const cls = (u: number) => (u >= 95 ? 'bad' : u >= 80 ? 'warn' : '')
@@ -43,7 +42,6 @@ const cls = (u: number) => (u >= 95 ? 'bad' : u >= 80 ? 'warn' : '')
     </header>
     <section class="panel">
       <div class="dc-filters">
-        <select v-model="vrf" class="input" aria-label="VRF"><option :value="null">Todas as VRFs</option><option :value="0">Global</option><option v-for="v in ch?.vrfs ?? []" :key="v.id" :value="v.id">{{ v.name }}</option></select>
         <select v-model="branch" class="input" aria-label="Filial"><option :value="null">Todas as filiais</option><option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option></select>
         <select v-model="status" class="input" aria-label="Situação"><option value="">Qualquer situação</option><option v-for="o in ch?.prefix_status ?? []" :key="o.value" :value="o.value">{{ o.label }}</option></select>
         <input v-model="q" class="input search" type="search" placeholder="Prefixo, IP contido, papel, descrição…" aria-label="Buscar prefixo" />
@@ -56,8 +54,7 @@ const cls = (u: number) => (u >= 95 ? 'bad' : u >= 80 ? 'warn' : '')
             <tbody>
               <tr v-for="p in items" :key="p.id" class="dc-clickable" @click="router.push(`/ipam/prefixes/${p.id}`)">
                 <td class="dc-nowrap"><span :style="{ paddingLeft: `${(p.depth - minDepth) * 18}px` }"><span v-if="p.depth > minDepth" class="muted">└ </span>
-                  <RouterLink :to="`/ipam/prefixes/${p.id}`" class="dc-strong mono" @click.stop>{{ p.prefix }}</RouterLink></span>
-                  <span v-if="p.vrf" class="pill pill-muted">{{ p.vrf }}</span></td>
+                  <RouterLink :to="`/ipam/prefixes/${p.id}`" class="dc-strong mono" @click.stop>{{ p.prefix }}</RouterLink></span></td>
                 <td><span class="pill" :class="IP_STATUS[p.status]?.cls">{{ p.status_label }}</span><span v-if="p.is_pool" class="pill pill-info">pool</span></td>
                 <td class="dc-nowrap">{{ p.vlan_vid ? `${p.vlan_vid} ${p.vlan}` : '' }}</td>
                 <td>{{ p.branch }}</td>
@@ -70,7 +67,7 @@ const cls = (u: number) => (u >= 95 ? 'bad' : u >= 80 ? 'warn' : '')
         </div>
       </LoadState>
     </section>
-    <SpecForm v-if="creating && ch" ctx="prefix" title="Novo prefixo" :fields="prefixFields(ch, branches.map((b) => ({ value: b.id, label: b.name })), vlans)" :initial="{ status: 'active', vrf_id: vrf || '', branch_id: branch ?? '' }"
+    <SpecForm v-if="creating && ch" ctx="prefix" title="Novo prefixo" :fields="prefixFields(ch, branches.map((b) => ({ value: b.id, label: b.name })), vlans)" :initial="{ status: 'active', branch_id: branch ?? '' }"
       :save="(v) => ipam.savePrefix(null, v)" ok-text="Prefixo cadastrado" @close="creating = false" @saved="(id) => router.push(`/ipam/prefixes/${id}`)" />
   </div>
 </template>

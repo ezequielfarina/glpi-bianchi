@@ -25,12 +25,11 @@ final readonly class IpAddressService
 
     public function __construct(
         private Connection $db,
-        private PrefixService $prefixes,
     ) {
     }
 
     /**
-     * @param array{q?: string|null, vrf?: int|null, status?: string|null, role?: string|null, branch?: int|null, assigned?: bool|null, device?: int|null, vm?: int|null, id?: int|null} $f
+     * @param array{q?: string|null, status?: string|null, role?: string|null, branch?: int|null, assigned?: bool|null, device?: int|null, vm?: int|null, id?: int|null} $f
      *
      * @return list<array<string, mixed>>
      */
@@ -41,13 +40,12 @@ final readonly class IpAddressService
 
         return $this->db->fetchAllAssociative(<<<'SQL'
             SELECT i.id, host(i.address) || '/' || masklen(i.address) AS address, family(i.address) AS family, i.status, i.role, i.dns_name, i.description,
-                   i.vrf_id, v.name AS vrf, i.port_id, po.name AS port, d.id AS device_id, d.name AS device, coalesce(b.name, vb.name) AS branch,
+                   i.port_id, po.name AS port, d.id AS device_id, d.name AS device, coalesce(b.name, vb.name) AS branch,
                    coalesce(d.primary_ip_id = i.id, vm.primary_ip_id = i.id) AS is_primary,
                    i.vm_interface_id, vi.name AS vm_interface, vm.id AS vm_id, vm.name AS vm,
-                   (SELECT x.id FROM ipam_prefix x WHERE x.vrf_id IS NOT DISTINCT FROM i.vrf_id AND x.prefix >>= inet(host(i.address)) ORDER BY masklen(x.prefix) DESC LIMIT 1) AS prefix_id,
-                   (SELECT x.prefix::text FROM ipam_prefix x WHERE x.vrf_id IS NOT DISTINCT FROM i.vrf_id AND x.prefix >>= inet(host(i.address)) ORDER BY masklen(x.prefix) DESC LIMIT 1) AS prefix
+                   (SELECT x.id FROM ipam_prefix x WHERE x.prefix >>= inet(host(i.address)) ORDER BY masklen(x.prefix) DESC LIMIT 1) AS prefix_id,
+                   (SELECT x.prefix::text FROM ipam_prefix x WHERE x.prefix >>= inet(host(i.address)) ORDER BY masklen(x.prefix) DESC LIMIT 1) AS prefix
             FROM ipam_ip_address i
-            LEFT JOIN ipam_vrf v ON v.id = i.vrf_id
             LEFT JOIN dcim_port po ON po.id = i.port_id
             LEFT JOIN dcim_device d ON d.id = po.device_id
             LEFT JOIN branch b ON b.id = d.branch_id
@@ -55,8 +53,7 @@ final readonly class IpAddressService
             LEFT JOIN virt_machine vm ON vm.id = vi.vm_id
             LEFT JOIN virt_cluster vc ON vc.id = vm.cluster_id
             LEFT JOIN branch vb ON vb.id = vc.branch_id
-            WHERE (CAST(:vrf AS int) IS NULL OR i.vrf_id = :vrf OR (CAST(:vrf AS int) = 0 AND i.vrf_id IS NULL))
-              AND (CAST(:id AS int) IS NULL OR i.id = :id)
+            WHERE (CAST(:id AS int) IS NULL OR i.id = :id)
               AND (CAST(:status AS text) IS NULL OR i.status = :status)
               AND (CAST(:role AS text) IS NULL OR i.role = :role)
               AND (CAST(:branch AS int) IS NULL OR d.branch_id = :branch OR vc.branch_id = :branch)
@@ -66,9 +63,9 @@ final readonly class IpAddressService
               AND (CAST(:q AS text) IS NULL OR host(i.address) LIKE CAST(:q AS text) || '%' OR i.dns_name ILIKE '%' || CAST(:q AS text) || '%'
                    OR i.description ILIKE '%' || CAST(:q AS text) || '%' OR d.name ILIKE '%' || CAST(:q AS text) || '%' OR vm.name ILIKE '%' || CAST(:q AS text) || '%'
                    OR (CAST(:qnet AS cidr) IS NOT NULL AND inet(host(i.address)) <<= CAST(:qnet AS cidr)))
-            ORDER BY v.name NULLS FIRST, i.address
+            ORDER BY i.address
             LIMIT 5000
-            SQL, ['vrf' => $f['vrf'] ?? null, 'id' => $f['id'] ?? null, 'status' => $f['status'] ?? null, 'role' => $f['role'] ?? null, 'branch' => $f['branch'] ?? null,
+            SQL, ['id' => $f['id'] ?? null, 'status' => $f['status'] ?? null, 'role' => $f['role'] ?? null, 'branch' => $f['branch'] ?? null,
             'device' => $f['device'] ?? null, 'vm' => $f['vm'] ?? null, 'assigned' => null === ($f['assigned'] ?? null) ? null : (($f['assigned'] ?? false) ? 'true' : 'false'),
             'q' => $q, 'qnet' => null !== $net && str_contains((string) $q, '/') ? IpNet::cidr($net['bin'], $net['len']) : null]);
     }
@@ -87,7 +84,6 @@ final readonly class IpAddressService
     {
         $p = new Payload($data);
         $text = $p->string('address', 64, required: true);
-        $vrfId = $p->int('vrf_id', 1);
         $portId = $p->int('port_id', 1);
         $vmIfaceId = $p->int('vm_interface_id', 1);
         if (null !== $portId && null !== $vmIfaceId) {
@@ -104,9 +100,6 @@ final readonly class IpAddressService
         if (null !== $text && null === $net) {
             $p->error('address', 'Endereço inválido (ex.: 192.168.10.20/24).');
         }
-        if (null !== $vrfId && false === $this->db->fetchOne('SELECT 1 FROM ipam_vrf WHERE id = ?', [$vrfId])) {
-            $p->error('vrf_id', 'VRF não encontrada.');
-        }
         $port = null;
         if (null !== $portId) {
             $port = $this->db->fetchAssociative('SELECT id, device_id, kind FROM dcim_port WHERE id = ?', [$portId]);
@@ -122,17 +115,17 @@ final readonly class IpAddressService
         $p->check();
         \assert(null !== $net && null !== $text);
         $host = IpNet::text($net['bin']);
-        $len = str_contains($text, '/') ? $net['len'] : ($this->containingLen($host, $vrfId) ?? $net['bits']);
+        $len = str_contains($text, '/') ? $net['len'] : ($this->containingLen($host) ?? $net['bits']);
         $address = $host.'/'.$len;
         // rede/broadcast do prefixo IPv4 comum (IPAddress.clean)
         if (4 === $net['family'] && $len < 31) {
             $network = IpNet::network($net['bin'], $len);
-            $isPool = (bool) $this->db->fetchOne('SELECT is_pool FROM ipam_prefix WHERE vrf_id IS NOT DISTINCT FROM ? AND prefix = CAST(? AS cidr)', [$vrfId, IpNet::cidr($net['bin'], $len)]);
+            $isPool = (bool) $this->db->fetchOne('SELECT is_pool FROM ipam_prefix WHERE prefix = CAST(? AS cidr)', [IpNet::cidr($net['bin'], $len)]);
             if (!$isPool && ($net['bin'] === $network || $net['bin'] === IpNet::last($net['bin'], $len))) {
                 throw new ValidationException(['address' => $net['bin'] === $network ? 'Esse é o endereço de rede.' : 'Esse é o endereço de broadcast.']);
             }
         }
-        $row = ['address' => $address, 'vrf_id' => $vrfId, 'port_id' => $portId, 'vm_interface_id' => $vmIfaceId, 'status' => $p->enum('status', array_keys(self::STATUS), 'active'),
+        $row = ['address' => $address, 'port_id' => $portId, 'vm_interface_id' => $vmIfaceId, 'status' => $p->enum('status', array_keys(self::STATUS), 'active'),
             'role' => $p->enum('role', array_keys(self::ROLES)), 'dns_name' => $dns, 'description' => $p->string('description', 255), 'comments' => $p->string('comments', 10000)];
         $makePrimary = $p->bool('make_primary');
         if ($makePrimary && null === $port && null === $vmIface) {
@@ -140,22 +133,21 @@ final readonly class IpAddressService
         }
         $p->check();
 
-        return (int) $this->db->transactional(function () use ($id, $row, $host, $vrfId, $makePrimary, $port, $vmIface): int {
-            if ($this->prefixes->enforceUnique($vrfId)) {
-                $this->db->executeStatement('SELECT pg_advisory_xact_lock(hashtext(?))', ['ipam_ip:'.($vrfId ?? 0)]);
-                $dup = $this->db->fetchOne(<<<'SQL'
-                    SELECT coalesce(d.name || ' ' || p.name, vm.name || ' ' || vi.name, 'IP #' || i.id) FROM ipam_ip_address i LEFT JOIN dcim_port p ON p.id = i.port_id LEFT JOIN dcim_device d ON d.id = p.device_id
-                    LEFT JOIN virt_interface vi ON vi.id = i.vm_interface_id LEFT JOIN virt_machine vm ON vm.id = vi.vm_id
-                    WHERE i.vrf_id IS NOT DISTINCT FROM ? AND host(i.address) = ? AND i.id <> ?
-                    SQL, [$vrfId, $host, $id ?? 0]);
-                if (false !== $dup) {
-                    throw new ValidationException(['address' => \sprintf('%s já está em uso (%s).', $host, $dup)]);
-                }
+        return (int) $this->db->transactional(function () use ($id, $row, $host, $makePrimary, $port, $vmIface): int {
+            // IP único na tabela global (sem VRF): trava para dois cadastros simultâneos não duplicarem
+            $this->db->executeStatement('SELECT pg_advisory_xact_lock(hashtext(?))', ['ipam_ip:0']);
+            $dup = $this->db->fetchOne(<<<'SQL'
+                SELECT coalesce(d.name || ' ' || p.name, vm.name || ' ' || vi.name, 'IP #' || i.id) FROM ipam_ip_address i LEFT JOIN dcim_port p ON p.id = i.port_id LEFT JOIN dcim_device d ON d.id = p.device_id
+                LEFT JOIN virt_interface vi ON vi.id = i.vm_interface_id LEFT JOIN virt_machine vm ON vm.id = vi.vm_id
+                WHERE host(i.address) = ? AND i.id <> ?
+                SQL, [$host, $id ?? 0]);
+            if (false !== $dup) {
+                throw new ValidationException(['address' => \sprintf('%s já está em uso (%s).', $host, $dup)]);
             }
             if (null === $id) {
                 $id = (int) $this->db->fetchOne(
-                    'INSERT INTO ipam_ip_address (address, vrf_id, port_id, vm_interface_id, status, role, dns_name, description, comments, created_at, updated_at)
-                     VALUES (CAST(? AS inet), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+                    'INSERT INTO ipam_ip_address (address, port_id, vm_interface_id, status, role, dns_name, description, comments, created_at, updated_at)
+                     VALUES (CAST(? AS inet), ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
                     [...array_values($row), Refs::now(), Refs::now()],
                 );
             } else {
@@ -187,11 +179,11 @@ final readonly class IpAddressService
         }
     }
 
-    private function containingLen(string $host, ?int $vrfId): ?int
+    private function containingLen(string $host): ?int
     {
         $len = $this->db->fetchOne(
-            "SELECT masklen(prefix) FROM ipam_prefix WHERE vrf_id IS NOT DISTINCT FROM ? AND prefix >>= CAST(? AS inet) AND status <> 'container' ORDER BY masklen(prefix) DESC LIMIT 1",
-            [$vrfId, $host],
+            "SELECT masklen(prefix) FROM ipam_prefix WHERE prefix >>= CAST(? AS inet) AND status <> 'container' ORDER BY masklen(prefix) DESC LIMIT 1",
+            [$host],
         );
 
         return false === $len ? null : (int) $len;

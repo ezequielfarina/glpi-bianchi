@@ -27,10 +27,6 @@ class IpAddress
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Vrf::class)]
-    #[ORM\JoinColumn(onDelete: 'RESTRICT')]
-    private ?Vrf $vrf = null;
-
     #[ORM\ManyToOne(targetEntity: Port::class)]
     #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?Port $port = null;
@@ -65,11 +61,6 @@ class IpAddress
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getVrf(): ?Vrf
-    {
-        return $this->vrf;
     }
 
     public function getPort(): ?Port

@@ -47,7 +47,7 @@ const cls = (u: number) => (u >= 95 ? 'bad' : u >= 80 ? 'warn' : '')
         <header class="dc-head">
           <div>
             <p class="muted"><template v-for="x in p.parents" :key="x.id"><RouterLink :to="`/ipam/prefixes/${x.id}`" class="dc-link mono">{{ x.prefix }}</RouterLink> › </template></p>
-            <h1 class="mono">{{ p.prefix }} <span class="pill" :class="IP_STATUS[p.status]?.cls">{{ p.status_label }}</span><span v-if="p.vrf" class="pill pill-muted">{{ p.vrf }}</span>
+            <h1 class="mono">{{ p.prefix }} <span class="pill" :class="IP_STATUS[p.status]?.cls">{{ p.status_label }}</span>
               <span v-if="p.role" class="pill pill-accent">{{ p.role }}</span></h1>
             <p class="muted">{{ [p.branch, p.vlan_vid ? `VLAN ${p.vlan_vid} ${p.vlan}` : null, p.description].filter(Boolean).join(' · ') }}</p>
           </div>
@@ -136,14 +136,14 @@ const cls = (u: number) => (u >= 95 ? 'bad' : u >= 80 ? 'warn' : '')
           </div>
         </div>
         <SpecForm v-if="editing && ch" ctx="prefix" :title="`Editar ${p.prefix}`" :fields="prefixFields(ch, branches.map((b) => ({ value: b.id, label: b.name })), vlans)"
-          :initial="{ prefix: p.prefix, status: p.status, vrf_id: p.vrf_id ?? '', branch_id: p.branch_id ?? '', vlan_id: p.vlan_id ?? '', role: p.role ?? '', is_pool: p.is_pool, mark_utilized: p.mark_utilized, description: p.description ?? '', comments: p.comments ?? '' }"
+          :initial="{ prefix: p.prefix, status: p.status, branch_id: p.branch_id ?? '', vlan_id: p.vlan_id ?? '', role: p.role ?? '', is_pool: p.is_pool, mark_utilized: p.mark_utilized, description: p.description ?? '', comments: p.comments ?? '' }"
           :save="(v) => ipam.savePrefix(p!.id, v)" ok-text="Prefixo atualizado" @close="editing = false" @saved="editing = false; reload()" />
         <SpecForm v-if="child !== null && ch" ctx="prefix" title="Nova sub-rede" :fields="prefixFields(ch, branches.map((b) => ({ value: b.id, label: b.name })), vlans)"
-          :initial="{ prefix: child, status: 'active', vrf_id: p.vrf_id ?? '', branch_id: p.branch_id ?? '' }"
+          :initial="{ prefix: child, status: 'active', branch_id: p.branch_id ?? '' }"
           :save="(v) => ipam.savePrefix(null, v)" ok-text="Sub-rede cadastrada" @close="child = null" @saved="child = null; reload()" />
-        <SpecForm v-if="newRange && ch" ctx="range" title="Nova faixa de IPs" :fields="rangeFields(ch)" :initial="{ status: 'active', vrf_id: p.vrf_id ?? '' }"
+        <SpecForm v-if="newRange && ch" ctx="range" title="Nova faixa de IPs" :fields="rangeFields(ch)" :initial="{ status: 'active' }"
           :save="(v) => ipam.saveRange(null, v)" ok-text="Faixa cadastrada" @close="newRange = false" @saved="newRange = false; reload()" />
-        <IpForm v-if="newIp" :preset="{ address: newIp, vrf_id: p.vrf_id ?? '' }" @close="newIp = null" @saved="newIp = null; reload()" />
+        <IpForm v-if="newIp" :preset="{ address: newIp }" @close="newIp = null" @saved="newIp = null; reload()" />
       </template>
     </LoadState>
   </div>

@@ -26,24 +26,24 @@ final readonly class PrefixService
     /** Tamanho do bloco e utilização calculados no banco (ver get_utilization). */
     private const string COLUMNS = <<<'SQL'
         p.id, p.prefix::text AS prefix, family(p.prefix) AS family, masklen(p.prefix) AS len, p.status, p.role, p.is_pool, p.mark_utilized, p.description,
-        p.vrf_id, v.name AS vrf, p.branch_id, b.name AS branch, p.location_id, l.name AS location, p.vlan_id, vl.vid AS vlan_vid, vl.name AS vlan,
-        (SELECT count(*) FROM ipam_prefix x WHERE x.vrf_id IS NOT DISTINCT FROM p.vrf_id AND p.prefix << x.prefix) AS depth,
+        p.branch_id, b.name AS branch, p.location_id, l.name AS location, p.vlan_id, vl.vid AS vlan_vid, vl.name AS vlan,
+        (SELECT count(*) FROM ipam_prefix x WHERE p.prefix << x.prefix) AS depth,
         power(2::numeric, CASE family(p.prefix) WHEN 4 THEN 32 ELSE 128 END - masklen(p.prefix))::float8 AS size,
         CASE WHEN p.status = 'container' THEN
             (SELECT coalesce(sum(power(2::numeric, CASE family(c.prefix) WHEN 4 THEN 32 ELSE 128 END - masklen(c.prefix))), 0)::float8
-               FROM ipam_prefix c WHERE c.vrf_id IS NOT DISTINCT FROM p.vrf_id AND c.prefix << p.prefix
-                AND NOT EXISTS (SELECT 1 FROM ipam_prefix m WHERE m.vrf_id IS NOT DISTINCT FROM p.vrf_id AND m.prefix << p.prefix AND c.prefix << m.prefix))
+               FROM ipam_prefix c WHERE c.prefix << p.prefix
+                AND NOT EXISTS (SELECT 1 FROM ipam_prefix m WHERE m.prefix << p.prefix AND c.prefix << m.prefix))
         ELSE
-            (SELECT count(*) FROM ipam_ip_address i WHERE i.vrf_id IS NOT DISTINCT FROM p.vrf_id AND inet(host(i.address)) <<= p.prefix
-                AND NOT EXISTS (SELECT 1 FROM ipam_ip_range r WHERE r.mark_utilized AND r.vrf_id IS NOT DISTINCT FROM p.vrf_id
+            (SELECT count(*) FROM ipam_ip_address i WHERE inet(host(i.address)) <<= p.prefix
+                AND NOT EXISTS (SELECT 1 FROM ipam_ip_range r WHERE r.mark_utilized
                                 AND inet(host(i.address)) BETWEEN inet(host(r.start_address)) AND inet(host(r.end_address))))
           + (SELECT coalesce(sum((inet(host(r.end_address)) - inet(host(r.start_address))) + 1), 0) FROM ipam_ip_range r
-              WHERE r.mark_utilized AND r.vrf_id IS NOT DISTINCT FROM p.vrf_id AND inet(host(r.start_address)) <<= p.prefix)
+              WHERE r.mark_utilized AND inet(host(r.start_address)) <<= p.prefix)
         END::float8 AS used,
-        (SELECT count(*) FROM ipam_prefix c WHERE c.vrf_id IS NOT DISTINCT FROM p.vrf_id AND c.prefix << p.prefix) AS children
+        (SELECT count(*) FROM ipam_prefix c WHERE c.prefix << p.prefix) AS children
         SQL;
 
-    private const string JOINS = 'FROM ipam_prefix p LEFT JOIN ipam_vrf v ON v.id = p.vrf_id LEFT JOIN branch b ON b.id = p.branch_id
+    private const string JOINS = 'FROM ipam_prefix p LEFT JOIN branch b ON b.id = p.branch_id
         LEFT JOIN location l ON l.id = p.location_id LEFT JOIN ipam_vlan vl ON vl.id = p.vlan_id';
 
     public function __construct(private Connection $db)
@@ -53,13 +53,12 @@ final readonly class PrefixService
     /**
      * Lista em árvore (ordem do CIDR = pai antes dos filhos), com profundidade e utilização.
      *
-     * @param array{q?: string|null, vrf?: int|null, branch?: int|null, status?: string|null, family?: int|null, within?: string|null} $f
+     * @param array{q?: string|null, branch?: int|null, status?: string|null, family?: int|null, within?: string|null} $f
      *
      * @return list<array<string, mixed>>
      */
     public function list(array $f = []): array
     {
-        $vrf = $f['vrf'] ?? null;
         $within = null;
         if (null !== ($f['within'] ?? null)) {
             $w = IpNet::parse((string) $f['within']);
@@ -68,16 +67,16 @@ final readonly class PrefixService
         $q = $f['q'] ?? null;
         $qNet = null === $q ? null : IpNet::parse($q);
         $rows = $this->db->fetchAllAssociative('SELECT '.self::COLUMNS.' '.self::JOINS.<<<'SQL'
-             WHERE (CAST(:vrf AS int) IS NULL OR p.vrf_id = :vrf OR (CAST(:vrf AS int) = 0 AND p.vrf_id IS NULL))
+             WHERE TRUE
               AND (CAST(:branch AS int) IS NULL OR p.branch_id = :branch)
               AND (CAST(:status AS text) IS NULL OR p.status = :status)
               AND (CAST(:family AS int) IS NULL OR family(p.prefix) = :family)
               AND (CAST(:within AS cidr) IS NULL OR p.prefix << CAST(:within AS cidr))
               AND (CAST(:q AS text) IS NULL OR p.description ILIKE '%' || CAST(:q AS text) || '%' OR p.role ILIKE '%' || CAST(:q AS text) || '%'
                    OR p.prefix::text LIKE CAST(:q AS text) || '%' OR (CAST(:qnet AS inet) IS NOT NULL AND p.prefix >>= CAST(:qnet AS inet)))
-            ORDER BY v.name NULLS FIRST, p.prefix
+            ORDER BY p.prefix
             LIMIT 5000
-            SQL, ['vrf' => 0 === $vrf ? 0 : $vrf, 'branch' => $f['branch'] ?? null, 'status' => $f['status'] ?? null, 'family' => $f['family'] ?? null,
+            SQL, ['branch' => $f['branch'] ?? null, 'status' => $f['status'] ?? null, 'family' => $f['family'] ?? null,
             'within' => $within, 'q' => $q, 'qnet' => null === $qNet ? null : IpNet::text($qNet['bin'])]);
 
         return array_map(fn (array $r): array => $this->decorate($r), $rows);
@@ -88,22 +87,22 @@ final readonly class PrefixService
     {
         $p = $this->db->fetchAssociative('SELECT '.self::COLUMNS.', p.comments '.self::JOINS.' WHERE p.id = ?', [$id]) ?: throw new NotFoundException('Prefixo não encontrado.');
         $p = $this->decorate($p);
-        $params = ['p' => $p['prefix'], 'vrf' => $p['vrf_id']];
+        $params = ['p' => $p['prefix']];
         $p['parents'] = $this->db->fetchAllAssociative(
-            'SELECT id, prefix::text AS prefix, status, description FROM ipam_prefix WHERE vrf_id IS NOT DISTINCT FROM CAST(:vrf AS int) AND CAST(:p AS cidr) << prefix ORDER BY prefix',
+            'SELECT id, prefix::text AS prefix, status, description FROM ipam_prefix WHERE CAST(:p AS cidr) << prefix ORDER BY prefix',
             $params,
         );
         $p['children'] = array_map(fn (array $r): array => $this->decorate($r), $this->db->fetchAllAssociative('SELECT '.self::COLUMNS.' '.self::JOINS.<<<'SQL'
-             WHERE p.vrf_id IS NOT DISTINCT FROM CAST(:vrf AS int) AND p.prefix << CAST(:p AS cidr)
-              AND NOT EXISTS (SELECT 1 FROM ipam_prefix m WHERE m.vrf_id IS NOT DISTINCT FROM CAST(:vrf AS int) AND m.prefix << CAST(:p AS cidr) AND p.prefix << m.prefix)
+             WHERE p.prefix << CAST(:p AS cidr)
+              AND NOT EXISTS (SELECT 1 FROM ipam_prefix m WHERE m.prefix << CAST(:p AS cidr) AND p.prefix << m.prefix)
             ORDER BY p.prefix
             SQL, $params));
-        $p['ranges'] = $this->ranges(['vrf' => $p['vrf_id'] ?? 0, 'within' => (string) $p['prefix']]);
+        $p['ranges'] = $this->ranges(['within' => (string) $p['prefix']]);
         $p['ips'] = $this->db->fetchAllAssociative(<<<'SQL'
             SELECT i.id, host(i.address) AS host, host(i.address) || '/' || masklen(i.address) AS address, i.status, i.role, i.dns_name, i.description,
                    i.port_id, po.name AS port, d.id AS device_id, d.name AS device, (d.primary_ip_id = i.id) AS is_primary
             FROM ipam_ip_address i LEFT JOIN dcim_port po ON po.id = i.port_id LEFT JOIN dcim_device d ON d.id = po.device_id
-            WHERE i.vrf_id IS NOT DISTINCT FROM CAST(:vrf AS int) AND inet(host(i.address)) <<= CAST(:p AS cidr)
+            WHERE inet(host(i.address)) <<= CAST(:p AS cidr)
             ORDER BY i.address LIMIT 4096
             SQL, $params);
         $p['first_available_ip'] = $this->firstAvailableIp($p);
@@ -122,26 +121,26 @@ final readonly class PrefixService
         if (null !== $text && (null === $net || !str_contains($text, '/'))) {
             $p->error('prefix', 'Prefixo inválido (ex.: 192.168.10.0/24 ou 2001:db8::/48).');
         }
-        $vrfId = $p->int('vrf_id', 1);
         $branchId = $p->int('branch_id', 1);
         $locationId = $p->int('location_id', 1);
         $vlanId = $p->int('vlan_id', 1);
-        $this->checkRefs($p, $vrfId, $branchId, $locationId, $vlanId);
+        $this->checkRefs($p, $branchId, $locationId, $vlanId);
         $cidr = null === $net ? null : IpNet::cidr($net['bin'], $net['len']);
-        if (null !== $cidr && $this->enforceUnique($vrfId) && false !== $this->db->fetchOne(
-            'SELECT 1 FROM ipam_prefix WHERE prefix = CAST(? AS cidr) AND vrf_id IS NOT DISTINCT FROM ? AND id <> ?', [$cidr, $vrfId, $id ?? 0],
+        if (null !== $cidr && false !== $this->db->fetchOne(
+            'SELECT 1 FROM ipam_prefix WHERE prefix = CAST(? AS cidr) AND id <> ?',
+            [$cidr, $id ?? 0],
         )) {
             $p->error('prefix', 'Esse prefixo já existe nesta VRF.');
         }
         $p->check();
-        $row = ['prefix' => $cidr, 'vrf_id' => $vrfId, 'branch_id' => $branchId, 'location_id' => $locationId, 'vlan_id' => $vlanId,
+        $row = ['prefix' => $cidr, 'branch_id' => $branchId, 'location_id' => $locationId, 'vlan_id' => $vlanId,
             'status' => $p->enum('status', array_keys(self::STATUS), 'active'), 'role' => $p->string('role', 64), 'is_pool' => $p->bool('is_pool') ? 'true' : 'false',
             'mark_utilized' => $p->bool('mark_utilized') ? 'true' : 'false', 'description' => $p->string('description', 255), 'comments' => $p->string('comments', 10000)];
         $p->check();
         if (null === $id) {
             return (int) $this->db->fetchOne(
-                'INSERT INTO ipam_prefix (prefix, vrf_id, branch_id, location_id, vlan_id, status, role, is_pool, mark_utilized, description, comments, created_at, updated_at)
-                 VALUES (CAST(? AS cidr), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+                'INSERT INTO ipam_prefix (prefix, branch_id, location_id, vlan_id, status, role, is_pool, mark_utilized, description, comments, created_at, updated_at)
+                 VALUES (CAST(? AS cidr), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id',
                 [...array_values($row), Refs::now(), Refs::now()],
             );
         }
@@ -162,7 +161,7 @@ final readonly class PrefixService
     /** Próximo IP livre do prefixo, com a máscara do prefixo (ex.: 192.168.10.51/24). */
     public function nextIp(int $id): ?string
     {
-        $p = $this->db->fetchAssociative('SELECT id, prefix::text AS prefix, vrf_id, is_pool, status FROM ipam_prefix WHERE id = ?', [$id]) ?: throw new NotFoundException('Prefixo não encontrado.');
+        $p = $this->db->fetchAssociative('SELECT id, prefix::text AS prefix, is_pool, status FROM ipam_prefix WHERE id = ?', [$id]) ?: throw new NotFoundException('Prefixo não encontrado.');
 
         return $this->firstAvailableIp($p);
     }
@@ -170,14 +169,12 @@ final readonly class PrefixService
     // ------------------------------------------------------------------ faixas
 
     /**
-     * @param array{q?: string|null, vrf?: int|null, within?: string|null, status?: string|null} $f
+     * @param array{q?: string|null, within?: string|null, status?: string|null} $f
      *
      * @return list<array<string, mixed>>
      */
     public function ranges(array $f = []): array
     {
-        $vrf = $f['vrf'] ?? null;
-
         return array_map(static function (array $r): array {
             $r['status_label'] = self::RANGE_STATUS[(string) $r['status']] ?? $r['status'];
             $r['size'] = (float) $r['size'];
@@ -186,17 +183,15 @@ final readonly class PrefixService
         }, $this->db->fetchAllAssociative(<<<'SQL'
             SELECT r.id, host(r.start_address) AS start_address, host(r.end_address) AS end_address, masklen(r.start_address) AS len,
                    (inet(host(r.end_address)) - inet(host(r.start_address)) + 1)::float8 AS size, r.status, r.role, r.mark_utilized, r.description,
-                   r.vrf_id, v.name AS vrf,
-                   (SELECT count(*) FROM ipam_ip_address i WHERE i.vrf_id IS NOT DISTINCT FROM r.vrf_id
-                       AND inet(host(i.address)) BETWEEN inet(host(r.start_address)) AND inet(host(r.end_address))) AS used
-            FROM ipam_ip_range r LEFT JOIN ipam_vrf v ON v.id = r.vrf_id
-            WHERE (CAST(:vrf AS int) IS NULL OR r.vrf_id = :vrf OR (CAST(:vrf AS int) = 0 AND r.vrf_id IS NULL))
+                   (SELECT count(*) FROM ipam_ip_address i WHERE inet(host(i.address)) BETWEEN inet(host(r.start_address)) AND inet(host(r.end_address))) AS used
+            FROM ipam_ip_range r
+            WHERE TRUE
               AND (CAST(:within AS cidr) IS NULL OR inet(host(r.start_address)) <<= CAST(:within AS cidr))
               AND (CAST(:status AS text) IS NULL OR r.status = :status)
               AND (CAST(:q AS text) IS NULL OR r.description ILIKE '%' || CAST(:q AS text) || '%' OR r.role ILIKE '%' || CAST(:q AS text) || '%'
                    OR host(r.start_address) LIKE CAST(:q AS text) || '%')
-            ORDER BY v.name NULLS FIRST, r.start_address
-            SQL, ['vrf' => $vrf, 'within' => $f['within'] ?? null, 'status' => $f['status'] ?? null, 'q' => $f['q'] ?? null]));
+            ORDER BY r.start_address
+            SQL, ['within' => $f['within'] ?? null, 'status' => $f['status'] ?? null, 'q' => $f['q'] ?? null]));
     }
 
     /** @param array<string, mixed> $data */
@@ -205,8 +200,6 @@ final readonly class PrefixService
         $p = new Payload($data);
         $startText = $p->string('start_address', 64, required: true);
         $endText = $p->string('end_address', 64, required: true);
-        $vrfId = $p->int('vrf_id', 1);
-        $this->checkRefs($p, $vrfId, null, null, null);
         $start = null === $startText ? null : IpNet::parse($startText);
         $end = null === $endText ? null : IpNet::parse($endText);
         if (null !== $startText && null === $start) {
@@ -224,7 +217,7 @@ final readonly class PrefixService
             throw new ValidationException(['end_address' => 'O fim precisa ser maior ou igual ao início.']);
         }
         // máscara: a informada no início, senão a do menor prefixo que contém a faixa (como no formulário do NetBox)
-        $len = str_contains((string) $startText, '/') ? $start['len'] : $this->containingLen(IpNet::text($start['bin']), $vrfId) ?? $start['bits'];
+        $len = str_contains((string) $startText, '/') ? $start['len'] : $this->containingLen(IpNet::text($start['bin'])) ?? $start['bits'];
         $s = IpNet::text($start['bin']).'/'.$len;
         $e = IpNet::text($end['bin']).'/'.$len;
         if (IpNet::network($start['bin'], $len) !== IpNet::network($end['bin'], $len)) {
@@ -232,20 +225,20 @@ final readonly class PrefixService
         }
         $overlap = $this->db->fetchOne(<<<'SQL'
             SELECT host(start_address) || ' – ' || host(end_address) FROM ipam_ip_range
-            WHERE vrf_id IS NOT DISTINCT FROM ? AND id <> ?
+            WHERE id <> ?
               AND inet(host(start_address)) <= inet(host(CAST(? AS inet))) AND inet(host(end_address)) >= inet(host(CAST(? AS inet)))
             LIMIT 1
-            SQL, [$vrfId, $id ?? 0, $e, $s]);
+            SQL, [$id ?? 0, $e, $s]);
         if (false !== $overlap) {
             throw new ValidationException(['start_address' => 'Sobrepõe a faixa '.$overlap.'.']);
         }
-        $row = ['start_address' => $s, 'end_address' => $e, 'vrf_id' => $vrfId, 'status' => $p->enum('status', array_keys(self::RANGE_STATUS), 'active'),
+        $row = ['start_address' => $s, 'end_address' => $e, 'status' => $p->enum('status', array_keys(self::RANGE_STATUS), 'active'),
             'role' => $p->string('role', 64), 'mark_utilized' => $p->bool('mark_utilized') ? 'true' : 'false', 'description' => $p->string('description', 255)];
         $p->check();
         if (null === $id) {
             return (int) $this->db->fetchOne(
-                'INSERT INTO ipam_ip_range (start_address, end_address, vrf_id, status, role, mark_utilized, description, created_at, updated_at)
-                 VALUES (CAST(? AS inet), CAST(? AS inet), ?, ?, ?, ?, ?, ?, ?) RETURNING id',
+                'INSERT INTO ipam_ip_range (start_address, end_address, status, role, mark_utilized, description, created_at, updated_at)
+                 VALUES (CAST(? AS inet), CAST(? AS inet), ?, ?, ?, ?, ?, ?) RETURNING id',
                 [...array_values($row), Refs::now(), Refs::now()],
             );
         }
@@ -266,13 +259,13 @@ final readonly class PrefixService
     /** Próximo IP livre dentro da faixa. */
     public function nextIpInRange(int $id): ?string
     {
-        $r = $this->db->fetchAssociative('SELECT host(start_address) AS s, host(end_address) AS e, masklen(start_address) AS len, vrf_id FROM ipam_ip_range WHERE id = ?', [$id])
+        $r = $this->db->fetchAssociative('SELECT host(start_address) AS s, host(end_address) AS e, masklen(start_address) AS len FROM ipam_ip_range WHERE id = ?', [$id])
             ?: throw new NotFoundException('Faixa não encontrada.');
         $first = (string) inet_pton((string) $r['s']);
         $last = (string) inet_pton((string) $r['e']);
         $used = array_map(static fn (string $h): array => [(string) inet_pton($h), (string) inet_pton($h)], array_map('strval', $this->db->fetchFirstColumn(
-            'SELECT host(address) FROM ipam_ip_address WHERE vrf_id IS NOT DISTINCT FROM ? AND inet(host(address)) BETWEEN CAST(? AS inet) AND CAST(? AS inet)',
-            [$r['vrf_id'], $r['s'], $r['e']],
+            'SELECT host(address) FROM ipam_ip_address WHERE inet(host(address)) BETWEEN CAST(? AS inet) AND CAST(? AS inet)',
+            [$r['s'], $r['e']],
         )));
         $free = IpNet::firstFree($first, $last, $used);
 
@@ -317,15 +310,16 @@ final readonly class PrefixService
         [$first, $last] = IpNet::usable($net['bin'], $net['len'], (bool) $p['is_pool']);
         $used = [];
         foreach ($this->db->fetchFirstColumn(
-            'SELECT host(address) FROM ipam_ip_address WHERE vrf_id IS NOT DISTINCT FROM CAST(? AS int) AND inet(host(address)) <<= CAST(? AS cidr)', [$p['vrf_id'], $p['prefix']],
+            'SELECT host(address) FROM ipam_ip_address WHERE inet(host(address)) <<= CAST(? AS cidr)',
+            [$p['prefix']],
         ) as $h) {
             $b = (string) inet_pton((string) $h);
             $used[] = [$b, $b];
         }
         // faixas (ex.: pool DHCP) nunca entram como "próximo IP livre" para endereço estático
         foreach ($this->db->fetchAllAssociative(
-            'SELECT host(start_address) AS s, host(end_address) AS e FROM ipam_ip_range WHERE vrf_id IS NOT DISTINCT FROM CAST(? AS int) AND inet(host(start_address)) <<= CAST(? AS cidr)',
-            [$p['vrf_id'], $p['prefix']],
+            'SELECT host(start_address) AS s, host(end_address) AS e FROM ipam_ip_range WHERE inet(host(start_address)) <<= CAST(? AS cidr)',
+            [$p['prefix']],
         ) as $r) {
             $used[] = [(string) inet_pton((string) $r['s']), (string) inet_pton((string) $r['e'])];
         }
@@ -425,26 +419,18 @@ final readonly class PrefixService
         return $out;
     }
 
-    private function containingLen(string $host, ?int $vrfId): ?int
+    private function containingLen(string $host): ?int
     {
         $len = $this->db->fetchOne(
-            'SELECT masklen(prefix) FROM ipam_prefix WHERE vrf_id IS NOT DISTINCT FROM ? AND prefix >>= CAST(? AS inet) ORDER BY masklen(prefix) DESC LIMIT 1',
-            [$vrfId, $host],
+            'SELECT masklen(prefix) FROM ipam_prefix WHERE prefix >>= CAST(? AS inet) ORDER BY masklen(prefix) DESC LIMIT 1',
+            [$host],
         );
 
         return false === $len ? null : (int) $len;
     }
 
-    public function enforceUnique(?int $vrfId): bool
+    private function checkRefs(Payload $p, ?int $branchId, ?int $locationId, ?int $vlanId): void
     {
-        return null === $vrfId || (bool) $this->db->fetchOne('SELECT enforce_unique FROM ipam_vrf WHERE id = ?', [$vrfId]);
-    }
-
-    private function checkRefs(Payload $p, ?int $vrfId, ?int $branchId, ?int $locationId, ?int $vlanId): void
-    {
-        if (null !== $vrfId && false === $this->db->fetchOne('SELECT 1 FROM ipam_vrf WHERE id = ?', [$vrfId])) {
-            $p->error('vrf_id', 'VRF não encontrada.');
-        }
         if (null !== $branchId && false === $this->db->fetchOne('SELECT 1 FROM branch WHERE id = ?', [$branchId])) {
             $p->error('branch_id', 'Filial não encontrada.');
         }

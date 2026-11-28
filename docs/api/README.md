@@ -83,10 +83,10 @@ Leitura para qualquer perfil; escrita para Técnico/Administrador; toda escrita 
 | GET · POST · PUT · DELETE | `/api/ui/dcim/cables[/{id}]` | lista (`q`, `branch`, `device`, `type`, `status`) · `{label, type, status, color, length, length_unit, a_terminations: [{type: "port"\|"circuit", id}], b_terminations}` |
 | GET · POST · PUT · DELETE | `/api/ui/circuits[/{id}]` · `/circuits/types[/{id}]` | circuitos (`q`, `branch`, `supplier`, `status`) · `{supplier_id, type_id, cid, status, commit_rate_kbps, contract_id, install_date, termination_date}` |
 | PUT · DELETE | `/api/ui/circuits/{id}/terminations/{A\|Z}` · `/circuits/terminations/{id}` | lado do circuito `{branch_id, location_id \| provider_network, xconnect_id, pp_info, port_speed_kbps}` |
-| GET · POST · PUT · DELETE | `/api/ui/ipam/prefixes[/{id}]` · `/prefixes/{id}/next-ip` | árvore com `depth`/`utilization` (`q` aceita IP contido, `vrf=0` = global, `within`) · detalhe (pais, filhos, faixas, IPs, `slots`, `available_prefixes`) · próximo IP livre |
-| GET · POST · PUT · DELETE | `/api/ui/ipam/ranges[/{id}]` · `/ranges/{id}/next-ip` | faixas `{start_address, end_address, vrf_id, status, role, mark_utilized}` |
-| GET · POST · PUT · DELETE | `/api/ui/ipam/ip-addresses[/{id}]` | IPs (`q` aceita rede `10.1.0.0/16`, `assigned`, `device`) · `{address, vrf_id, port_id, status, role, dns_name, make_primary}` |
-| GET · POST · PUT · DELETE | `/api/ui/ipam/vrfs` · `/vlan-groups` · `/vlans[/{id}]` | VRFs, grupos e VLANs (detalhe da VLAN com portas e prefixos) |
+| GET · POST · PUT · DELETE | `/api/ui/ipam/prefixes[/{id}]` · `/prefixes/{id}/next-ip` | árvore com `depth`/`utilization` (`q` aceita IP contido, `within`) · detalhe (pais, filhos, faixas, IPs, `slots`, `available_prefixes`) · próximo IP livre |
+| GET · POST · PUT · DELETE | `/api/ui/ipam/ranges[/{id}]` · `/ranges/{id}/next-ip` | faixas `{start_address, end_address, status, role, mark_utilized}` |
+| GET · POST · PUT · DELETE | `/api/ui/ipam/ip-addresses[/{id}]` | IPs (`q` aceita rede `10.1.0.0/16`, `assigned`, `device`) · `{address, port_id, status, role, dns_name, make_primary}` |
+| GET · POST · PUT · DELETE | `/api/ui/ipam/vlan-groups` · `/vlans[/{id}]` | grupos e VLANs (detalhe da VLAN com portas e prefixos) |
 | GET | `/api/ui/dcim/topology?branch&mode=logical\|physical&vms=1` | grafo do mapa `{nodes: [{id, kind: device\|circuit\|cloud\|cluster\|vm, …}], links: [{source, target, kind: data\|power\|console\|member\|virtual\|provider, color, via, …}]}` |
 | GET | `/api/ui/dcim/devices/{id}/path-to-internet` | `{found, start, segments: [{from_port, to_kind, to_device, to_port, cid, provider_network, cables, trace}], reason: no_cable\|no_route\|null}` |
 

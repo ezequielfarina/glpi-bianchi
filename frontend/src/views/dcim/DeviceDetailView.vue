@@ -200,7 +200,7 @@ const draw = (p: PortRow) => [p.allocated_draw ? `${p.allocated_draw} W` : null,
                 <button v-if="interfaces.length" class="edit-only btn" type="button" @click="addIp = {}"><AppIcon name="plus" :size="15" /> IP</button></div>
               <p v-if="!d.ips.length" class="empty">Nenhum IP nas interfaces.</p>
               <ul v-else class="ips">
-                <li v-for="ip in d.ips" :key="ip.id"><span class="mono strong">{{ ip.address }}</span> <span class="muted dc-small">{{ ip.port }}{{ ip.vrf ? ' · ' + ip.vrf : '' }}{{ ip.dns_name ? ' · ' + ip.dns_name : '' }}</span>
+                <li v-for="ip in d.ips" :key="ip.id"><span class="mono strong">{{ ip.address }}</span> <span class="muted dc-small">{{ ip.port }}{{ ip.dns_name ? ' · ' + ip.dns_name : '' }}</span>
                   <span v-if="ip.id === d.primary_ip_id" class="pill pill-accent">primário</span>
                   <span v-if="ip.status !== 'active'" class="pill" :class="IP_STATUS[ip.status]?.cls">{{ IP_STATUS[ip.status]?.label }}</span>
                   <button class="edit-only btn btn-icon" type="button" :aria-label="`Excluir ${ip.address}`" @click="removeIp(ip.id)"><AppIcon name="trash" :size="14" /></button></li>

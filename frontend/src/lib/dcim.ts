@@ -13,7 +13,7 @@ export interface DcimChoices {
   location_kinds: Opt[]; rack_widths: number[]; roles: DeviceRole[]; role_icons: Opt[]
 }
 export interface IpamChoices {
-  prefix_status: Opt[]; range_status: Opt[]; ip_status: Opt[]; ip_roles: Opt[]; vlan_status: Opt[]; vrfs: Vrf[]; vlan_groups: VlanGroup[]
+  prefix_status: Opt[]; range_status: Opt[]; ip_status: Opt[]; ip_roles: Opt[]; vlan_status: Opt[]; vlan_groups: VlanGroup[]
 }
 export interface LocationRow {
   id: number; parent_id: number | null; name: string; code: string | null; kind: string; kind_label: string; description: string | null
@@ -78,7 +78,7 @@ export interface DeviceDetail {
   rack_id: number | null; rack: string | null; device_type_id: number; device_type: string; manufacturer: string; u_height: number; is_full_depth: boolean
   role_id: number; role: string; color: string; asset_id: number | null; asset_uuid: string | null; asset_name: string | null; asset_inventory: string | null
   asset_serial: string | null; primary_ip_id: number | null; primary_ip: string | null; ports: PortRow[]
-  ips: { id: number; address: string; status: string; role: string | null; dns_name: string | null; port_id: number; port: string; vrf: string | null }[]
+  ips: { id: number; address: string; status: string; role: string | null; dns_name: string | null; port_id: number; port: string }[]
   power: { outlets: number; used_outlets: number; allocated_w: number; maximum_w: number | null } | null
   attachments: Attachment[]; type_photo: string | null
   cluster_id: number | null; cluster: string | null; cluster_type: string | null; cpu_threads: number | null; memory_mb: number | null; storage_gb: number | null
@@ -109,7 +109,6 @@ export interface Trace {
   origin: TraceNode; hops: TraceHop[]; complete: boolean; active: boolean; split: boolean; ends: TraceNode[][]; cables: number
   length_m: number | null; bidirectional: boolean
 }
-export interface Vrf { id: number; name: string; rd: string | null; enforce_unique: boolean; description: string | null; prefixes: number; ips: number }
 export interface VlanGroup { id: number; name: string; branch_id: number | null; branch: string | null; min_vid: number; max_vid: number; description: string | null; vlans: number }
 export interface VlanRow {
   id: number; vid: number; name: string; status: string; role: string | null; description: string | null; group_id: number | null; group: string | null
@@ -117,13 +116,13 @@ export interface VlanRow {
 }
 export interface PrefixRow {
   id: number; prefix: string; family: number; len: number; status: string; status_label: string; role: string | null; is_pool: boolean; mark_utilized: boolean
-  description: string | null; vrf_id: number | null; vrf: string | null; branch_id: number | null; branch: string | null; location_id: number | null
+  description: string | null; branch_id: number | null; branch: string | null; location_id: number | null
   location: string | null; vlan_id: number | null; vlan_vid: number | null; vlan: string | null; depth: number; size: number; used: number; usable: number
   utilization: number; children: number
 }
 export interface RangeRow {
   id: number; start_address: string; end_address: string; len: number; size: number; status: string; status_label: string; role: string | null
-  mark_utilized: boolean; description: string | null; vrf_id: number | null; vrf: string | null; used: number
+  mark_utilized: boolean; description: string | null; used: number
 }
 export interface PrefixIp {
   id: number; host: string; address: string; status: string; role: string | null; dns_name: string | null; description: string | null
@@ -136,7 +135,7 @@ export interface PrefixDetail extends Omit<PrefixRow, 'children'> {
 }
 export interface IpRow {
   id: number; address: string; family: number; status: string; role: string | null; dns_name: string | null; description: string | null
-  vrf_id: number | null; vrf: string | null; port_id: number | null; port: string | null; device_id: number | null; device: string | null
+  port_id: number | null; port: string | null; device_id: number | null; device: string | null
   branch: string | null; is_primary: boolean | null; prefix_id: number | null; prefix: string | null; comments?: string | null
   vm_interface_id?: number | null; vm_interface?: string | null; vm_id?: number | null; vm?: string | null
 }
@@ -208,24 +207,21 @@ export interface AssetDevice {
 
 export const ipam = {
   choices: () => get<IpamChoices>('/ipam/choices'),
-  prefixes: (f: { q?: string; vrf?: number | null; branch?: number | null; status?: string; family?: number | null; within?: string } = {}) =>
+  prefixes: (f: { q?: string; branch?: number | null; status?: string; family?: number | null; within?: string } = {}) =>
     get<{ items: PrefixRow[] }>(`/ipam/prefixes${qs(f)}`),
   prefix: (id: number) => get<PrefixDetail>(`/ipam/prefixes/${id}`),
   nextIp: (id: number) => get<{ address: string | null }>(`/ipam/prefixes/${id}/next-ip`),
   savePrefix: (id: number | null, b: Body) => save('/ipam/prefixes', id, b),
   deletePrefix: (id: number) => del('/ipam/prefixes', id),
-  ranges: (f: { q?: string; vrf?: number | null; status?: string } = {}) => get<{ items: RangeRow[] }>(`/ipam/ranges${qs(f)}`),
+  ranges: (f: { q?: string; status?: string } = {}) => get<{ items: RangeRow[] }>(`/ipam/ranges${qs(f)}`),
   nextIpInRange: (id: number) => get<{ address: string | null }>(`/ipam/ranges/${id}/next-ip`),
   saveRange: (id: number | null, b: Body) => save('/ipam/ranges', id, b),
   deleteRange: (id: number) => del('/ipam/ranges', id),
-  ips: (f: { q?: string; vrf?: number | null; status?: string; role?: string; branch?: number | null; device?: number | null; assigned?: boolean | null } = {}) =>
+  ips: (f: { q?: string; status?: string; role?: string; branch?: number | null; device?: number | null; assigned?: boolean | null } = {}) =>
     get<{ items: IpRow[] }>(`/ipam/ip-addresses${qs({ ...f, assigned: f.assigned === null || f.assigned === undefined ? undefined : f.assigned ? 'true' : 'false' })}`),
   ip: (id: number) => get<IpRow>(`/ipam/ip-addresses/${id}`),
   saveIp: (id: number | null, b: Body) => save('/ipam/ip-addresses', id, b),
   deleteIp: (id: number) => del('/ipam/ip-addresses', id),
-  vrfs: () => get<{ items: Vrf[] }>('/ipam/vrfs'),
-  saveVrf: (id: number | null, b: Body) => save('/ipam/vrfs', id, b),
-  deleteVrf: (id: number) => del('/ipam/vrfs', id),
   vlanGroups: () => get<{ items: VlanGroup[] }>('/ipam/vlan-groups'),
   saveVlanGroup: (id: number | null, b: Body) => save('/ipam/vlan-groups', id, b),
   deleteVlanGroup: (id: number) => del('/ipam/vlan-groups', id),

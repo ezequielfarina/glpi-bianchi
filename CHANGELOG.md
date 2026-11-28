@@ -4,6 +4,9 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Unreleased]
 
+### Removido
+- **VRF** do IPAM (ADR-0021): campo, filtros, aba e API `/api/ui/ipam/vrfs`. Prefixos, faixas e IPs passam a ser únicos globalmente; a migration aborta se algum registro estiver em VRF.
+
 ### Adicionado — Wi-Fi / UniFi: identidade de MAC (ADR-0020)
 - Cadastro do controller UniFi da VM (admin local com cookie+CSRF, API key no UniFi OS/OS Server ou proxy da nuvem), com
   **pin do certificado** autoassinado ("Ler certificado") e credencial cifrada.
