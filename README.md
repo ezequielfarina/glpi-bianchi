@@ -169,6 +169,7 @@ descritas em [`CLAUDE.md`](CLAUDE.md): **banco** (`migrations/`, `docs/database/
 | [docs/tools/scanner-de-rede.md](docs/tools/scanner-de-rede.md) | scanner de rede (capabilities, SNMP, FortiGate) e calculadora |
 | [docs/dcim/infraestrutura.md](docs/dcim/infraestrutura.md) | locais, racks, equipamentos, cabos e rastreamento, circuitos, energia, IPAM — passo a passo e convenções |
 | [docs/virtualization/virtualizacao-e-mapa.md](docs/virtualization/virtualizacao-e-mapa.md) | clusters, hosts, VMs, caminho até a internet e mapa da rede |
+| [docs/vpn/tuneis-ipsec.md](docs/vpn/tuneis-ipsec.md) | VPN: importar túneis IPsec do FortiGate, pareamento, diagnóstico e troubleshooting |
 | [docs/wifi/unifi-identidade-mac.md](docs/wifi/unifi-identidade-mac.md) | Wi-Fi: controller UniFi, sites e redes, cadastro de MAC com pessoa/aparelho, filtro de MAC |
 | [docs/security/auditoria-2026-11.md](docs/security/auditoria-2026-11.md) | auditoria de segurança e testes de invasão (achados, correções, ações) |
 | [docs/security/criptografia.md](docs/security/criptografia.md) | criptografia: chaves, rotação, backup cifrado, ZFS no host, agentes com credencial |

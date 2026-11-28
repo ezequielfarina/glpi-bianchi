@@ -26,3 +26,4 @@ Para uma nova decisão, copie [`0000-template.md`](0000-template.md) usando o pr
 | [0019](0019-criptografia-em-repouso.md) | Criptografia em repouso (XChaCha20-Poly1305, anexos, inventário bruto), rotação de chave e backup cifrado | aceito |
 | [0020](0020-identidade-mac-unifi.md) | Identidade de MAC e filtro de MAC das redes Wi-Fi do UniFi (API clássica, PUT parcial, merge) | aceito |
 | [0021](0021-remover-vrf.md) | Remover VRF do IPAM (só tabela global + VLANs) | aceito |
+| [0022](0022-tuneis-vpn-ipsec.md) | Documentação de túneis VPN IPsec importada do FortiGate (sem PSK) | aceito |

@@ -104,6 +104,17 @@ Leitura para qualquer perfil; escrita para Técnico/Administrador; toda escrita 
 
 IP de VM: `POST /api/ui/ipam/ip-addresses` com `vm_interface_id` (e `make_primary`).
 
+### VPN IPsec (`/api/ui/vpn` — ADR-0022)
+
+Leitura: todos. Importar e documentar: Técnico. `config_text` é mascarado na auditoria e nunca gravado.
+
+| Método | Rota | Uso |
+|---|---|---|
+| GET | `/api/ui/vpn/tunnels` | lista (`q` aceita nome, IP do peer, rede, parceiro; `device`, `branch`, `status`, `topology`) |
+| GET · PUT · DELETE | `/tunnels/{id}` | detalhe com `phase2`, `networks` (prefixo IPAM), `peer`, `compat {verdict, checks[]}`, `spokes` · documentação `{status, peer_label, supplier_id, circuit_id, peer_tunnel_id, local_ip, psk_location, description, comments}` |
+| POST | `/import/preview` | `{device_id, config_text}` → `{hostname, model, version, secrets_removed, warnings, tunnels[{action: new/update/unchanged}], missing}` sem gravar |
+| POST | `/import` | `{device_id, config_text}` → `{created, updated, unchanged, missing, secrets_removed}` |
+
 ### Wi-Fi / UniFi (`/api/ui/wifi` — ADR-0020)
 
 Controllers e "ligar filtro": só **Administrador**. Identidades, sincronizar e aplicar: **Técnico**. Leitura: todos.

@@ -125,6 +125,11 @@ export const HELP: Record<string, Help> = {
   'vm_iface.mtu': { t: 'MTU da interface (padrão 1500; jumbo 9000 em storage).', ex: '1500' },
   'disk.name': { t: 'Identificação do disco no hipervisor.', ex: 'scsi0, Hard disk 1' },
   'disk.size_gb': { t: 'Tamanho provisionado em GB.', ex: '100' },
+  // VPN IPsec (ADR-0022)
+  'vpn.peer_label': { t: 'Quem está do outro lado, para quem lê a documentação. Para FortiGate da empresa o par é achado sozinho pelos IPs.', ex: 'Banco X — arquivo de cobrança' },
+  'vpn.peer_tunnel_id': { t: 'Só se o par automático não achar (WAN com IP dinâmico): escolha o túnel do outro FortiGate.', ex: 'FGT-CVL · VPN-MATRIZ' },
+  'vpn.local_ip': { t: 'IP público de saída deste lado. Vem da importação (local-gw ou IP da WAN); informe se a WAN é DHCP/PPPoE com IP fixo do contrato.', ex: '200.150.10.2' },
+  'vpn.psk_location': { t: 'NÃO cole a chave. Informe onde ela está guardada, para quem precisar trocar.', ex: 'Cofre TI › VPN › Cascavel' },
   // Wi-Fi / UniFi (ADR-0020)
   'unifi.name': { t: 'Nome para reconhecer o controller aqui no painel.', ex: 'UniFi VM Matriz' },
   'unifi.auth_mode': { t: 'Admin local: usuário criado no UniFi só para a integração (sem 2FA). API key: Configurações → Control Plane → Integrations (UniFi OS/OS Server). Nuvem: só se o CT não alcança a VM.', ex: 'Admin local' },

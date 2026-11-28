@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Request;
 final readonly class AuditRecorder
 {
     private const int MAX_DETAILS = 16_384;
-    private const string SECRET_KEYS = '/pass|secret|token|totp|otp|^code$|community|license_key|^key$|api_key|chat_id|webhook/i';
+    private const string SECRET_KEYS = '/pass|secret|token|totp|otp|^code$|community|license_key|^key$|api_key|chat_id|webhook|^config_text$/i';
 
     public function __construct(
         private Connection $db,
@@ -82,6 +82,7 @@ final readonly class AuditRecorder
             'unifi_site' === $type && $isInt => "SELECT coalesce(s.description, s.site_ref) || ' — ' || c.name FROM unifi_site s JOIN unifi_controller c ON c.id = s.controller_id WHERE s.id = ?",
             'unifi_wlan' === $type && $isInt => "SELECT w.name || ' @ ' || coalesce(s.description, s.site_ref) FROM unifi_wlan w JOIN unifi_site s ON s.id = w.site_id WHERE w.id = ?",
             'mac_identity' === $type && $isInt => "SELECT mac || coalesce(' — ' || person_name, '') FROM mac_identity WHERE id = ?",
+            'vpn_tunnel' === $type && $isInt => "SELECT t.name || ' — ' || d.name FROM vpn_tunnel t JOIN dcim_device d ON d.id = t.device_id WHERE t.id = ?",
             'agent' === $type => 'SELECT ? ',
             default => null,
         };

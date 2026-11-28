@@ -4,6 +4,15 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Unreleased]
 
+### Adicionado — VPN IPsec (ADR-0022)
+- **Importar túneis do FortiGate** colando `show [full-configuration] vpn ipsec …` ou o backup `.conf`: fase 1 (interface e policy-based),
+  fases 2 com seletores resolvidos (objetos e grupos de endereço), IP local, IP do túnel, rotas estáticas pelo túnel, zona SD-WAN e VDOMs.
+- **PSK nunca guardada**: `ENC …`, psksecret, senhas e chaves privadas descartadas na leitura; texto colado não é gravado nem auditado.
+- **Pareamento automático** dos dois lados pelos IPs e **diagnóstico**: IKE, autenticação, proposta/DH com interseção, PFS, keylife e
+  seletores da fase 2 espelhados; fase 1 lado a lado.
+- Redes do túnel ligadas aos prefixos do IPAM; documentação (outro lado, fornecedor, circuito, onde está a PSK); comandos de troubleshooting.
+- Reimportação idempotente: túnel que saiu da config fica marcado, documentação preservada.
+
 ### Removido
 - **VRF** do IPAM (ADR-0021): campo, filtros, aba e API `/api/ui/ipam/vrfs`. Prefixos, faixas e IPs passam a ser únicos globalmente; a migration aborta se algum registro estiver em VRF.
 

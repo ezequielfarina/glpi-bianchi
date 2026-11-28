@@ -3,6 +3,7 @@ monolog:
         - deprecation
         - inventory
         - wifi
+        - vpn
 
 when@dev:
     monolog:

@@ -18,7 +18,7 @@ final class AuditCatalog
         'licenses' => 'Licenças', 'attachments' => 'Anexos', 'lookups' => 'Cadastros auxiliares', 'stock' => 'Estoque',
         'invoices' => 'Notas fiscais', 'tools' => 'Ferramentas', 'monitor' => 'Monitoramento', 'users' => 'Usuários',
         'account' => 'Minha conta', 'settings' => 'Configurações', 'agents' => 'Agentes',
-        'dcim' => 'Infraestrutura física', 'cabling' => 'Cabeamento', 'ipam' => 'IPAM', 'circuits' => 'Circuitos', 'virtualization' => 'Virtualização', 'wifi' => 'Wi-Fi (UniFi)', 'other' => 'Outros',
+        'dcim' => 'Infraestrutura física', 'cabling' => 'Cabeamento', 'ipam' => 'IPAM', 'circuits' => 'Circuitos', 'virtualization' => 'Virtualização', 'wifi' => 'Wi-Fi (UniFi)', 'vpn' => 'VPN (IPsec)', 'other' => 'Outros',
     ];
 
     /** @var array<string, array{0: string, 1: string, 2: string, 3: string|null, 4: string|null}> */
@@ -178,6 +178,11 @@ final class AuditCatalog
         'ui_virt_disk_delete' => ['vm_disk.deleted', 'Disco da VM excluído', 'virtualization', 'vm_disk', 'id'],
         // configurações
         'ui_settings_update' => ['settings.updated', 'Configurações alteradas', 'settings', null, null],
+        // VPN IPsec (ADR-0022)
+        'ui_vpn_import_preview' => ['vpn.import_previewed', 'Prévia de importação de túneis IPsec', 'vpn', 'device', null],
+        'ui_vpn_import' => ['vpn.imported', 'Túneis IPsec importados do FortiGate', 'vpn', 'device', null],
+        'ui_vpn_tunnel_update' => ['vpn_tunnel.updated', 'Documentação de túnel IPsec alterada', 'vpn', 'vpn_tunnel', 'id'],
+        'ui_vpn_tunnel_delete' => ['vpn_tunnel.deleted', 'Túnel IPsec excluído', 'vpn', 'vpn_tunnel', 'id'],
         // Wi-Fi / UniFi (ADR-0020)
         'ui_wifi_controller_create' => ['unifi_controller.created', 'Controller UniFi cadastrado', 'wifi', 'unifi_controller', null],
         'ui_wifi_controller_update' => ['unifi_controller.updated', 'Controller UniFi alterado', 'wifi', 'unifi_controller', 'id'],

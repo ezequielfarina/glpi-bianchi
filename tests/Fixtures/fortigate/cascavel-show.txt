@@ -1,0 +1,25 @@
+FGT-CVL # show vpn ipsec phase1-interface
+config vpn ipsec phase1-interface
+    edit "VPN-MATRIZ"
+        set interface "wan1"
+        set ike-version 2
+        set peertype any
+        set net-device disable
+        set proposal aes256-sha256
+        set dhgrp 14
+        set local-gw 187.45.60.10
+        set remote-gw 200.150.10.2
+        set psksecret ENC xyzCVLSIDESECRET==
+    next
+end
+
+FGT-CVL # show vpn ipsec phase2-interface
+config vpn ipsec phase2-interface
+    edit "VPN-MATRIZ-P2"
+        set phase1name "VPN-MATRIZ"
+        set proposal aes256-sha256
+        set dhgrp 5
+        set src-subnet 192.168.30.0 255.255.255.0
+        set dst-subnet 192.168.10.0 255.255.255.0
+    next
+end

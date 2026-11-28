@@ -26,6 +26,8 @@ const allNav: { to: string; label: string; icon: IconName; group?: string; admin
   { to: '/dcim/device-types', label: 'Tipos de equipamento', icon: 'layers' },
   { to: '/virtualization/vms', label: 'Máquinas virtuais', icon: 'vm', group: 'Virtualização' },
   { to: '/virtualization/clusters', label: 'Clusters / hosts', icon: 'cpu' },
+  { to: '/vpn', label: 'Túneis IPsec', icon: 'tunnel', group: 'VPN' },
+  { to: '/vpn/import', label: 'Importar do FortiGate', icon: 'upload', edit: true },
   { to: '/wifi', label: 'Acesso por MAC', icon: 'wifi', group: 'Wi-Fi (UniFi)' },
   { to: '/wifi/identities', label: 'Identidades de MAC', icon: 'fingerprint' },
   { to: '/wifi/controllers', label: 'Controllers UniFi', icon: 'settings', admin: true },

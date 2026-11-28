@@ -93,6 +93,11 @@ erDiagram
     virt_machine ||--o{ virt_disk : ""
     virt_interface ||--o{ ipam_ip_address : "IP da VM"
     virt_interface }o--o{ ipam_vlan : "tagged"
+    dcim_device ||--o{ vpn_tunnel : "FortiGate"
+    vpn_tunnel ||--o{ vpn_phase2 : ""
+    vpn_tunnel |o--o| vpn_tunnel : "outro lado"
+    supplier |o--o{ vpn_tunnel : "parceiro"
+    circuit |o--o{ vpn_tunnel : "link"
     unifi_controller ||--o{ unifi_site : ""
     branch |o--o{ unifi_site : "vínculo opcional"
     unifi_site ||--o{ unifi_wlan : "redes Wi-Fi"
@@ -229,6 +234,13 @@ erDiagram
 | `virt_interface` / `virt_interface_vlan` | NIC da VM: bridge, MAC, MTU, modo 802.1Q, VLAN nativa / tagged | UNIQUE `(vm_id, name)`; CASCADE |
 | `virt_disk` | disco virtual: nome, `size_gb`, storage | UNIQUE `(vm_id, name)`; soma vira `virt_machine.disk_gb` |
 | `ipam_ip_address` (+) | `vm_interface_id` | CHECK: não pode ter `port_id` **e** `vm_interface_id` |
+
+### VPN IPsec (ADR-0022)
+
+| Tabela | Conteúdo | Regras |
+|---|---|---|
+| `vpn_tunnel` | fase 1 importada do FortiGate: `device_id`, `vdom`, `name`, `mode` (interface/policy), `topology` (site_to_site/dialup/hub/spoke), interface WAN, `local_ip`, `remote_gw`, IKE, proposta/DH/keylife, DPD, NAT-T, IP do túnel, `routes` JSONB, `sdwan_zone`, `params` JSONB; documentação: `peer_tunnel_id`, `peer_label`, `supplier_id`, `circuit_id`, `psk_location`, `description`, `comments`; `present`, `imported_at` | UNIQUE `(device_id, vdom, name)`; CHECKs de mode/topology/status/IKE; **PSK nunca armazenada** |
+| `vpn_phase2` | fase 2: proposta, PFS, DH, keylife, auto-negotiate, `src`/`dst` JSONB (CIDRs), objeto de origem/destino, `params` | UNIQUE `(tunnel_id, name)`; CASCADE |
 
 ### Wi-Fi / UniFi — identidade de MAC (ADR-0020)
 
