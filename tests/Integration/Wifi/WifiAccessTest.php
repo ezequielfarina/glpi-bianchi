@@ -42,6 +42,8 @@ final class WifiAccessTest extends WebTestCase
         $this->loginAs($this->client, 'admin');
         $this->call('POST', '/api/ui/wifi/controllers', ['name' => 'X', 'base_url' => 'http://unifi.test:8443', 'auth_mode' => 'local', 'username' => 'u', 'secret' => 's'], 422);
         $this->call('POST', '/api/ui/wifi/controllers', ['verify_tls' => false] + $this->controllerBody(), 422); // sem CA e sem pin
+        $av = $this->call('POST', '/api/ui/wifi/controllers', ['username' => 'Avatar integracao'] + $this->controllerBody(), 422);
+        self::assertStringContainsString('Avatar', (string) ($av['errors']['username'] ?? ''));
         $id = $this->controller();
 
         $stored = (string) $this->db->fetchOne('SELECT secret FROM unifi_controller WHERE id = ?', [$id]);
@@ -193,6 +195,7 @@ final class WifiAccessTest extends WebTestCase
         $before = (string) $this->db->fetchOne('SELECT secret FROM unifi_controller WHERE id = ?', [$cid]);
 
         // senha errada: recusada e a antiga continua valendo
+        $this->call('POST', "/api/ui/wifi/controllers/$cid/credential", ['secret' => FakeUnifi::PASS, 'username' => 'Avatar integracao'], 422);
         $bad = $this->call('POST', "/api/ui/wifi/controllers/$cid/credential", ['secret' => 'digitada-errada'], 422);
         self::assertStringContainsString('nada foi alterado', (string) ($bad['errors']['secret'] ?? ''));
         self::assertSame($before, $this->db->fetchOne('SELECT secret FROM unifi_controller WHERE id = ?', [$cid]));

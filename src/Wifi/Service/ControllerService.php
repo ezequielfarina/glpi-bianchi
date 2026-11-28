@@ -78,6 +78,8 @@ final readonly class ControllerService
         }
         if ('local' === $mode && null === $username) {
             $p->error('username', 'Informe o usuário do admin local do UniFi.');
+        } elseif ('local' === $mode && null !== ($e = self::usernameError($username))) {
+            $p->error('username', $e);
         }
         if (null === $secret && null === ($current['secret'] ?? null)) {
             $p->error('secret', 'local' === $mode ? 'Informe a senha.' : 'Informe a API key.');
@@ -142,6 +144,9 @@ final readonly class ControllerService
         $p = new Payload($data);
         $secret = $p->string('secret', 500, required: true);
         $username = 'local' === $row['auth_mode'] ? ($p->string('username', 100) ?? (string) $row['username']) : null;
+        if (null !== $username && null !== ($e = self::usernameError($username))) {
+            $p->error('username', $e);
+        }
         $p->check();
 
         $conn = $this->factory->fromConfig([
@@ -183,6 +188,18 @@ final readonly class ControllerService
         } finally {
             $c?->logout();
         }
+    }
+
+    /** Usuário do UniFi não tem espaço: "Avatar glpi" = texto da imagem copiado junto da lista de admins. */
+    private static function usernameError(string $username): ?string
+    {
+        if (1 !== preg_match('/\s/u', $username)) {
+            return null;
+        }
+
+        return str_starts_with($username, 'Avatar')
+            ? 'O usuário veio com "Avatar" na frente (copiado da lista do UniFi). Digite só o nome, ex.: '.trim(substr($username, 6)).'.'
+            : 'O usuário do UniFi não tem espaços. Digite só o nome de login.';
     }
 
     /**
