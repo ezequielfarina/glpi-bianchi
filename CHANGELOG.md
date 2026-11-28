@@ -4,6 +4,17 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versiona
 
 ## [Unreleased]
 
+### Adicionado — Wi-Fi / UniFi: identidade de MAC (ADR-0020)
+- Cadastro do controller UniFi da VM (admin local com cookie+CSRF, API key no UniFi OS/OS Server ou proxy da nuvem), com
+  **pin do certificado** autoassinado ("Ler certificado") e credencial cifrada.
+- Sincroniza **sites** e **redes Wi-Fi** com a lista atual do filtro de MAC; vincula site à filial.
+- **Cadastro de MAC** com pessoa (nome, matrícula, setor, contato), aparelho (tipo, marca, modelo, hostname, patrimônio), validade e
+  redes: aplica no UniFi na hora (PUT parcial só do filtro — a senha do Wi-Fi nunca é regravada) ou na próxima sincronização.
+- Preserva o que já está no UniFi: MACs sem cadastro aparecem em "Sem identificação" para identificar; nada é apagado sem identidade.
+- Revogação, vencimento automático (visitantes/terceiros), conferência após gravar, estados pendente/erro com nova tentativa,
+  apelido "Pessoa — Aparelho" no cliente do UniFi, aviso de filtro desligado e de MAC aleatório, exportação CSV.
+- Timer `bianchi-wifi-sync` (10 min) e comando `app:wifi:sync`; todas as ações na auditoria (módulo Wi-Fi).
+
 ### Corrigido — scanner de rede
 - Varredura morta por reinício do worker (deploy, `rotate-secrets.sh`, reboot) aparecia como "nmap terminou com código 15" com o stderr bruto: agora é **interrompida**, mantém os dispositivos já encontrados e, se for agendada, roda de novo em 5 minutos (sem alerta de falha).
 - Varredura órfã (worker morto sem registrar o fim) ficava "em andamento" para sempre e bloqueava o agendamento: o tick encerra depois do tempo máximo do perfil.

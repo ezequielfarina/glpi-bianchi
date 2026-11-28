@@ -95,6 +95,13 @@ erDiagram
     virt_machine ||--o{ virt_disk : ""
     virt_interface ||--o{ ipam_ip_address : "IP da VM"
     virt_interface }o--o{ ipam_vlan : "tagged"
+    unifi_controller ||--o{ unifi_site : ""
+    branch |o--o{ unifi_site : "vínculo opcional"
+    unifi_site ||--o{ unifi_wlan : "redes Wi-Fi"
+    mac_identity ||--o{ mac_wlan_assignment : ""
+    unifi_wlan ||--o{ mac_wlan_assignment : "filtro de MAC"
+    app_user |o--o{ mac_identity : "pessoa"
+    asset |o--o{ mac_identity : "patrimônio"
 ```
 
 ## Dicionário
@@ -225,6 +232,16 @@ erDiagram
 | `virt_interface` / `virt_interface_vlan` | NIC da VM: bridge, MAC, MTU, modo 802.1Q, VLAN nativa / tagged | UNIQUE `(vm_id, name)`; CASCADE |
 | `virt_disk` | disco virtual: nome, `size_gb`, storage | UNIQUE `(vm_id, name)`; soma vira `virt_machine.disk_gb` |
 | `ipam_ip_address` (+) | `vm_interface_id` | CHECK: não pode ter `port_id` **e** `vm_interface_id` |
+
+### Wi-Fi / UniFi — identidade de MAC (ADR-0020)
+
+| Tabela | Conteúdo | Regras |
+|---|---|---|
+| `unifi_controller` | controller UniFi Network: `base_url`, `auth_mode` (`local`/`api_key`/`cloud`), `username`, `secret` (**cifrado**, contexto `unifi.secret:<id>`), `verify_tls`, `tls_pin` (pin-sha256 SPKI), `platform`, `version`, `write_client_alias`, `last_sync_at`, `last_error` | UNIQUE nome; CHECK `auth_mode`; segredo entra no `app:crypto:rotate` |
+| `unifi_site` | site do controller: `site_ref` (o `e6ovl2sz` da URL), `external_id`, `description`, `branch_id`, `present` | UNIQUE `(controller_id, site_ref)`; sumiu do UniFi → `present = false` |
+| `unifi_wlan` | rede Wi-Fi: `external_id` (`_id` do wlanconf), nome, segurança, `filter_enabled`, `filter_policy` (`allow`/`deny`), `remote_macs` JSONB (lista lida do UniFi), `present` | UNIQUE `(site_id, external_id)`; a senha do Wi-Fi **nunca** é gravada |
+| `mac_identity` | MAC normalizado (`aa:bb:cc:dd:ee:ff`), pessoa (nome, matrícula, setor, e-mail, telefone, `person_id`), aparelho (tipo, marca, modelo, hostname, `asset_id`), `branch_id`, `valid_until`, `status` (`active`/`revoked`), `source` (`panel`/`imported`) | UNIQUE `mac`; CHECK formato do MAC, `status`, `source`; índice `(status, valid_until)` para o vencimento |
+| `mac_wlan_assignment` | MAC × rede: `state` (`pending`/`synced`/`error`/`removing`), `last_error`, `synced_at` | UNIQUE `(identity_id, wlan_id)`; CASCADE dos dois lados; índice `(wlan_id, state)` |
 
 ## Objetos fora do ORM
 

@@ -39,7 +39,7 @@ final class UnifiConnection
         private readonly array $cfg,
     ) {
         if ('cloud' !== $cfg['auth_mode'] && !$cfg['verify_tls'] && null === $cfg['tls_pin']) {
-            throw new UnifiException('Defina como confiar no certificado do controller: CA válida ou certificado fixado (botão "Testar conexão").');
+            throw new UnifiException('Defina como confiar no certificado do controller: CA válida ou certificado fixado (botão "Ler certificado").');
         }
     }
 
@@ -339,8 +339,8 @@ final class UnifiConnection
         $host = (string) parse_url($base, \PHP_URL_HOST).(null !== parse_url($base, \PHP_URL_PORT) ? ':'.parse_url($base, \PHP_URL_PORT) : '');
 
         return match (true) {
-            str_contains($error, 'pinned') || str_contains($error, 'PINNEDPUBLICKEY') || str_contains($error, 'fingerprint') => "O certificado de $host MUDOU em relação ao fixado. Se foi renovado por você, use \"Testar conexão\" e fixe o novo; se não, pode ser interceptação — não continue.",
-            str_contains($error, 'SSL') || str_contains($error, 'certificate') => "Certificado de $host não é confiável. Fixe o certificado em \"Testar conexão\" ou instale a CA no CT.",
+            str_contains($error, 'pinned') || str_contains($error, 'PINNEDPUBLICKEY') || str_contains($error, 'fingerprint') => "O certificado de $host MUDOU em relação ao fixado. Se foi renovado por você, edite o controller, clique em \"Ler certificado\" e fixe o novo; se não, pode ser interceptação — não continue.",
+            str_contains($error, 'SSL') || str_contains($error, 'certificate') => "Certificado de $host não é confiável. Edite o controller e use \"Ler certificado\" para fixá-lo, ou instale a CA no CT.",
             str_contains($error, 'timed out') || str_contains($error, 'Timeout') || str_contains($error, 'Idle timeout') => "Sem resposta de $host (tempo esgotado). Verifique IP/porta e se o firewall libera o CT até a VM.",
             str_contains($error, 'Could not resolve') => "Nome não resolvido: $host. Use o IP da VM ou ajuste o DNS do CT.",
             str_contains($error, 'refused') || str_contains($error, 'Connection refused') => "Conexão recusada por $host: porta errada? (8443 controller clássico, 11443 UniFi OS Server, 443 console).",

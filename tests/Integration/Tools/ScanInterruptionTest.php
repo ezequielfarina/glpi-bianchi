@@ -51,7 +51,7 @@ final class ScanInterruptionTest extends WebTestCase
         self::assertStringContainsString('interrompida', (string) $row['error']);
         self::assertStringContainsString('sinal 15', (string) $row['error']);
         self::assertSame(1, (int) $db->fetchOne('SELECT count(*) FROM network_scan_host WHERE scan_id = ?', [$scan]), 'host visto antes do SIGTERM fica');
-        self::assertTrue((bool) $db->fetchOne("SELECT next_run_at <= now() + interval '5 minutes' FROM scan_schedule WHERE id = ?", [$schedule]));
+        self::assertTrue((bool) $db->fetchOne("SELECT next_run_at <= clock_timestamp() + interval '5 minutes 1 second' FROM scan_schedule WHERE id = ?", [$schedule]));
         self::assertSame(0, (int) $db->fetchOne("SELECT count(*) FROM network_alert WHERE kind = 'scan_failed'"), 'interrupção não dispara alerta de falha');
     }
 

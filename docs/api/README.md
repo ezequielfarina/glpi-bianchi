@@ -104,6 +104,27 @@ Leitura para qualquer perfil; escrita para Técnico/Administrador; toda escrita 
 
 IP de VM: `POST /api/ui/ipam/ip-addresses` com `vm_interface_id` (e `make_primary`).
 
+### Wi-Fi / UniFi (`/api/ui/wifi` — ADR-0020)
+
+Controllers e "ligar filtro": só **Administrador**. Identidades, sincronizar e aplicar: **Técnico**. Leitura: todos.
+Erro de comunicação com o UniFi responde **502** `{"code": "unifi", "error": "<o que fazer>"}`.
+
+| Método | Rota | Uso |
+|---|---|---|
+| GET | `/api/ui/wifi/tree` | controller › sites › redes com contagens (`remote_count`, `synced`, `pending`, `errors`, `unknown`) |
+| GET · POST · PUT · DELETE | `/controllers[/{id}]` | `{name, auth_mode, base_url, username, secret, cloud_host_id, verify_tls, tls_pin, write_client_alias, enabled}` — `secret` nunca volta (`has_secret`); vazio na edição mantém |
+| POST | `/controllers/tls-inspect` | `{base_url}` → `{subject, issuer, valid_to, self_signed, sha256, pin}` para fixar o certificado |
+| POST | `/controllers/{id}/test` | `{ok, platform, version, sites, error}` |
+| POST | `/sync/{id}` | relê sites e redes → `{sites, wlans, drift, version}` (`drift` = MACs do painel removidos direto no UniFi) |
+| PUT | `/sites/{id}` | `{branch_id}` |
+| GET | `/wlans/{id}` | rede + `identities` + `unknown` (MACs no UniFi sem identidade) |
+| POST | `/wlans/{id}/apply` | `{changed, added, removed, total, warnings, error}` |
+| POST | `/wlans/{id}/filter` | `{confirm: "<nome exato da rede>"}` liga o filtro em modo permissão |
+| POST | `/wlans/{id}/adopt` | identifica um MAC que já estava no UniFi `{mac, person_name, …}` |
+| GET · POST · PUT · DELETE | `/identities[/{id}]` | lista (`q`, `wlan`, `status`, `state`) · `{mac, person_name, registration, department, email, phone, person_id, device_kind, device_brand, device_model, hostname, asset_uuid, branch_id, valid_until, notes, wlan_ids[], apply}` → `{id, applied[]}` |
+| POST | `/identities/{id}/revoke` | `{apply}` — sai de todas as redes |
+| GET | `/lookup?mac=` | fabricante, MAC aleatório, identidade existente, ativos com o MAC, redes onde já está |
+
 ### Endpoint do GLPI Agent (`/`, `/inventory`, `/front/inventory.php`)
 
 Público por natureza (protocolo do agente), mas desde a auditoria 2026-11: só aceita origem em `AGENT_ALLOWED_NETWORKS`
